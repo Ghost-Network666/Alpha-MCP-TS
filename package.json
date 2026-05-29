@@ -1,7 +1,7 @@
 {
   "name": "alphamcp-ts",
   "version": "0.1.0",
-  "description": "Production-ready Polymarket trading client in TypeScript using only the official @polymarket/client@beta SDK",
+  "description": "Production-ready Polymarket MCP server. Exposes 90+ tools for Gamma discovery, CLOB trading, gasless actions, rewards, and realtime via the official @polymarket/client beta SDK.",
   "type": "module",
   "main": "dist/lib.js",
   "types": "dist/lib.d.ts",
@@ -38,7 +38,7 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=24"
+    "node": ">=22"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

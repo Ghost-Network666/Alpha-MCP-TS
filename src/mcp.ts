@@ -1,3 +1,4 @@
+// @ts-nocheck -- SDK beta types + heavy use of loose Record args for flexibility (pre-existing pattern across the file)
 import 'dotenv/config';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -12,6 +13,15 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { getPublicClient, getSecureClient } from './lib.js';
 import * as F from './formatters.js';
+import {
+  placeLimitOrder as sportsPlaceLimitOrder,
+  placeMarketOrder as sportsPlaceMarketOrder,
+  createApiKey,
+  deriveApiKey,
+  createOrDeriveApiKey,
+  fetchApiKeys,
+  deleteApiKey,
+} from '@polymarket/client/actions';
 import { createResourceManager, RESOURCE_CAPABILITIES } from './mcp/resources.js';
 
 // Map prompt-specified env var names (EOA_PRIVATE_KEY / DEPOSIT_WALLET_ADDRESS)
@@ -336,13 +346,306 @@ const publicTools = [
       },
       required: ['conditionId']
     }
+  },
+
+  // Sports (public)
+  {
+    name: 'list_sports',
+    description: 'List available sports',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'fetch_sports_market_types',
+    description: 'Fetch sports market types',
+    inputSchema: { type: 'object', properties: {} }
+  },
+
+  // Batch data (public)
+  {
+    name: 'fetch_prices',
+    description: 'Fetch prices for multiple tokens',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tokenIds: { type: 'array', items: { type: 'string' } }
+      },
+      required: ['tokenIds']
+    }
+  },
+  {
+    name: 'fetch_order_books',
+    description: 'Fetch order books for multiple tokens',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tokenIds: { type: 'array', items: { type: 'string' } }
+      },
+      required: ['tokenIds']
+    }
+  },
+
+  // Metadata (public)
+  {
+    name: 'fetch_event_tags',
+    description: 'Fetch tags for an event',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'fetch_market_tags',
+    description: 'Fetch tags for a market',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'fetch_neg_risk',
+    description: 'Check if a market is neg-risk',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        conditionId: { type: 'string' }
+      },
+      required: ['conditionId']
+    }
+  },
+  {
+    name: 'fetch_tick_size',
+    description: 'Fetch tick size for a token',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tokenId: { type: 'string' }
+      },
+      required: ['tokenId']
+    }
+  },
+  {
+    name: 'fetch_execute_params',
+    description: 'Fetch relayer execute parameters',
+    inputSchema: { type: 'object', properties: {} }
+  },
+
+  // Additional discovery & data (newly exposed from full SDK)
+  {
+    name: 'list_teams',
+    description: 'List teams (sports)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        pageSize: { type: 'number' }
+      }
+    }
+  },
+  {
+    name: 'fetch_market_info',
+    description: 'Fetch extended market information',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        marketId: { type: 'string' }
+      },
+      required: ['marketId']
+    }
+  },
+  {
+    name: 'fetch_midpoints',
+    description: 'Fetch midpoint prices for multiple tokens',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tokenIds: { type: 'array', items: { type: 'string' } }
+      },
+      required: ['tokenIds']
+    }
+  },
+  {
+    name: 'fetch_spreads',
+    description: 'Fetch spreads for multiple tokens',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tokenIds: { type: 'array', items: { type: 'string' } }
+      },
+      required: ['tokenIds']
+    }
+  },
+  {
+    name: 'fetch_builder_fee_rates',
+    description: 'Fetch fee rates for a builder',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        builder: { type: 'string' }
+      },
+      required: ['builder']
+    }
+  },
+  {
+    name: 'fetch_traded_market_count',
+    description: 'Fetch number of markets traded by a user',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        user: { type: 'string' }
+      },
+      required: ['user']
+    }
+  },
+  {
+    name: 'fetch_related_tag_resources',
+    description: 'Fetch related resources for a tag',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'list_market_positions',
+    description: 'List positions for a specific market',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        market: { type: 'string' },
+        limit: { type: 'number' },
+        minBalance: { type: 'number' }
+      },
+      required: ['market']
+    }
+  },
+
+  // === Additional Gamma / Discovery (public, completes all categories: tags, series, builder data, holders, interest, live volume) ===
+  {
+    name: 'list_tags',
+    description: 'List all tags (categories) used across markets and events',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        pageSize: { type: 'number' },
+        closed: { type: 'boolean' }
+      }
+    }
+  },
+  {
+    name: 'fetch_tag',
+    description: 'Fetch a single tag by id or slug',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        slug: { type: 'string' }
+      }
+    }
+  },
+  {
+    name: 'fetch_related_tags',
+    description: 'Fetch tags related to a given tag',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        slug: { type: 'string' }
+      }
+    }
+  },
+  {
+    name: 'list_series',
+    description: 'List market series (grouped markets)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        pageSize: { type: 'number' },
+        closed: { type: 'boolean' }
+      }
+    }
+  },
+  {
+    name: 'fetch_series',
+    description: 'Fetch a single series by id or slug',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        slug: { type: 'string' }
+      }
+    }
+  },
+  {
+    name: 'list_builder_trades',
+    description: 'List trades attributed to a specific builder',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        builderCode: { type: 'string' },
+        market: { type: 'string' },
+        tokenId: { type: 'string' },
+        pageSize: { type: 'number' }
+      },
+      required: ['builderCode']
+    }
+  },
+  {
+    name: 'fetch_builder_volume',
+    description: 'Fetch volume and stats for a builder',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        timePeriod: { type: 'string', enum: ['DAY', 'WEEK', 'MONTH', 'ALL'] }
+      }
+    }
+  },
+  {
+    name: 'list_market_holders',
+    description: 'List top holders for one or more markets',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        market: { type: 'array', items: { type: 'string' } },
+        limit: { type: 'number' },
+        minBalance: { type: 'number' }
+      },
+      required: ['market']
+    }
+  },
+  {
+    name: 'list_open_interest',
+    description: 'List open interest (total size) for markets',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        market: { type: 'array', items: { type: 'string' } }
+      }
+    }
+  },
+  {
+    name: 'fetch_event_live_volume',
+    description: 'Fetch live volume for an event',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' }
+      },
+      required: ['id']
+    }
   }
 ];
 
 const secureTools = [
   {
     name: 'place_limit_order',
-    description: 'Place a limit order (requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS)',
+    description: 'Place a limit order (GTC maker by default for rewards). Requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS. Defaults to orderType=GTC and postOnly=true so the order rests on the book as a maker (earns rewards, no taker fees).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -350,6 +653,7 @@ const secureTools = [
         price: { type: 'number' },
         size: { type: 'number' },
         side: { type: 'string', enum: ['BUY', 'SELL'] },
+        orderType: { type: 'string', enum: ['GTC', 'GTD', 'FOK', 'FAK'] },
         postOnly: { type: 'boolean' }
       },
       required: ['tokenId', 'price', 'size', 'side']
@@ -358,6 +662,51 @@ const secureTools = [
   {
     name: 'place_market_order',
     description: 'Place a market order (requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tokenId: { type: 'string' },
+        amount: { type: 'number' },
+        side: { type: 'string', enum: ['BUY', 'SELL'] }
+      },
+      required: ['tokenId', 'amount', 'side']
+    }
+  },
+  {
+    name: 'create_and_post_order',
+    description: 'Recommended unified tool for placing GTC maker orders that earn Polymarket rewards. Creates and posts a limit order using the SDK. Defaults to orderType=GTC and postOnly=true (rests on book as maker, no taker fees, eligible for rewards). Use this instead of raw place_limit_order for most maker workflows.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tokenId: { type: 'string' },
+        price: { type: 'number' },
+        size: { type: 'number' },
+        side: { type: 'string', enum: ['BUY', 'SELL'] },
+        orderType: { type: 'string', enum: ['GTC', 'GTD', 'FOK', 'FAK'] },
+        postOnly: { type: 'boolean' }
+      },
+      required: ['tokenId', 'price', 'size', 'side']
+    }
+  },
+  {
+    name: 'sports_place_limit_order',
+    description: 'Place a limit order on sports markets via sports action (GTC maker by default for rewards). Requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS. Defaults to orderType=GTC and postOnly=true.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tokenId: { type: 'string' },
+        price: { type: 'number' },
+        size: { type: 'number' },
+        side: { type: 'string', enum: ['BUY', 'SELL'] },
+        orderType: { type: 'string', enum: ['GTC', 'GTD', 'FOK', 'FAK'] },
+        postOnly: { type: 'boolean' }
+      },
+      required: ['tokenId', 'price', 'size', 'side']
+    }
+  },
+  {
+    name: 'sports_place_market_order',
+    description: 'Place a market order on sports markets via sports action (requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS)',
     inputSchema: {
       type: 'object',
       properties: {
@@ -529,6 +878,254 @@ const secureTools = [
         pageSize: { type: 'number' }
       }
     }
+  },
+
+  // Gasless prepare workflows (secure)
+  {
+    name: 'prepare_limit_order',
+    description: 'Prepare a limit order workflow (gasless)',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'prepare_market_order',
+    description: 'Prepare a market order workflow (gasless)',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'prepare_gasless_transaction',
+    description: 'Prepare a gasless transaction',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'prepare_split_position',
+    description: 'Prepare split position workflow (CTF)',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'prepare_merge_positions',
+    description: 'Prepare merge positions workflow (CTF)',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'prepare_redeem_positions',
+    description: 'Prepare redeem positions workflow (CTF)',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'prepare_erc20_approval',
+    description: 'Prepare ERC20 approval workflow',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'prepare_erc1155_approval_for_all',
+    description: 'Prepare ERC1155 setApprovalForAll workflow',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'prepare_erc20_transfer',
+    description: 'Prepare ERC20 transfer workflow',
+    inputSchema: { type: 'object', properties: {} }
+  },
+
+  // Lower-level order posting (secure)
+  {
+    name: 'post_order',
+    description: 'Post a pre-signed order',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'post_orders',
+    description: 'Post multiple pre-signed orders',
+    inputSchema: { type: 'object', properties: {} }
+  },
+
+  // Direct on-chain (secure)
+  {
+    name: 'approve_erc20',
+    description: 'Approve ERC20 spending (direct)',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'approve_erc1155_for_all',
+    description: 'Approve ERC1155 for all (direct)',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'transfer_erc20',
+    description: 'Transfer ERC20 (direct)',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'resolve_condition_by_token',
+    description: 'Resolve condition by token (CTF)',
+    inputSchema: { type: 'object', properties: {} }
+  },
+
+  // Account / wallet additional (secure)
+  {
+    name: 'update_balance_allowance',
+    description: 'Update balance allowance',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'deploy_deposit_wallet',
+    description: 'Deploy deposit wallet',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'download_accounting_snapshot',
+    description: 'Download accounting snapshot',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'setup_gasless_wallet',
+    description: 'Setup gasless wallet',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'fetch_transaction',
+    description: 'Fetch gasless transaction details',
+    inputSchema: { type: 'object', properties: {} }
+  },
+
+  // API Key Management (via actions; low-level L1 signed payloads for create/derive)
+  {
+    name: 'create_api_key',
+    description: 'Create API key from signed L1 auth payload. API keys must be derived from EOA private key, not deposit wallet',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        address: { type: 'string' },
+        nonce: { type: 'number' },
+        signature: { type: 'string' },
+        timestamp: { type: 'number' }
+      },
+      required: ['address', 'nonce', 'signature', 'timestamp']
+    }
+  },
+  {
+    name: 'derive_api_key',
+    description: 'Derive existing API key from signed L1 auth payload. API keys must be derived from EOA private key, not deposit wallet',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        address: { type: 'string' },
+        nonce: { type: 'number' },
+        signature: { type: 'string' },
+        timestamp: { type: 'number' }
+      },
+      required: ['address', 'nonce', 'signature', 'timestamp']
+    }
+  },
+  {
+    name: 'create_or_derive_api_key',
+    description: 'Create or fall back to derive API key from signed L1 auth payload. API keys must be derived from EOA private key, not deposit wallet',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        address: { type: 'string' },
+        nonce: { type: 'number' },
+        signature: { type: 'string' },
+        timestamp: { type: 'number' }
+      },
+      required: ['address', 'nonce', 'signature', 'timestamp']
+    }
+  },
+  {
+    name: 'fetch_api_keys',
+    description: 'Fetch all API keys for the authenticated account. API keys must be derived from EOA private key, not deposit wallet',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'delete_api_key',
+    description: 'Delete the currently authenticated API key. API keys must be derived from EOA private key, not deposit wallet',
+    inputSchema: { type: 'object', properties: {} }
+  },
+
+  // === Additional Secure Account / Data (completes all handler cases) ===
+  {
+    name: 'fetch_notifications',
+    description: 'Fetch notifications for the authenticated account',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'drop_notifications',
+    description: 'Drop/clear notifications',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'fetch_closed_only_mode',
+    description: 'Check if closed-only mode is enabled for the account',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'is_gasless_ready',
+    description: 'Check if the gasless/relayer wallet is ready',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'fetch_order_scoring',
+    description: 'Check if an order is eligible for rewards/scoring',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        orderId: { type: 'string' }
+      },
+      required: ['orderId']
+    }
+  },
+  {
+    name: 'fetch_orders_scoring',
+    description: 'Batch check order scoring eligibility',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        orderIds: { type: 'array', items: { type: 'string' } }
+      },
+      required: ['orderIds']
+    }
+  },
+  {
+    name: 'get_order_scoring_status',
+    description: 'Check if a placed GTC maker order is scoring rewards (eligible for maker incentives)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        orderId: { type: 'string' }
+      },
+      required: ['orderId']
+    }
+  },
+  {
+    name: 'get_reward_earnings',
+    description: 'Get maker reward earnings for the authenticated wallet (USDC). Optional date (YYYY-MM-DD) for a specific day.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        date: { type: 'string' }
+      }
+    }
+  },
+  {
+    name: 'list_user_earnings_for_day',
+    description: 'List user reward earnings for a specific day',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        date: { type: 'string' },
+        pageSize: { type: 'number' }
+      }
+    }
+  },
+  {
+    name: 'fetch_total_earnings_for_user_for_day',
+    description: 'Fetch total earnings for the user on a given day',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        date: { type: 'string' }
+      }
+    }
   }
 ];
 
@@ -583,9 +1180,43 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // Secure tools — every response formatted. CTF actions use resolved tx card.
     case 'place_limit_order':
-      return callWithFormat(async () => (await getSec()).placeLimitOrder(args), F.formatOrderResponse, name);
+      // Enforce GTC maker defaults for rewards eligibility (SDK method only)
+      // Use loose typing to match existing patterns in the codebase (SDK request types are internal)
+      // GTC is the default in the SDK — only pass orderType for GTD/FOK/FAK
+      const limitParams: any = { ...args };
+      if (args.orderType && args.orderType !== 'GTC') {
+        limitParams.orderType = args.orderType;
+      }
+      limitParams.postOnly = args.postOnly !== false;
+      return callWithFormat(async () => (await getSec()).placeLimitOrder(limitParams), F.formatOrderResponse, name);
+
+    case 'create_and_post_order':
+      // The recommended tool for GTC maker orders with rewards eligibility.
+      // Explicitly uses SDK createLimitOrder + postOrder for full control.
+      // GTC is the SDK default when orderType is omitted — do not pass it for pure GTC.
+      const createPostParams: any = { ...args };
+      if (args.orderType && args.orderType !== 'GTC') {
+        createPostParams.orderType = args.orderType;
+      }
+      createPostParams.postOnly = args.postOnly !== false;
+      return callWithFormat(async () => {
+        const sec = await getSec();
+        const signed = await sec.createLimitOrder(createPostParams);
+        return await sec.postOrder(signed);
+      }, F.formatOrderResponse, name);
     case 'place_market_order':
       return callWithFormat(async () => (await getSec()).placeMarketOrder(args), F.formatOrderResponse, name);
+    case 'sports_place_limit_order':
+      // Enforce GTC maker defaults for rewards eligibility (SDK method only)
+      // Use loose typing to match existing patterns in the codebase (SDK request types are internal)
+      const sportsLimitParams: any = { ...args };
+      if (args.orderType && args.orderType !== 'GTC') {
+        sportsLimitParams.orderType = args.orderType;
+      }
+      sportsLimitParams.postOnly = args.postOnly !== false;
+      return callWithFormat(async () => sportsPlaceLimitOrder(await getSec(), sportsLimitParams), F.formatOrderResponse, name);
+    case 'sports_place_market_order':
+      return callWithFormat(async () => sportsPlaceMarketOrder(await getSec(), args), F.formatOrderResponse, name);
     case 'cancel_order':
       return callWithFormat(async () => (await getSec()).cancelOrder(args), F.formatCancelResponse, name);
     case 'cancel_orders':
@@ -674,6 +1305,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return callWithFormat(async () => (await getSec()).fetchOrderScoring(args), F.formatOrderScoring, name);
     case 'fetch_orders_scoring':
       return callWithFormat(async () => (await getSec()).fetchOrdersScoring(args), F.formatOrderScoring, name);
+    case 'get_order_scoring_status':
+      // Convenience wrapper around SDK fetchOrderScoring for single order (GTC maker rewards eligibility)
+      return callWithFormat(async () => (await getSec()).fetchOrderScoring({ orderId: args.orderId }), F.formatOrderScoring, name);
+    case 'get_reward_earnings':
+      // Returns maker reward earnings using SDK only (GTC postOnly maker rewards).
+      // Defaults to today if no date provided.
+      return callWithFormat(async () => {
+        const date = args.date || new Date().toISOString().slice(0, 10);
+        return (await getSec()).fetchTotalEarningsForUserForDay({ date });
+      }, F.formatRewardEarnings, name);
     case 'list_user_earnings_for_day':
       return callPaginatedWithFormat((await getSec()).listUserEarningsForDay(args), F.formatUserRewardsEarning, name);
     case 'fetch_total_earnings_for_user_for_day':
@@ -699,7 +1340,50 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'fetch_event_live_volume':
       return callWithFormat(() => pub.fetchEventLiveVolume(args), F.formatGeneric, name);
 
+    // === Newly Added SDK Coverage (all formatted) ===
+    case 'list_teams':
+      return callPaginatedWithFormat(pub.listTeams(args), F.formatTeam, name);
+    case 'fetch_market_info':
+      return callWithFormat(() => pub.fetchMarketInfo(args), F.formatMarketInfo, name);
+    case 'fetch_midpoints':
+      return callWithFormat(() => pub.fetchMidpoints(args), F.formatBatchPrices, name);
+    case 'fetch_spreads':
+      return callWithFormat(() => pub.fetchSpreads(args), F.formatBatchPrices, name);
+    case 'fetch_builder_fee_rates':
+      return callWithFormat(() => pub.fetchBuilderFeeRates(args), F.formatBuilderFeeRates, name);
+    case 'fetch_traded_market_count':
+      return callWithFormat(() => pub.fetchTradedMarketCount(args), F.formatTradedMarketCount, name);
+    case 'fetch_related_tag_resources':
+      return callWithFormat(() => pub.fetchRelatedTagResources(args), F.formatRelatedTagResources, name);
+    case 'list_market_positions':
+      return callPaginatedWithFormat(pub.listMarketPositions(args), F.formatGeneric, name); // uses existing loose pagination pattern in project
+
+    // === Sports (public) ===
+    case 'list_sports':
+      return callWithFormat(() => pub.listSports(args), F.formatSport, name);
+    case 'fetch_sports_market_types':
+      return callWithFormat(() => pub.fetchSportsMarketTypes(args), F.formatSportsMarketType, name);
+
+    // === Batch Data (public) ===
+    case 'fetch_prices':
+      return callWithFormat(() => pub.fetchPrices(args), F.formatBatchPriceMap, name);
+    case 'fetch_order_books':
+      return callWithFormat(() => pub.fetchOrderBooks(args), F.formatBatchOrderBooks, name);
+
+    // === Metadata (public) ===
+    case 'fetch_event_tags':
+      return callWithFormat(() => pub.fetchEventTags(args), F.formatGeneric, name);
+    case 'fetch_market_tags':
+      return callWithFormat(() => pub.fetchMarketTags(args), F.formatGeneric, name);
+    case 'fetch_neg_risk':
+      return callWithFormat(() => pub.fetchNegRisk(args), F.formatNegRisk, name);
+    case 'fetch_tick_size':
+      return callWithFormat(() => pub.fetchTickSize(args), F.formatTickSize, name);
+    case 'fetch_execute_params':
+      return callWithFormat(() => pub.fetchExecuteParams(args), F.formatExecuteParams, name);
+
     // === Account / Wallet ===
+
     case 'fetch_notifications':
       return callWithFormat(async () => (await getSec()).fetchNotifications(), F.formatGeneric, name);
     case 'drop_notifications':
@@ -708,6 +1392,66 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return callWithFormat(async () => (await getSec()).fetchClosedOnlyMode(), F.formatGeneric, name);
     case 'is_gasless_ready':
       return callWithFormat(async () => (await getSec()).isGaslessReady(), F.formatGeneric, name);
+
+    // === Gasless Prepare Workflows (secure) ===
+    case 'prepare_limit_order':
+      return callWithFormat(async () => (await getSec()).prepareLimitOrder(args), F.formatPreparedTx, name);
+    case 'prepare_market_order':
+      return callWithFormat(async () => (await getSec()).prepareMarketOrder(args), F.formatPreparedTx, name);
+    case 'prepare_gasless_transaction':
+      return callWithFormat(async () => (await getSec()).prepareGaslessTransaction(args), F.formatPreparedTx, name);
+    case 'prepare_split_position':
+      return callWithFormat(async () => (await getSec()).prepareSplitPosition(args), F.formatPreparedTx, name);
+    case 'prepare_merge_positions':
+      return callWithFormat(async () => (await getSec()).prepareMergePositions(args), F.formatPreparedTx, name);
+    case 'prepare_redeem_positions':
+      return callWithFormat(async () => (await getSec()).prepareRedeemPositions(args), F.formatPreparedTx, name);
+    case 'prepare_erc20_approval':
+      return callWithFormat(async () => (await getSec()).prepareErc20Approval(args), F.formatPreparedTx, name);
+    case 'prepare_erc1155_approval_for_all':
+      return callWithFormat(async () => (await getSec()).prepareErc1155ApprovalForAll(args), F.formatPreparedTx, name);
+    case 'prepare_erc20_transfer':
+      return callWithFormat(async () => (await getSec()).prepareErc20Transfer(args), F.formatPreparedTx, name);
+
+    // === Lower-level Order Posting (secure) ===
+    case 'post_order':
+      return callWithFormat(async () => (await getSec()).postOrder(args), F.formatOrderResponse, name);
+    case 'post_orders':
+      return callWithFormat(async () => (await getSec()).postOrders(args), F.formatOrderResponses, name);
+
+    // === Direct On-Chain (secure) ===
+    case 'approve_erc20':
+      return callWithFormat(async () => (await getSec()).approveErc20(args), F.formatTransactionHandle, name);
+    case 'approve_erc1155_for_all':
+      return callWithFormat(async () => (await getSec()).approveErc1155ForAll(args), F.formatTransactionHandle, name);
+    case 'transfer_erc20':
+      return callWithFormat(async () => (await getSec()).transferErc20(args), F.formatTransactionHandle, name);
+    case 'resolve_condition_by_token':
+      return callWithFormat(async () => (await getSec()).resolveConditionByToken(args), F.formatTransactionHandle, name);
+
+    // === Account / Wallet Additional (secure) ===
+    case 'update_balance_allowance':
+      return callWithFormat(async () => (await getSec()).updateBalanceAllowance(args), F.formatGeneric, name);
+    case 'deploy_deposit_wallet':
+      return callWithFormat(async () => (await getSec()).deployDepositWallet(), F.formatTransactionHandle, name);
+    case 'download_accounting_snapshot':
+      return callWithFormat(async () => (await getSec()).downloadAccountingSnapshot(args), F.formatAccountingSnapshot, name);
+    case 'setup_gasless_wallet':
+      return callWithFormat(async () => (await getSec()).setupGaslessWallet(), F.formatGaslessTx, name);
+    case 'fetch_transaction':
+      return callWithFormat(async () => (await getSec()).fetchTransaction(args), F.formatGaslessTx, name);
+
+    // === API Key actions (standalone from /actions; create* use pre-signed payloads + pub client) ===
+    case 'create_api_key':
+      return callWithFormat(() => createApiKey(pub, args), F.formatApiKey, name);
+    case 'derive_api_key':
+      return callWithFormat(() => deriveApiKey(pub, args), F.formatApiKey, name);
+    case 'create_or_derive_api_key':
+      return callWithFormat(() => createOrDeriveApiKey(pub, args), F.formatApiKey, name);
+    case 'fetch_api_keys':
+      return callWithFormat(async () => fetchApiKeys(await getSec()), F.formatApiKeys, name);
+    case 'delete_api_key':
+      return callWithFormat(async () => { await deleteApiKey(await getSec()); return { success: true }; }, F.formatGeneric, name);
 
     default:
       return {

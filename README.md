@@ -2,7 +2,9 @@
 
 ## What this MCP does
 
-This is a Polymarket MCP server. When loaded by an agent platform it exposes **50+ tools** + a complete **Resources + Subscriptions** system covering:
+This is a Polymarket MCP server designed to work natively with **Hermes** (https://hermes-agent.nousresearch.com/), OpenClaw, and other agent harnesses.
+
+It exposes **90+ tools** + a complete **Resources + Subscriptions** system covering:
 
 - Market + event discovery, tags, series, sports, teams
 - Full order lifecycle (limit/market + every cancel variant)
@@ -38,26 +40,22 @@ POLYMARKET_ENV=mainnet    # mainnet or amoy
 
 Auth note: API keys must be derived from the EOA private key. Every order payload must have maker = signer = deposit wallet, ownerAddress = EOA. Getting this wrong causes "order signer address has to be the address of the API KEY".
 
-## Step 3 — Load into your agent
+## Hermes Installation (Recommended)
 
-### Hermes
-
-Add to `~/.hermes/config.yaml`:
-
-```yaml
-mcp_servers:
-  polymarket:
-    command: "node"
-    args: ["/absolute/path/to/dist/mcp.js"]
-    env:
-      EOA_PRIVATE_KEY: "0x..."
-      DEPOSIT_WALLET_ADDRESS: "0x..."
-      POLYMARKET_ENV: "mainnet"
+```bash
+hermes mcp add polymarket \
+  --command node \
+  --args "/absolute/path/to/AlphaMCP-TS/dist/mcp.js" \
+  --env EOA_PRIVATE_KEY=0x... \
+  --env DEPOSIT_WALLET_ADDRESS=0x... \
+  --env POLYMARKET_ENV=mainnet
 ```
 
-Restart Hermes. Tools load automatically as `mcp_polymarket_<tool_name>`.
+Then restart Hermes or run `/reload-mcp`.
 
-### OpenClaw
+**Note**: Requires Node.js ≥ 22 (fixed from previous ≥24 requirement for better Hermes compatibility).
+
+## OpenClaw
 
 Add to `~/.openclaw/openclaw.json`:
 
@@ -67,7 +65,7 @@ Add to `~/.openclaw/openclaw.json`:
     "servers": {
       "polymarket": {
         "command": "node",
-        "args": ["/absolute/path/to/dist/mcp.js"],
+        "args": ["/absolute/path/to/AlphaMCP-TS/dist/mcp.js"],
         "env": {
           "EOA_PRIVATE_KEY": "0x...",
           "DEPOSIT_WALLET_ADDRESS": "0x...",
@@ -79,7 +77,7 @@ Add to `~/.openclaw/openclaw.json`:
 }
 ```
 
-Restart the OpenClaw gateway. Tools are available to all agents on the gateway immediately.
+Restart the OpenClaw gateway. Tools become available to agents on the gateway.
 
 ## Formatted Responses (Important for Agents)
 

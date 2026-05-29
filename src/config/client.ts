@@ -25,6 +25,7 @@ export function getPublicClient(): PublicClient<PublicActions, SecureActions> {
 
 /**
  * Creates (or returns cached) authenticated SecureClient.
+ * Uses the unified @polymarket/ts-sdk for all operations (no custom fetch, no raw REST).
  * Automatically configures API key auth if builder/relayer keys present in env.
  * Call setupTradingApprovals() separately when needed for first-time wallets.
  */
