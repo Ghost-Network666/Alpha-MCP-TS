@@ -30,6 +30,10 @@ pnpm build
 
 ## Step 2 — Environment variables
 
+This MCP supports two different ways of receiving credentials. They are **not** the same.
+
+### Local development / manual testing
+
 Create a `.env` file in the project root:
 
 ```env
@@ -38,26 +42,48 @@ DEPOSIT_WALLET_ADDRESS=0x # Polymarket deposit/proxy wallet address
 POLYMARKET_ENV=mainnet    # mainnet or amoy
 ```
 
-Auth note: API keys must be derived from the EOA private key. Every order payload must have maker = signer = deposit wallet, ownerAddress = EOA. Getting this wrong causes "order signer address has to be the address of the API KEY".
+When you run the server directly (`node dist/mcp.js` or the `mcp` script), `dotenv` loads this file.
+
+### Using with Agent Hosts (Hermes, OpenClaw, Cursor, Claude Desktop, etc.) — READ THIS
+
+When an agent runtime launches this MCP server, **the agent host controls the environment**, not a local `.env` file.
+
+- The host starts `node /path/to/dist/mcp.js` as a child process.
+- Any `.env` file is only loaded if the host happens to set the current working directory to this project folder (fragile and not recommended).
+- **You must pass the secrets explicitly** through the agent's MCP server configuration.
+
+This MCP includes a small alias mapper so you can use clean names in agent configs:
+
+- `EOA_PRIVATE_KEY` → becomes `PRIVATE_KEY` internally
+- `DEPOSIT_WALLET_ADDRESS` → becomes `WALLET_ADDRESS` internally
+
+**Recommended names to use in agent configs:** `EOA_PRIVATE_KEY` + `DEPOSIT_WALLET_ADDRESS`.
+
+Auth note: API keys must be derived from the EOA private key. Every order payload must have maker = signer = deposit wallet, ownerAddress = EOA.
 
 ## Hermes Installation (Recommended)
+
+Use the explicit `--env` flags (do **not** rely on a local `.env`):
 
 ```bash
 hermes mcp add polymarket \
   --command node \
   --args "/absolute/path/to/AlphaMCP-TS/dist/mcp.js" \
-  --env EOA_PRIVATE_KEY=0x... \
-  --env DEPOSIT_WALLET_ADDRESS=0x... \
+  --env EOA_PRIVATE_KEY=0xYOUR_EOA_PRIVATE_KEY \
+  --env DEPOSIT_WALLET_ADDRESS=0xYOUR_DEPOSIT_WALLET_ADDRESS \
   --env POLYMARKET_ENV=mainnet
 ```
 
-Then restart Hermes or run `/reload-mcp`.
+After adding or changing the MCP:
 
-**Note**: Requires Node.js ≥ 22 (fixed from previous ≥24 requirement for better Hermes compatibility).
+- Run `hermes mcp test polymarket` to verify it connects.
+- In your agent session: run `/reload_mcp`, then **start a fresh session** (`/new` or equivalent). Hermes does not hot-reload MCP servers into existing conversations.
+
+**Note**: Requires Node.js ≥ 22.
 
 ## OpenClaw
 
-Add to `~/.openclaw/openclaw.json`:
+Add the server with explicit environment variables in `~/.openclaw/openclaw.json` (or your OpenClaw config):
 
 ```json
 {
@@ -67,8 +93,8 @@ Add to `~/.openclaw/openclaw.json`:
         "command": "node",
         "args": ["/absolute/path/to/AlphaMCP-TS/dist/mcp.js"],
         "env": {
-          "EOA_PRIVATE_KEY": "0x...",
-          "DEPOSIT_WALLET_ADDRESS": "0x...",
+          "EOA_PRIVATE_KEY": "0xYOUR_EOA_PRIVATE_KEY",
+          "DEPOSIT_WALLET_ADDRESS": "0xYOUR_DEPOSIT_WALLET_ADDRESS",
           "POLYMARKET_ENV": "mainnet"
         }
       }
@@ -77,7 +103,24 @@ Add to `~/.openclaw/openclaw.json`:
 }
 ```
 
-Restart the OpenClaw gateway. Tools become available to agents on the gateway.
+Restart the OpenClaw gateway after changes.
+
+## Other Agent Hosts
+
+Any host that supports stdio MCP servers can use this. Always pass the three variables above directly in the host's server definition. Never assume a local `.env` will be picked up.
+
+## After Code Changes (Important)
+
+Every time you edit the TypeScript source (including fixes for stability, new tools, etc.) you **must** rebuild before agents see the change:
+
+```bash
+npm run build
+# or: pnpm build
+```
+
+Then reload/restart the MCP in your agent host.
+
+**Recent stability improvement**: The server now avoids writing any logs to stdout when launched as an MCP server (critical for Hermes, OpenClaw, and other stdio hosts). Make sure you are on a build that includes this fix.
 
 ## Formatted Responses (Important for Agents)
 

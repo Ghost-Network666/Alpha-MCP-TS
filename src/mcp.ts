@@ -24,6 +24,10 @@ import {
 } from '@polymarket/client/actions';
 import { createResourceManager, RESOURCE_CAPABILITIES } from './mcp/resources.js';
 
+// Mark as MCP server early so logger, env, and other modules can adapt (no stdout pollution, no process.exit on auth errors).
+process.env.MCP_MODE = '1';
+process.env.MCP_SERVER = 'true';
+
 // Map prompt-specified env var names (EOA_PRIVATE_KEY / DEPOSIT_WALLET_ADDRESS)
 // onto the names expected by the existing getPublicClient / getSecureClient factories.
 // This lets the MCP server work without modifying any other file in the codebase.

@@ -51,7 +51,9 @@ export function getEnv(): Env {
 /**
  * Enforces that a full authenticated environment is present.
  * Call this at the start of any trading / secure command (maker, account, positions, setup, cancel-all, etc).
- * On failure it prints a clear, actionable message and exits the process.
+ * On failure:
+ *   - In CLI: prints a clear message and exits (good UX).
+ *   - In MCP server: throws a typed error so the MCP tool wrapper can return { isError: true } without killing the stdio server.
  */
 export function requireAuthEnv(): AuthEnv {
   const parsed = AuthEnvSchema.safeParse(process.env);
@@ -63,6 +65,15 @@ export function requireAuthEnv(): AuthEnv {
 
   const errors = parsed.error.flatten().fieldErrors;
 
+  const isMcp = process.argv[1]?.includes('mcp') || process.env.MCP_MODE === '1';
+
+  if (isMcp) {
+    // Do not kill the long-lived MCP server process. Let the caller surface a clean error to the agent.
+    const msg = `Authentication required for Polymarket MCP. Missing/invalid PRIVATE_KEY + WALLET_ADDRESS (or EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS). Errors: ${JSON.stringify(errors)}`;
+    throw new Error(msg);
+  }
+
+  // CLI path — keep the friendly interactive message + exit
   console.error('\n' + '='.repeat(70));
   console.error('🔐  AUTHENTICATION REQUIRED');
   console.error('='.repeat(70));
