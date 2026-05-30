@@ -63,7 +63,11 @@ Auth note: API keys must be derived from the EOA private key. Every order payloa
 
 ## Hermes Installation (Recommended)
 
-Use the explicit `--env` flags (do **not** rely on a local `.env`):
+**Important for Agents & Safety**: This MCP exposes 100+ tools. Hermes allows you to register it with a safe default subset of tools so agents are not overwhelmed and sensitive actions are not exposed by default.
+
+### Recommended Registration (with safe defaults)
+
+Use this command (replace only the two credential values):
 
 ```bash
 hermes mcp add polymarket \
@@ -71,13 +75,42 @@ hermes mcp add polymarket \
   --args "/absolute/path/to/AlphaMCP-TS/dist/mcp.js" \
   --env EOA_PRIVATE_KEY=0xYOUR_EOA_PRIVATE_KEY \
   --env DEPOSIT_WALLET_ADDRESS=0xYOUR_DEPOSIT_WALLET_ADDRESS \
-  --env POLYMARKET_ENV=mainnet
+  --env POLYMARKET_ENV=mainnet \
+  --tools-include "list_markets,fetch_market,search,list_events,fetch_event,fetch_order_book,fetch_price,fetch_midpoint,fetch_spread,fetch_event_tags,fetch_market_tags,fetch_portfolio_value,list_positions,list_activity"
 ```
 
-After adding or changing the MCP:
+This registers the MCP with a curated, safe default set of tools (mostly read-only discovery + portfolio/positions). Trading tools are intentionally left out by default.
 
-- Run `hermes mcp test polymarket` to verify it connects.
-- In your agent session: run `/reload_mcp`, then **start a fresh session** (`/new` or equivalent). Hermes does not hot-reload MCP servers into existing conversations.
+After registration:
+
+```bash
+hermes mcp test polymarket
+```
+
+Then in any Hermes session:
+
+```bash
+/reload-mcp
+```
+
+It is strongly recommended to start a **fresh session** after first setup.
+
+### Later Adjustment
+
+You (or an advanced agent) can change the enabled tools at any time with:
+
+```bash
+hermes mcp configure polymarket
+```
+
+This opens an interactive checklist.
+
+### Credential Handling (Critical)
+
+- **Never** commit your `EOA_PRIVATE_KEY` or `DEPOSIT_WALLET_ADDRESS` anywhere.
+- These values are supplied **only at registration time** via the `--env` flags.
+- When an agent updates this repo, it will never touch or overwrite the credentials in your Hermes config — they stay exactly as you provided them.
+- The `hermes-manifest.yaml` file in this repo provides structured defaults (including recommended tool allowlist) for future Hermes catalog-style installs (`hermes mcp install` / catalog).
 
 **Note**: Requires Node.js ≥ 22.
 

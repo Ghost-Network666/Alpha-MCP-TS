@@ -1,0 +1,76 @@
+manifest_version: 1
+name: polymarket
+description: Production Polymarket MCP server with 100+ tools for market discovery, trading (CLOB), positions, portfolio, on-chain CTF actions, and live WebSocket subscriptions. Built on the official @polymarket/client SDK. All responses are pre-formatted as clean agent-ready cards.
+source: https://github.com/Ghost-Network666/Alpha-MCP-TS
+transport:
+  type: stdio
+  command: node
+  args: ["dist/mcp.js"]
+  # Note: EOA_PRIVATE_KEY and DEPOSIT_WALLET_ADDRESS must be provided at install time.
+  # Never commit these values.
+
+auth:
+  type: none   # Credentials are passed via environment variables at registration time
+
+# Recommended safe defaults for most users/agents.
+# This prevents exposing all 100+ tools at once.
+# Users can re-run `hermes mcp configure polymarket` later to adjust.
+tools:
+  default_enabled:
+    - list_markets
+    - fetch_market
+    - search
+    - list_events
+    - fetch_event
+    - fetch_order_book
+    - fetch_price
+    - fetch_midpoint
+    - fetch_spread
+    - fetch_price_history
+    - fetch_last_trade_price
+    - list_trades
+    - fetch_event_tags
+    - fetch_market_tags
+    - fetch_market_info
+    - fetch_prices
+    - fetch_order_books
+    - fetch_event_live_volume
+    - fetch_portfolio_value
+    - list_positions
+    - list_closed_positions
+    - list_activity
+    - list_account_trades
+    # Trading tools are intentionally disabled by default for safety.
+    # Uncomment below only if you want the agent to have direct trading capability:
+    # - place_limit_order
+    # - place_market_order
+    # - cancel_order
+    # - cancel_orders
+    # - cancel_all
+    # - cancel_market_orders
+    # - setup_trading_approvals
+    # - split_position
+    # - merge_positions
+    # - redeem_positions
+    # - update_balance_allowance
+
+  # Disable utility tools by default unless the agent specifically needs live resources
+  resources: false
+  prompts: false
+
+post_install: |
+  After installation, run:
+    hermes mcp test polymarket
+
+  Then in your Hermes session:
+    /reload-mcp
+
+  It is strongly recommended to start a fresh session after first setup.
+
+  To adjust which tools are enabled later:
+    hermes mcp configure polymarket
+
+  Security note:
+  - Never commit your EOA_PRIVATE_KEY or DEPOSIT_WALLET_ADDRESS.
+  - These must be supplied at registration time via the --env flags (or Hermes will prompt during catalog-style installs).
+  - This MCP uses the official @polymarket/client SDK for all operations.
