@@ -70,10 +70,16 @@ export async function getSecureClient(): Promise<SecureClient<PublicActions, Sec
     logger.warn('No API key configured — using L1 wallet signature auth (lower rate limits, no gasless)');
   }
 
-  secureClientInstance = await createSecureClient(options);
-  logger.info('Secure client initialized', { wallet: auth.WALLET_ADDRESS });
-
-  return secureClientInstance;
+  try {
+    secureClientInstance = await createSecureClient(options);
+    logger.info('Secure client initialized', { wallet: auth.WALLET_ADDRESS });
+    return secureClientInstance;
+  } catch (err: any) {
+    // Clear cache so next call can retry (helps with temporary Relayer/verified account issues)
+    secureClientInstance = null;
+    logger.error('Failed to create SecureClient (Relayer/Builder)', { error: err?.message || err });
+    throw err; // Let the MCP tool wrapper turn this into a proper error response
+  }
 }
 
 /**
