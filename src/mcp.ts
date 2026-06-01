@@ -29,6 +29,16 @@ import { callWithRateLimitProtection, sleep } from './utils/errors.js';
 process.env.MCP_MODE = '1';
 process.env.MCP_SERVER = 'true';
 
+// === Simple in-memory strategy store for autonomous agents ===
+// Allows agents to persist trading plans (entry, TP, SL, size, notes) across tool calls
+// without bloating their context window. Keyed by tokenId (or can be extended).
+// This gives agents a real advantage for disciplined SL/TP and strategy execution
+// while the MCP handles rate limiting and backoffs.
+const strategyStore = new Map<string, any>(); // tokenId -> strategy object
+function getStrategyKey(tokenId: string, market?: string) {
+  return market ? `${tokenId}:${market}` : tokenId;
+}
+
 // Map prompt-specified env var names (EOA_PRIVATE_KEY / DEPOSIT_WALLET_ADDRESS)
 // onto the names expected by the existing getPublicClient / getSecureClient factories.
 // This lets the MCP server work without modifying any other file in the codebase.
@@ -163,9 +173,67 @@ function sanitizePageSize(args: any, defaultSize = 30, maxSize = 100) {
   return Math.min(Math.max(1, Number(size) || defaultSize), maxSize);
 }
 
+// ==================== TOOL CATEGORIES (for fast discovery, solves 100+ tool bloat) ====================
+
+const TOOL_CATEGORIES: Record<string, string> = {
+  // Will be populated with name -> category
+  // Core categories: Discovery, Rewards, Trading, Account, Strategy, Analytics, Utilities
+};
+
+// Helper to get tools filtered by category
+function getToolsByCategory(category: string) {
+  const catLower = category.toLowerCase();
+  return [...publicTools, ...secureTools].filter(t => {
+    const desc = t.description || '';
+    // Match by prefix tag
+    if (desc.toLowerCase().startsWith(`[${catLower}]`)) return true;
+    // Match by keywords for untagged tools (temporary until full tagging)
+    if (catLower === 'rewards' && /reward|maker reward|scoring/i.test(desc)) return true;
+    if (catLower === 'strategy' && /strategy|stop loss|take profit|sl\/tp/i.test(desc)) return true;
+    if (catLower === 'account' && /balance|allowance|portfolio|position/i.test(desc)) return true;
+    if (catLower === 'trading' && /place|order|cancel|maker/i.test(desc)) return true;
+    if (catLower === 'discovery' && /list_market|fetch_market|search/i.test(desc)) return true;
+    return false;
+  });
+}
+
+function listAllCategories() {
+  // Primary categories (manually maintained for clarity + speed)
+  return [
+    'Rewards',
+    'Strategy',
+    'Account',
+    'Utilities',
+    'Discovery',
+    'Trading',
+    'Analytics'
+  ];
+}
+
 // ==================== TOOL DEFINITIONS (exactly per spec) ====================
 
 const publicTools = [
+  // === Category Discovery Tools (added to solve 100+ tool bloat) ===
+  {
+    name: 'list_tool_categories',
+    description: '[Utilities] Returns the list of available tool categories. Call this first to quickly discover relevant tools without loading all 100+ at once.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'get_tools_by_category',
+    description: '[Utilities] Returns only the tools that belong to a specific category. Use after list_tool_categories for fast, targeted discovery.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        category: { 
+          type: 'string', 
+          description: 'The category name (e.g. "Rewards", "Trading", "Discovery", "Account", "Strategy")' 
+        }
+      },
+      required: ['category']
+    }
+  },
+
   {
     name: 'list_markets',
     description: 'List Polymarket markets using the official SDK listMarkets(). Supports all standard filters including category, search terms, active/closed status, resolution dates, etc. Best for targeted discovery (e.g. crypto, specific slugs, short-duration markets).',
@@ -1246,7 +1314,7 @@ const secureTools = [
   // === Maker Rewards Focused Workflow (High Success Rate for Earning Rewards) ===
   {
     name: 'place_maker_reward_order',
-    description: 'STRICT REWARD-ONLY TOOL. Forces GTC+postOnly and only succeeds on confirmed scoring orders. IMPORTANT: Polymarket CLOB is rate-limited. Do NOT call this (or list_active_maker_reward_markets) in a tight loop. Add 4-8s delays between attempts or you will make the MCP server unreachable. On any failure you get a strong autonomous directive instead of "what do you want me to do?".',
+    description: '[Rewards] STRICT REWARD-ONLY TOOL. Forces GTC+postOnly and only succeeds on confirmed scoring orders. IMPORTANT: Polymarket CLOB is rate-limited. Do NOT call this (or list_active_maker_reward_markets) in a tight loop. Add 4-8s delays between attempts or you will make the MCP server unreachable. On any failure you get a strong autonomous directive instead of "what do you want me to do?".',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1270,12 +1338,16 @@ const secureTools = [
   // === Maker Rewards Support Tools (to address agent feedback) ===
   {
     name: 'list_active_maker_reward_markets',
-    description: 'PRIMARY AUTONOMOUS DISCOVERY TOOL (tiny ranked top 5 default). Returns best current reward markets with tokens + links. CRITICAL: This is expensive. Do not call more than once every 4-6 seconds during loops, or you will trigger rate limits and make the MCP server unreachable. Use the ranked list you already have. On placement failures the directives tell you exactly what to do next without asking the human.',
+    description: '[Rewards] PRIMARY AUTONOMOUS DISCOVERY TOOL for small and large capital. Tiny ranked list (default top 5). Now includes live mid prices + exact USD cost to qualify (minSize × price) for both Yes and No. Supports maxMinCostUsd filter so you can instantly see "which reward markets can I actually afford with my $5 cap?". Rate limit protected + rich directives. Use this first for any maker activity.',
     inputSchema: {
       type: 'object',
       properties: {
-        maxResults: { type: 'number', description: 'Hard max results to return (default 10, absolute max 15 for agent safety). Use 5-10 for fastest autonomous loops.' },
-        compact: { type: 'boolean', description: 'Always ultra-compact ranked entries (default true). Non-compact returns more fields but still capped.' }
+        maxResults: { type: 'number', description: 'Hard max results (default 5, max 8).' },
+        maxMinSize: { type: 'number', description: 'Filter by rewardsMinSize (shares) <= this.' },
+        maxMinCostUsd: { 
+          type: 'number', 
+          description: 'Filter by approximate USD cost to meet minSize on the cheaper side (minSize × mid price). Perfect for $5 cap agents — pass 4.5 or 5.0.' 
+        }
       }
     }
   },
@@ -1334,7 +1406,7 @@ const secureTools = [
   },
   {
     name: 'get_balance_allowance',
-    description: 'HIGH PRIORITY for reward farming. Checks your current COLLATERAL (USDC) or CONDITIONAL token balance + allowance on the CLOB. Returns human-readable numbers and exact next steps (approve + deposit + update). Call this BEFORE any place_maker_reward_order when you see balance/allowance errors.',
+    description: '[Account] HIGH PRIORITY for reward farming. Checks your current COLLATERAL (USDC) or CONDITIONAL token balance + allowance on the CLOB. Returns human-readable numbers and exact next steps (approve + deposit + update). Call this BEFORE any place_maker_reward_order when you see balance/allowance errors.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1344,6 +1416,74 @@ const secureTools = [
           description: 'COLLATERAL for USDC (most common). CONDITIONAL for specific outcome tokens.' 
         }
       }
+    }
+  },
+  {
+    name: 'wait_seconds',
+    description: '[Utilities] Server-side sleep / backoff primitive. ESSENTIAL for autonomous loops: use after rate limits (respect retryAfterMs), when list_active returns no qualifying markets under your size cap, or for disciplined waiting between spread capture checks / exit monitoring. Prevents tight-loop thrashing that kills the MCP or wastes rate limits. Never implement client-side sleeps for backoffs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        seconds: { 
+          type: 'number', 
+          minimum: 1, 
+          maximum: 300, 
+          description: 'How many seconds to wait (server-side). Typical values: 4-8 for rate limits, 30-120 for exhausted small-size opportunities.' 
+        },
+        reason: { 
+          type: 'string', 
+          description: 'Optional context (e.g. "rate limit from list_active", "no markets under maxMinSize:2", "waiting for price to reach 0.44 exit level")' 
+        }
+      },
+      required: ['seconds']
+    }
+  },
+
+  // === Strategy & SL/TP Storage (huge advantage for autonomous agents) ===
+  // Agents can store full trading plans (entry, TP, SL, size, notes) server-side in the MCP.
+  // This keeps the agent's context window clean and enables disciplined, rate-limit-respecting
+  // execution loops (use with wait_seconds + watches). The MCP becomes the agent's "trading brain"
+  // for persistent state while respecting Polymarket rate limits.
+  {
+    name: 'set_strategy',
+    description: '[Strategy] Store a complete trading strategy/plan for a token (entryPrice, takeProfitPrice, stopLossPrice, size, side, notes, etc.). The MCP acts as persistent memory. Ideal for spread capture, reward farming, or any rules-based approach. Combine with watch_order_* resources and wait_seconds for fully autonomous execution within rate limits.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tokenId: { type: 'string', description: 'The Yes or No tokenId this strategy applies to' },
+        market: { type: 'string', description: 'Optional slug/conditionId for easier grouping' },
+        entryPrice: { type: 'number' },
+        takeProfitPrice: { type: 'number' },
+        stopLossPrice: { type: 'number' },
+        size: { type: 'number' },
+        side: { type: 'string', enum: ['BUY', 'SELL'] },
+        notes: { type: 'string', description: 'Your full plan (e.g. "Spread capture on Jesus Christ — entry 0.48, TP 0.52, SL 0.44, $5 size")' },
+        maxWaitSecondsBetweenChecks: { type: 'number', description: 'Suggested backoff for monitoring loops (use wait_seconds tool)' }
+      },
+      required: ['tokenId']
+    }
+  },
+  {
+    name: 'get_strategies',
+    description: 'Retrieve stored strategies (optionally filtered by tokenId or market). Agents use this to recall their plans, SL/TP levels, and notes without keeping everything in context.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tokenId: { type: 'string' },
+        market: { type: 'string' }
+      }
+    }
+  },
+  {
+    name: 'clear_strategy',
+    description: 'Delete a stored strategy (call after full execution or when abandoning the plan).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tokenId: { type: 'string' },
+        market: { type: 'string' }
+      },
+      required: ['tokenId']
     }
   },
 
@@ -1430,6 +1570,33 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   };
 
   switch (name) {
+    // === Category-based discovery tools (for fast agent tool discovery) ===
+    case 'list_tool_categories':
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({ categories: listAllCategories() }, null, 2)
+        }]
+      };
+
+    case 'get_tools_by_category': {
+      const cat = args.category;
+      const filtered = getToolsByCategory(cat);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            category: cat,
+            count: filtered.length,
+            tools: filtered.map(t => ({
+              name: t.name,
+              description: t.description
+            }))
+          }, null, 2)
+        }]
+      };
+    }
+
     // Public tools (no auth) — every response formatted
     case 'list_markets':
       return callPaginatedWithFormat(pub.listMarkets(args), F.formatMarket, name);
@@ -1736,6 +1903,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // PRIMARY tool for autonomous reward market selection. Ultra-tiny by design.
       // Default: top 5 ranked only (max 8). If you ever see >5k chars, restart your MCP server process.
       const maxResults = Math.min(Math.max(1, args.maxResults || 5), 8);
+      const maxMinSize = args.maxMinSize != null ? parseFloat(args.maxMinSize) : null;
+      const maxMinCostUsd = args.maxMinCostUsd != null ? parseFloat(args.maxMinCostUsd) : null;
 
       let rewardItems: any[] = [];
       try {
@@ -1754,7 +1923,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
         const paginator = protectedCall.data;
         const page = await paginator.firstPage();
-        rewardItems = (page?.items || []).slice(0, maxResults);
+        let items = (page?.items || []);
+
+        // Apply maxMinSize filter early if requested (critical for agents with small order size caps)
+        if (maxMinSize != null && !isNaN(maxMinSize)) {
+          items = items.filter((r: any) => {
+            const minSz = parseFloat(r.rewardsMinSize ?? r.rewards_min_size ?? '999');
+            return minSz <= maxMinSize;
+          });
+        }
+
+        rewardItems = items.slice(0, maxResults);
       } catch (e: any) {
         return {
           content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: "Failed to fetch current reward programs", detail: e?.message || String(e) }) }]
@@ -1792,7 +1971,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
       }
 
-      // Compute attractiveness score for ranking (prefer low barrier + decent rate)
+      // Collect all Yes/No tokenIds for batch mid price fetch (critical for small-cap USD cost calc)
+      const allTokenIds: string[] = [];
+      Object.values(marketsByCondition).forEach((m: any) => {
+        const yes = m.outcomes?.yes?.tokenId || m.yesTokenId;
+        const no = m.outcomes?.no?.tokenId || m.noTokenId;
+        if (yes) allTokenIds.push(yes);
+        if (no) allTokenIds.push(no);
+      });
+
+      let midsByToken: Record<string, number> = {};
+      if (allTokenIds.length > 0) {
+        try {
+          const midRes = await callWithRateLimitProtection(
+            () => pub.fetchMidpoints({ tokenIds: [...new Set(allTokenIds)] }),
+            'fetchMidpoints for USD cost enrichment'
+          );
+          if (midRes.ok && midRes.data) {
+            midsByToken = midRes.data; // { tokenId: midPrice }
+          }
+        } catch (e) {
+          // Non-fatal, costs will be missing
+        }
+      }
+
+      // Compute attractiveness score for ranking (prefer low barrier + decent rate).
+      // Note: maxMinSize / maxMinCostUsd filters are applied before final ranking.
       function attractiveness(r: any): number {
         const minSz = parseFloat(r.rewardsMinSize ?? r.rewards_min_size ?? '50');
         const maxSp = Number(r.rewardsMaxSpread ?? r.rewards_max_spread ?? 0.05);
@@ -1823,6 +2027,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             ?? m.noTokenId;
 
           const score = attractiveness(r);
+
+          // Pull tick size from the enriched market (very useful for price precision)
+          const minTickSize = m.minimumTickSize ?? m.trading?.minimumTickSize ?? m.tickSize ?? m.minTickSize ?? m.order_price_min_tick_size;
+
+          // Compute real USD cost to qualify (the key signal for $5-cap agents)
+          const yesMid = yesTok ? midsByToken[yesTok] : null;
+          const noMid = noTok ? midsByToken[noTok] : null;
+          const yesMinCostUsd = (yesMid && minSz) ? (parseFloat(minSz) * yesMid) : null;
+          const noMinCostUsd = (noMid && minSz) ? (parseFloat(minSz) * noMid) : null;
+          const cheapestCostUsd = Math.min(yesMinCostUsd || 999, noMinCostUsd || 999);
+
           const entry: any = {
             rank: 0, // filled after sort
             question: m.question || `Market ${r.conditionId.slice(0, 10)}...`,
@@ -1833,12 +2048,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             minSize: minSz,
             maxSpread: maxSp,
             dailyRate: daily,
+            minTickSize: minTickSize ? Number(minTickSize) : undefined,
+            yesMid: yesMid ? Number(yesMid).toFixed(4) : undefined,
+            noMid: noMid ? Number(noMid).toFixed(4) : undefined,
+            yesMinCostUsd: yesMinCostUsd ? Number(yesMinCostUsd).toFixed(2) : undefined,
+            noMinCostUsd: noMinCostUsd ? Number(noMinCostUsd).toFixed(2) : undefined,
+            cheapestMinCostUsd: cheapestCostUsd < 999 ? Number(cheapestCostUsd).toFixed(2) : undefined,
+            volume: m.metrics?.volume ? Number(m.metrics.volume) : undefined,
+            liquidity: m.metrics?.liquidity ? Number(m.metrics.liquidity) : undefined,
             payoutAssets: assets.length ? assets : undefined,
             marketLink,
             attractiveness: Number(score.toFixed(2)),
             whyRecommended: minSz && parseFloat(minSz) <= 10 ? 'Low min size (easy to qualify)' : (daily && parseFloat(daily) > 50 ? 'High reward rate' : 'Active program')
           };
-          return { entry, score, raw: r, market: m };
+          return { entry, score, raw: r, market: m, cheapestCostUsd };
+        })
+        // Apply USD cost filter after enrichment (most important for small capital)
+        .filter((x: any) => {
+          if (maxMinCostUsd != null && !isNaN(maxMinCostUsd)) {
+            return x.cheapestCostUsd == null || x.cheapestCostUsd <= maxMinCostUsd;
+          }
+          return true;
         })
         .sort((a, b) => b.score - a.score)
         .slice(0, maxResults)
@@ -1847,15 +2077,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const payload = {
         success: true,
         count: ranked.length,
-        note: "Ranked best-first (top 5 default). Ultra-light for agents. Restart MCP after code updates if responses look large.",
+        filteredBy: {
+          ...(maxMinSize != null ? { maxMinSize } : {}),
+          ...(maxMinCostUsd != null ? { maxMinCostUsd } : {})
+        },
+        note: "Ranked best-first. Now shows exact USD cost to qualify on Yes and No sides (minSize × current mid). Use maxMinCostUsd: 4.5 for strict $5 cap agents. This is the primary tool for discovering which reward programs your small orders can actually participate in.",
         markets: ranked,
-        usage: "Pick rank #1-3. Use its yesTokenId or noTokenId. On any scoring failure, call this tool again and pick the next."
+        usage: "For $5 cap: list_active_maker_reward_markets({maxMinCostUsd: 4.5}). Look at cheapestMinCostUsd. Only place on markets where your size meets minSize and cost is under cap."
       };
 
       let json = JSON.stringify(payload, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 0);
       // Hard safety: never let this tool exceed ~5k chars even in weird cases
       if (json.length > 5500) {
-        const reduced = { ...payload, markets: ranked.slice(0, 3), note: "Truncated to top 3 due to size guard. Call again for fresh top 5." };
+        const reduced = { ...payload, markets: ranked.slice(0, 3), note: "Truncated to top 3 due to size guard." };
         json = JSON.stringify(reduced, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 0);
       }
 
@@ -1869,9 +2103,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case 'validate_for_maker_rewards': {
       // Lightweight per-proposal pre-check. NEVER dumps full program lists (that caused bloat). Tiny response always.
-      return callWithFormat(async () => {
+      // Return content directly (consistent with list_active and avoids broken callWithFormat call)
+      try {
         if (!args.tokenId) {
-          return { success: false, error: "tokenId is required (Yes or No token for the outcome you want to place on)" };
+          const result = { success: false, error: "tokenId is required (Yes or No token for the outcome you want to place on)" };
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify(result, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 0)
+            }]
+          };
         }
 
         // 1. Get current book for this specific token (gives real spread to check against maxSpread rules)
@@ -1953,14 +2194,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             : "Bad proposal for current rules. Call list_active_maker_reward_markets now and pick a different top market."
         };
 
-        // Return directly (bypasses formatGeneric) for guaranteed tiny payload
         return {
           content: [{
             type: 'text' as const,
             text: JSON.stringify(result, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 0)
           }]
         };
-      });
+      } catch (e: any) {
+        const result = { success: false, error: `Validation failed: ${e?.message || e}` };
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(result, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 0)
+          }]
+        };
+      }
     }
 
     case 'suggest_reward_order_parameters': {
@@ -1968,6 +2216,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (!args.tokenId || !args.side) {
           return { error: "tokenId and side are required" };
         }
+
+        const mode = (args.mode || 'reward').toLowerCase(); // 'reward' | 'spread_capture'
 
         const [book, rewards] = await Promise.all([
           pub.fetchOrderBook({ tokenId: args.tokenId }).catch(() => null),
@@ -1983,18 +2233,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           };
         }
 
-        const program = rewards.items[0]; // Take the first active program
+        const program = rewards.items[0];
         const minSize = parseFloat(program.rewardsMinSize || '5');
         const maxSpread = parseFloat(program.rewardsMaxSpread || '0.005');
 
         const bestBid = parseFloat(book.bids?.[0]?.price || '0');
         const bestAsk = parseFloat(book.asks?.[0]?.price || '0');
+        const mid = (bestBid && bestAsk) ? (bestBid + bestAsk) / 2 : null;
+
+        // Simple tick estimate (most markets are 0.01; fall back to 0.001 for cheap shares)
+        const estimatedTick = (bestAsk - bestBid) > 0.005 ? 0.01 : 0.001;
 
         let suggestedPrice;
-        if (args.side.toUpperCase() === 'BUY') {
-          suggestedPrice = bestAsk * (1 - maxSpread * 0.8); // slightly better than max spread
+        let strategyNote;
+
+        if (mode === 'spread_capture') {
+          // Passive maker entry for spread capture (one tick inside the current spread)
+          if (args.side.toUpperCase() === 'BUY') {
+            suggestedPrice = bestAsk - estimatedTick; // one tick better than ask (join/improve bid)
+          } else {
+            suggestedPrice = bestBid + estimatedTick;
+          }
+          strategyNote = "Spread capture mode: passive maker entry one tick inside the spread. Good for earning the spread on fill without paying taker fees.";
         } else {
-          suggestedPrice = bestBid * (1 + maxSpread * 0.8);
+          // Original reward-max-spread logic
+          if (args.side.toUpperCase() === 'BUY') {
+            suggestedPrice = bestAsk * (1 - maxSpread * 0.8);
+          } else {
+            suggestedPrice = bestBid * (1 + maxSpread * 0.8);
+          }
+          strategyNote = `Reward mode: aims to stay well inside the program's max spread of ${(maxSpread*100).toFixed(2)}%.`;
         }
 
         const suggestedSize = Math.max(minSize, args.capitalUsd ? (args.capitalUsd / suggestedPrice) : minSize * 2);
@@ -2002,10 +2270,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return {
           suggestedPrice: suggestedPrice.toFixed(4),
           suggestedSize: suggestedSize.toFixed(2),
-          expectedSpreadBps: (maxSpread * 10000).toFixed(0),
+          estimatedTick,
+          currentMid: mid ? mid.toFixed(4) : null,
+          currentSpread: (bestAsk && bestBid) ? (bestAsk - bestBid).toFixed(4) : null,
+          modeUsed: mode,
           minSizeRequired: minSize,
           maxSpreadAllowed: maxSpread,
-          reasoning: `Suggested parameters aim to stay well inside the program's max spread of ${(maxSpread*100).toFixed(2)}% while being competitive.`
+          reasoning: strategyNote + " Size respects minSize and your capitalUsd cap where provided."
         };
       }, F.formatGeneric, name);
     }
@@ -2204,6 +2475,105 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           rawAllowances: Object.keys(allowances).length <= 3 ? allowances : "multiple spenders (truncated for size)"
         };
       }, F.formatGeneric, name);
+    }
+
+    case 'wait_seconds': {
+      // Server-side backoff primitive for autonomous loops (rate limits, no opportunities, disciplined trading waits)
+      const seconds = Math.max(1, Math.min(300, Number(args.seconds) || 5));
+      const reason = args.reason || 'autonomous loop backoff';
+
+      try {
+        await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: true,
+              waitedSeconds: seconds,
+              reason,
+              resumedAt: new Date().toISOString(),
+              directive: "Backoff complete. Resume your loop (e.g. re-call list_active_maker_reward_markets or check your exit conditions)."
+            }, null, 0)
+          }]
+        };
+      } catch (e: any) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: false,
+              error: `Wait failed: ${e?.message || e}`,
+              waitedSeconds: seconds,
+              reason
+            })
+          }]
+        };
+      }
+    }
+
+    case 'set_strategy': {
+      const key = getStrategyKey(args.tokenId, args.market);
+      const strategy = {
+        tokenId: args.tokenId,
+        market: args.market || null,
+        entryPrice: args.entryPrice ?? null,
+        takeProfitPrice: args.takeProfitPrice ?? null,
+        stopLossPrice: args.stopLossPrice ?? null,
+        size: args.size ?? null,
+        side: args.side ?? null,
+        notes: args.notes ?? '',
+        maxWaitSecondsBetweenChecks: args.maxWaitSecondsBetweenChecks ?? 30,
+        updatedAt: new Date().toISOString()
+      };
+      strategyStore.set(key, strategy);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: true,
+            message: "Strategy stored in MCP (persistent for this session).",
+            key,
+            strategy,
+            directive: "Use get_strategies to recall it. Combine with watch_order_until_filled, watch_order_scoring, and wait_seconds for autonomous execution within rate limits."
+          }, null, 0)
+        }]
+      };
+    }
+
+    case 'get_strategies': {
+      let results: any[] = [];
+      if (args.tokenId) {
+        const key = getStrategyKey(args.tokenId, args.market);
+        if (strategyStore.has(key)) results.push(strategyStore.get(key));
+      } else {
+        results = Array.from(strategyStore.values());
+      }
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: true,
+            count: results.length,
+            strategies: results,
+            note: "These are your stored plans. Use them to drive disciplined SL/TP and entry logic without losing state between steps."
+          }, null, 0)
+        }]
+      };
+    }
+
+    case 'clear_strategy': {
+      const key = getStrategyKey(args.tokenId, args.market);
+      const existed = strategyStore.delete(key);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: true,
+            deleted: existed,
+            key
+          }, null, 0)
+        }]
+      };
     }
 
     case 'place_market_order':
