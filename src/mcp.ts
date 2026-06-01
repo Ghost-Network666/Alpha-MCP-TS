@@ -216,18 +216,18 @@ const publicTools = [
   // === Category Discovery Tools (added to solve 100+ tool bloat) ===
   {
     name: 'list_tool_categories',
-    description: '[Utilities] Returns the list of available tool categories. Call this first to quickly discover relevant tools without loading all 100+ at once.',
+    description: '[Meta] Lists the available tool categories. This MCP intentionally exposes only a small core set of tools by default (~8) to keep things fast and structured for the agent. Use this + get_tools_by_category to load additional tools when you need them. The MCP does NOT guide your strategy — it only provides structured access to capabilities.',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'get_tools_by_category',
-    description: '[Utilities] Returns only the tools that belong to a specific category. Use after list_tool_categories for fast, targeted discovery.',
+    description: '[Meta] Returns tools for a specific category only. This is the main way to expand your available tools without being overwhelmed by 100+ at once. Categories include: Rewards, Strategy, Account, Trading, Discovery, Analytics, Utilities.',
     inputSchema: {
       type: 'object',
       properties: {
         category: { 
           type: 'string', 
-          description: 'The category name (e.g. "Rewards", "Trading", "Discovery", "Account", "Strategy")' 
+          description: 'Category name from list_tool_categories (e.g. "Rewards", "Strategy")' 
         }
       },
       required: ['category']
@@ -1338,7 +1338,7 @@ const secureTools = [
   // === Maker Rewards Support Tools (to address agent feedback) ===
   {
     name: 'list_active_maker_reward_markets',
-    description: '[Rewards] PRIMARY AUTONOMOUS DISCOVERY TOOL for small and large capital. Tiny ranked list (default top 5). Now includes live mid prices + exact USD cost to qualify (minSize × price) for both Yes and No. Supports maxMinCostUsd filter so you can instantly see "which reward markets can I actually afford with my $5 cap?". Rate limit protected + rich directives. Use this first for any maker activity.',
+    description: '[Rewards] Primary reward market discovery tool (kept in core set). Returns tiny ranked list with USD qualification costs. This is one of the few tools exposed by default. For everything else, use list_tool_categories + get_tools_by_category. The MCP gives you capabilities with structure — you decide the strategy.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1420,7 +1420,7 @@ const secureTools = [
   },
   {
     name: 'wait_seconds',
-    description: '[Utilities] Server-side sleep / backoff primitive. ESSENTIAL for autonomous loops: use after rate limits (respect retryAfterMs), when list_active returns no qualifying markets under your size cap, or for disciplined waiting between spread capture checks / exit monitoring. Prevents tight-loop thrashing that kills the MCP or wastes rate limits. Never implement client-side sleeps for backoffs.',
+    description: '[Utilities] Server-side backoff tool. One of the few tools exposed by default. Use it to respect rate limits and add discipline to your own loops. The MCP does not run autonomous loops for you — it gives you the building blocks.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1446,7 +1446,7 @@ const secureTools = [
   // for persistent state while respecting Polymarket rate limits.
   {
     name: 'set_strategy',
-    description: '[Strategy] Store a complete trading strategy/plan for a token (entryPrice, takeProfitPrice, stopLossPrice, size, side, notes, etc.). The MCP acts as persistent memory. Ideal for spread capture, reward farming, or any rules-based approach. Combine with watch_order_* resources and wait_seconds for fully autonomous execution within rate limits.',
+    description: '[Strategy] Store your own trading plan (entry, TP, SL, size, notes). One of the default core tools. The MCP stores it for you — you decide when and how to act on it using other tools.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1465,7 +1465,7 @@ const secureTools = [
   },
   {
     name: 'get_strategies',
-    description: 'Retrieve stored strategies (optionally filtered by tokenId or market). Agents use this to recall their plans, SL/TP levels, and notes without keeping everything in context.',
+    description: '[Strategy] Retrieve your stored strategies. Core tool for maintaining your own plans across steps.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1550,10 +1550,35 @@ const secureTools = [
   }
 ];
 
-// Register tool list (MCP discovery)
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [...publicTools, ...secureTools]
-}));
+// === Minimal Core Tool Set (for agent efficiency) ===
+// The goal is to give the agent a small, structured surface by default.
+// The agent should use list_tool_categories + get_tools_by_category to load more when needed.
+// This prevents context bloat from 100+ tools while providing clear structure.
+const CORE_TOOL_NAMES = new Set([
+  'list_tool_categories',
+  'get_tools_by_category',
+  'wait_seconds',
+  'get_strategies',
+  'set_strategy',
+  'clear_strategy',
+  'get_balance_allowance',
+  'list_active_maker_reward_markets',  // Primary discovery tool - always useful
+]);
+
+// Register tool list (MCP discovery) - returns minimal core by default for speed + structure
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  const allTools = [...publicTools, ...secureTools];
+  const coreTools = allTools.filter(t => CORE_TOOL_NAMES.has(t.name));
+  
+  // Always ensure the category tools are present even if names change
+  const categoryTools = allTools.filter(t => 
+    t.name === 'list_tool_categories' || t.name === 'get_tools_by_category'
+  );
+  
+  const finalTools = [...new Map([...categoryTools, ...coreTools].map(t => [t.name, t])).values()];
+  
+  return { tools: finalTools };
+});
 
 // Execute tools — every handler returns JSON. Errors never throw.
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
