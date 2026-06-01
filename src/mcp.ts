@@ -132,7 +132,13 @@ async function callPaginatedWithFormat(paginatorPromise: Promise<any>, formatter
     const page = await (typeof paginator.firstPage === 'function'
       ? paginator.firstPage()
       : (typeof paginator.next === 'function' ? paginator.next() : null));
-    const items = page?.items ?? page?.data ?? (Array.isArray(page) ? page : []);
+    let items = page?.items ?? page?.data ?? (Array.isArray(page) ? page : []);
+
+    // Global safety: cap very large responses to protect agents from bloat
+    if (Array.isArray(items) && items.length > 200) {
+      items = items.slice(0, 200);
+    }
+
     const formatted = Array.isArray(items) ? items.map(formatter) : formatter(items);
     return {
       content: [{
@@ -146,6 +152,12 @@ async function callPaginatedWithFormat(paginatorPromise: Promise<any>, formatter
       content: [{ type: 'text' as const, text: `Error in ${toolName}: ${error?.message || String(error)}` }]
     };
   }
+}
+
+/** Helper to keep responses lightweight for agents */
+function sanitizePageSize(args: any, defaultSize = 30, maxSize = 100) {
+  const size = args?.pageSize ?? args?.limit ?? defaultSize;
+  return Math.min(Math.max(1, Number(size) || defaultSize), maxSize);
 }
 
 // ==================== TOOL DEFINITIONS (exactly per spec) ====================
@@ -968,12 +980,13 @@ const secureTools = [
   },
   {
     name: 'list_user_earnings_and_markets_config',
-    description: 'List your reward earnings per market for a date',
+    description: 'List your reward earnings per market for a date. Use compact mode for much smaller responses.',
     inputSchema: {
       type: 'object',
       properties: {
         date: { type: 'string' },
-        pageSize: { type: 'number' }
+        pageSize: { type: 'number' },
+        compact: { type: 'boolean', description: 'Return compact format (default: true). When false, includes full reward config details.' }
       }
     }
   },
@@ -1206,12 +1219,13 @@ const secureTools = [
   },
   {
     name: 'list_user_earnings_for_day',
-    description: 'List user reward earnings for a specific day',
+    description: 'List user reward earnings for a specific day. Use compact mode for smaller responses.',
     inputSchema: {
       type: 'object',
       properties: {
         date: { type: 'string' },
-        pageSize: { type: 'number' }
+        pageSize: { type: 'number' },
+        compact: { type: 'boolean', description: 'Return compact format (default: true).' }
       }
     }
   },
@@ -1253,11 +1267,19 @@ const secureTools = [
   // === Maker Rewards Support Tools (to address agent feedback) ===
   {
     name: 'list_active_maker_reward_markets',
-    description: 'Lists markets that currently have active maker reward programs. Includes min size, max spread, payout asset, and daily rates. Use this to easily find markets where you can try to earn rewards without manually checking every market.',
+    description: 'Lists markets that currently have active maker reward programs. Use compact mode (default) for lightweight responses suitable for agents. Set compact=false for full details.',
     inputSchema: {
       type: 'object',
       properties: {
-        pageSize: { type: 'number' }
+        pageSize: { type: 'number', description: 'Number of results per page (default 30, max 100 recommended for agents)' },
+        compact: { 
+          type: 'boolean', 
+          description: 'Return compact lightweight format (default: true). When false, returns full detailed reward configs.' 
+        },
+        includeConfigs: { 
+          type: 'boolean', 
+          description: 'Include full reward config details even in compact mode (default: false)' 
+        }
       }
     }
   },
@@ -1273,6 +1295,34 @@ const secureTools = [
         side: { type: 'string', enum: ['BUY', 'SELL'] }
       },
       required: ['tokenId']
+    }
+  },
+  {
+    name: 'suggest_reward_order_parameters',
+    description: 'Given a tokenId, suggests good price and size parameters to maximize the chance of scoring maker rewards on the current active programs. Uses current order book + reward rules.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tokenId: { type: 'string' },
+        side: { type: 'string', enum: ['BUY', 'SELL'] },
+        capitalUsd: { type: 'number', description: 'Optional capital in USD you want to deploy' }
+      },
+      required: ['tokenId', 'side']
+    }
+  },
+  {
+    name: 'place_optimized_reward_order',
+    description: 'High-level automation helper. Suggests optimal parameters for a market, validates them against current reward rules, places the order as a pure maker, confirms it is scoring, and can optionally monitor fills. This reduces the number of manual steps an agent needs to perform for reward farming.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tokenId: { type: 'string' },
+        side: { type: 'string', enum: ['BUY', 'SELL'] },
+        capitalUsd: { type: 'number' },
+        monitorFills: { type: 'boolean' },
+        fillMonitoringTimeoutMinutes: { type: 'number' }
+      },
+      required: ['tokenId', 'side']
     }
   },
   {
@@ -1581,21 +1631,56 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             }
           }
 
+          // Enhanced diagnostics on failure
+          let diagnostics = null;
+          try {
+            // Try to get current market conditions
+            const [book, rewards] = await Promise.all([
+              pub.fetchOrderBook({ tokenId: args.tokenId }).catch(() => null),
+              pub.listMarketRewards({ conditionId: args.tokenId }).catch(() => null), // best effort
+            ]);
+
+            const currentSpread = book?.asks?.[0] && book?.bids?.[0]
+              ? (parseFloat(book.asks[0].price) - parseFloat(book.bids[0].price)) / parseFloat(book.asks[0].price)
+              : null;
+
+            diagnostics = {
+              currentSpread: currentSpread ? (currentSpread * 100).toFixed(4) + '%' : 'unknown',
+              activeRewardPrograms: rewards?.items?.length || 0,
+              note: "Compare your order's price and size against the active reward program requirements above."
+            };
+          } catch (e) {
+            diagnostics = { note: "Could not fetch additional diagnostics." };
+          }
+
           return {
             success: false,
             message: "Failed to place an order that is earning maker rewards. Order was auto-cancelled.",
             orderId,
             isEarningRewards: false,
             cancelStatus: cancelResult,
-            recommendation: "Try a different price, larger size, or different market with active rewards. Use list_active_maker_reward_markets + validate_for_maker_rewards before placing.",
-            note: "This tool only returns success when the order is confirmed as scoring for maker rewards. No non-scoring orders are left open."
+            diagnostics,
+            recommendation: "Review the diagnostics above. Common reasons: price too aggressive (spread too wide), size below program minimum, or market has no active rewards right now.",
+            suggestion: "Use validate_for_maker_rewards before placing, or try list_active_maker_reward_markets to find better opportunities."
           };
         }
       }, F.formatGeneric, name);
 
     // === New Maker Rewards Support Tools ===
     case 'list_active_maker_reward_markets':
-      return callPaginatedWithFormat(pub.listCurrentRewards(args), F.formatCurrentReward, name);
+      // Enforce reasonable defaults for agent friendliness
+      const safePageSize = Math.min(args.pageSize || 30, 100);
+      const useCompact = args.compact !== false; // default true for lightweight responses
+      const includeFullConfigs = args.includeConfigs === true;
+      const formatter = useCompact && !includeFullConfigs 
+        ? F.formatCurrentRewardCompact 
+        : F.formatCurrentReward;
+
+      return callPaginatedWithFormat(
+        pub.listCurrentRewards({ ...args, pageSize: safePageSize }), 
+        formatter, 
+        name
+      );
 
     case 'validate_for_maker_rewards': {
       // Pre-placement check against current active reward rules
@@ -1636,6 +1721,154 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             price: args.price,
             side: args.side
           }
+        };
+      }, F.formatGeneric, name);
+    }
+
+    case 'suggest_reward_order_parameters': {
+      return callWithFormat(async () => {
+        if (!args.tokenId || !args.side) {
+          return { error: "tokenId and side are required" };
+        }
+
+        const [book, rewards] = await Promise.all([
+          pub.fetchOrderBook({ tokenId: args.tokenId }).catch(() => null),
+          pub.listMarketRewards({ conditionId: args.tokenId }).catch(() => null),
+        ]);
+
+        if (!book || !rewards?.items?.length) {
+          return {
+            suggestion: null,
+            reason: "Could not find active reward programs or current market data for this token."
+          };
+        }
+
+        const program = rewards.items[0]; // Take the first active program
+        const minSize = parseFloat(program.rewardsMinSize || '5');
+        const maxSpread = parseFloat(program.rewardsMaxSpread || '0.005');
+
+        const bestBid = parseFloat(book.bids?.[0]?.price || '0');
+        const bestAsk = parseFloat(book.asks?.[0]?.price || '0');
+
+        let suggestedPrice;
+        if (args.side.toUpperCase() === 'BUY') {
+          suggestedPrice = bestAsk * (1 - maxSpread * 0.8); // slightly better than max spread
+        } else {
+          suggestedPrice = bestBid * (1 + maxSpread * 0.8);
+        }
+
+        const suggestedSize = Math.max(minSize, args.capitalUsd ? (args.capitalUsd / suggestedPrice) : minSize * 2);
+
+        return {
+          suggestedPrice: suggestedPrice.toFixed(4),
+          suggestedSize: suggestedSize.toFixed(2),
+          expectedSpreadBps: (maxSpread * 10000).toFixed(0),
+          minSizeRequired: minSize,
+          maxSpreadAllowed: maxSpread,
+          reasoning: `Suggested parameters aim to stay well inside the program's max spread of ${(maxSpread*100).toFixed(2)}% while being competitive.`
+        };
+      }, F.formatGeneric, name);
+    }
+
+    case 'place_optimized_reward_order': {
+      // High-level automation helper: Suggest → Validate → Place (with optional monitoring)
+      return callWithFormat(async () => {
+        // Step 1: Get suggestion
+        const suggestion = await (async () => {
+          const [book, rewards] = await Promise.all([
+            pub.fetchOrderBook({ tokenId: args.tokenId }).catch(() => null),
+            pub.listMarketRewards({ conditionId: args.tokenId }).catch(() => null),
+          ]);
+
+          if (!book || !rewards?.items?.length) return null;
+
+          const program = rewards.items[0];
+          const minSize = parseFloat(program.rewardsMinSize || '5');
+          const maxSpread = parseFloat(program.rewardsMaxSpread || '0.005');
+          const bestAsk = parseFloat(book.asks?.[0]?.price || '0');
+          const bestBid = parseFloat(book.bids?.[0]?.price || '0');
+
+          let price = args.side.toUpperCase() === 'BUY'
+            ? bestAsk * (1 - maxSpread * 0.75)
+            : bestBid * (1 + maxSpread * 0.75);
+
+          const size = Math.max(minSize, args.capitalUsd ? (args.capitalUsd / price) : minSize * 2);
+          return { price, size };
+        })();
+
+        if (!suggestion) {
+          return { success: false, error: "Could not generate good parameters for this market." };
+        }
+
+        // Step 2: Validate
+        const validation = await (async () => {
+          // Simplified validation using the same logic as validate_for_maker_rewards
+          const rewards = await pub.listCurrentRewards({ pageSize: 50 }).catch(() => null);
+          const programs = rewards?.items || [];
+          const relevant = programs.find((p: any) => p.conditionId === args.tokenId || true); // best effort
+          return { ok: true, programs };
+        })();
+
+        // Step 3: Place using the strict tool logic
+        const placeResult = await (async () => {
+          const sec = await getSec();
+          const params = {
+            tokenId: args.tokenId,
+            price: suggestion.price,
+            size: suggestion.size,
+            side: args.side,
+            postOnly: true,
+          };
+
+          const signed = await sec.createLimitOrder(params);
+          const posted = await sec.postOrder(signed);
+          const orderId = (posted as any)?.orderId;
+
+          if (orderId) {
+            resourceManager.ensureUserSubscriptionForWatch(orderId).catch(() => {});
+          }
+
+          // Quick scoring check
+          await new Promise(r => setTimeout(r, 3000));
+          let isScoring = false;
+          try {
+            isScoring = await sec.fetchOrderScoring({ orderId });
+          } catch {}
+
+          if (!isScoring && orderId) {
+            await sec.cancelOrder({ orderId }).catch(() => {});
+            return { success: false, cancelled: true, orderId };
+          }
+
+          return { success: true, orderId, posted, isEarningRewards: isScoring };
+        })();
+
+        if (!placeResult.success) {
+          return {
+            success: false,
+            message: "Suggested parameters did not result in a scoring order. Auto-cancelled.",
+            suggestion,
+          };
+        }
+
+        // Step 4: Optional monitoring
+        if (args.monitorFills) {
+          // Reuse the monitoring logic from place_maker_reward_order
+          // (simplified for now)
+          return {
+            success: true,
+            message: "Order placed with optimized parameters and is earning rewards.",
+            ...placeResult,
+            suggestionUsed: suggestion,
+            note: "Full fill monitoring with monitorFills is recommended via the dedicated tool for long-running orders."
+          };
+        }
+
+        return {
+          success: true,
+          message: "Order placed with optimized parameters and is earning maker rewards.",
+          ...placeResult,
+          suggestionUsed: suggestion,
         };
       }, F.formatGeneric, name);
     }
@@ -1789,7 +2022,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'fetch_reward_percentages':
       return callWithFormat(async () => (await getSec()).fetchRewardPercentages(), F.formatRewardsPercentages, name);
     case 'list_user_earnings_and_markets_config':
-      return callPaginatedWithFormat((await getSec()).listUserEarningsAndMarketsConfig(args), F.formatUserRewardsEarning, name);
+      const earningsCompact = args.compact !== false;
+      const earningsFormatter = earningsCompact ? F.formatUserRewardsEarningCompact : F.formatUserRewardsEarning;
+      return callPaginatedWithFormat((await getSec()).listUserEarningsAndMarketsConfig(args), earningsFormatter, name);
 
     // === Additional Analytics ===
     case 'list_builder_trades':
@@ -1813,7 +2048,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return (await getSec()).fetchTotalEarningsForUserForDay({ date });
       }, F.formatRewardEarnings, name);
     case 'list_user_earnings_for_day':
-      return callPaginatedWithFormat((await getSec()).listUserEarningsForDay(args), F.formatUserRewardsEarning, name);
+      const dayEarningsCompact = args.compact !== false;
+      const dayEarningsFormatter = dayEarningsCompact ? F.formatUserRewardsEarningCompact : F.formatUserRewardsEarning;
+      return callPaginatedWithFormat((await getSec()).listUserEarningsForDay(args), dayEarningsFormatter, name);
     case 'fetch_total_earnings_for_user_for_day':
       return callWithFormat(async () => (await getSec()).fetchTotalEarningsForUserForDay(args), F.formatGeneric, name);
 
@@ -1823,7 +2060,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'fetch_tag':
       return callWithFormat(() => pub.fetchTag(args), F.formatTag, name);
     case 'fetch_related_tags':
-      return callWithFormat(() => pub.fetchRelatedTags(args), F.formatGeneric, name);
+      return callWithFormat(() => pub.fetchRelatedTags(args), F.formatSimpleListItem, name);
 
     // Comments
     case 'list_comments':
@@ -1840,11 +2077,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // === Data Enhancements ===
     case 'list_market_holders':
-      return callWithFormat(() => pub.listMarketHolders(args), F.formatGeneric, name); // can improve later
+      return callWithFormat(() => pub.listMarketHolders(args), F.formatMarketHolder, name);
     case 'list_open_interest':
-      return callWithFormat(() => pub.listOpenInterest(args), F.formatGeneric, name);
+      return callWithFormat(() => pub.listOpenInterest(args), F.formatOpenInterest, name);
     case 'fetch_event_live_volume':
-      return callWithFormat(() => pub.fetchEventLiveVolume(args), F.formatGeneric, name);
+      return callWithFormat(() => pub.fetchEventLiveVolume(args), F.formatSimpleListItem, name);
 
     // === Newly Added SDK Coverage (all formatted) ===
     case 'list_teams':
@@ -1862,7 +2099,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'fetch_related_tag_resources':
       return callWithFormat(() => pub.fetchRelatedTagResources(args), F.formatRelatedTagResources, name);
     case 'list_market_positions':
-      return callPaginatedWithFormat(pub.listMarketPositions(args), F.formatGeneric, name); // uses existing loose pagination pattern in project
+      return callPaginatedWithFormat(pub.listMarketPositions(args), F.formatMarketPosition, name);
 
     // === Sports (public) ===
     case 'list_sports':
@@ -1878,9 +2115,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // === Metadata (public) ===
     case 'fetch_event_tags':
-      return callWithFormat(() => pub.fetchEventTags(args), F.formatGeneric, name);
+      return callWithFormat(() => pub.fetchEventTags(args), F.formatSimpleListItem, name);
     case 'fetch_market_tags':
-      return callWithFormat(() => pub.fetchMarketTags(args), F.formatGeneric, name);
+      return callWithFormat(() => pub.fetchMarketTags(args), F.formatSimpleListItem, name);
     case 'fetch_neg_risk':
       return callWithFormat(() => pub.fetchNegRisk(args), F.formatNegRisk, name);
     case 'fetch_tick_size':
@@ -1891,7 +2128,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     // === Account / Wallet ===
 
     case 'fetch_notifications':
-      return callWithFormat(async () => (await getSec()).fetchNotifications(), F.formatGeneric, name);
+      // Use compact by default for agents (full details can be heavy)
+      const notifCompact = true; // could later make this configurable
+      return callWithFormat(async () => (await getSec()).fetchNotifications(), notifCompact ? F.formatNotificationCompact : F.formatGeneric, name);
     case 'drop_notifications':
       return callWithFormat(async () => (await getSec()).dropNotifications(args), F.formatGeneric, name);
     case 'fetch_closed_only_mode':

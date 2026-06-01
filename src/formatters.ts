@@ -693,6 +693,71 @@ export function formatMarketReward(reward: MarketReward): object {
   return formatCurrentReward(reward as any);
 }
 
+/** Lightweight formatter for market positions (used by list_market_positions) */
+export function formatMarketPosition(position: any): object {
+  const p = position as any;
+  return omitUndefined({
+    'Wallet': truncateAddress(p.proxyWallet || p.wallet),
+    'Name': p.name,
+    'Outcome': p.outcome,
+    'Size': formatDecimal(p.size),
+    'Avg Price': formatPriceDisplay(p.avgPrice),
+    'Current Price': formatPriceDisplay(p.currPrice),
+    'Current Value': formatDecimal(p.currentValue),
+    'Total PnL': formatDecimal(p.totalPnl),
+  });
+}
+
+/** Lightweight formatter for market holders */
+export function formatMarketHolder(holder: any): object {
+  const h = holder as any;
+  return omitUndefined({
+    'Wallet': truncateAddress(h.wallet || h.proxyWallet),
+    'Name': h.name,
+    'Size': formatDecimal(h.size),
+    'Value': formatDecimal(h.value || h.currentValue),
+  });
+}
+
+/** Lightweight formatters for other potentially large responses */
+export function formatOpenInterest(item: any): object {
+  return omitUndefined({
+    'Market': item.market,
+    'Value': formatDecimal(item.value),
+  });
+}
+
+export function formatNotificationCompact(notif: any): object {
+  return omitUndefined({
+    'Id': notif.id,
+    'Type': notif.type,
+    'Timestamp': formatDate(notif.timestamp),
+  });
+}
+
+export function formatSimpleListItem(item: any): object {
+  // Generic safe fallback for small list items
+  if (!item || typeof item !== 'object') return item;
+  return omitUndefined({
+    'Id': item.id || item.market || item.conditionId,
+    'Value': formatDecimal(item.value),
+  });
+}
+
+/** Lightweight version of formatCurrentReward for agents (much smaller payload) */
+export function formatCurrentRewardCompact(reward: CurrentReward): object {
+  const assets = reward.rewardsConfig?.map(c => c.assetAddress).filter(Boolean) || [];
+  const uniqueAssets = [...new Set(assets)];
+
+  return omitUndefined({
+    'Condition Id': reward.conditionId,
+    'Min Order Size': formatDecimal(reward.rewardsMinSize),
+    'Max Spread': reward.rewardsMaxSpread,
+    'Payout Assets': uniqueAssets.length ? uniqueAssets : undefined,
+    'Total Daily Rate': formatDecimal(reward.total_daily_rate),
+  });
+}
+
 export function formatRewardsPercentages(percs: RewardsPercentages): object {
   if (!percs || Object.keys(percs).length === 0) {
     return { 'Reward Rates': 'None' };
@@ -711,6 +776,15 @@ export function formatUserRewardsEarning(earning: UserRewardsEarning): object {
     'Asset': earning.assetAddress,
     'Earnings': formatDecimal(earning.earnings),
     'Rate': formatDecimal(earning.assetRate),
+  });
+}
+
+/** Compact version of formatUserRewardsEarning for agents (smaller payload) */
+export function formatUserRewardsEarningCompact(earning: UserRewardsEarning): object {
+  return omitUndefined({
+    'Date': earning.date,
+    'Condition Id': earning.conditionId,
+    'Earnings': formatDecimal(earning.earnings),
   });
 }
 
