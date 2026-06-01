@@ -48,6 +48,54 @@ function omitUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
   return out;
 }
 
+/** Robustly extract Yes/No outcome tokenIds for trading.
+ *  Prefers normalized SDK shape (outcomes.yes/no.tokenId), falls back to clobTokenIds array
+ *  (index 0 = Yes, 1 = No for binary markets). Handles stringified clobTokenIds too.
+ *  This ensures list_markets / search / fetch_market / resources always surface usable tokenIds.
+ */
+function extractOutcomeTokens(m: any): { yes?: string; no?: string; tokenIds?: string[] } {
+  if (!m) return {};
+
+  // 1. Normalized SDK Market shape (preferred when present)
+  const yesNorm = m.outcomes?.yes?.tokenId ?? m.outcomes?.Yes?.tokenId;
+  const noNorm = m.outcomes?.no?.tokenId ?? m.outcomes?.No?.tokenId;
+  if (yesNorm || noNorm) {
+    const ids = [yesNorm, noNorm].filter(Boolean) as string[];
+    return { yes: yesNorm || undefined, no: noNorm || undefined, tokenIds: ids.length ? ids : undefined };
+  }
+
+  // 2. Raw clobTokenIds (GammaMarket or partial responses) — canonical for CLOB trading
+  let clob: any = m.clobTokenIds ?? m.tokenIds ?? (m as any).clob_token_ids;
+  if (typeof clob === 'string') {
+    try { clob = JSON.parse(clob); } catch { /* leave as string */ }
+  }
+  if (Array.isArray(clob) && clob.length > 0) {
+    const clean = clob.map((x: any) => String(x)).filter(Boolean);
+    // For binary (most common): [Yes, No]
+    if (clean.length >= 2) {
+      return { yes: clean[0], no: clean[1], tokenIds: clean };
+    }
+    return { tokenIds: clean };
+  }
+
+  // 3. tokens array (seen in some CLOB / orderbook contexts)
+  const tokensArr = m.tokens ?? m.outcomeTokens;
+  if (Array.isArray(tokensArr) && tokensArr.length > 0) {
+    const yesT = tokensArr.find((t: any) =>
+      String(t.outcome || t.label || t.name || '').toLowerCase() === 'yes'
+    )?.token_id ?? tokensArr.find((t: any) => t.token_id)?.token_id;
+    const noT = tokensArr.find((t: any) =>
+      String(t.outcome || t.label || t.name || '').toLowerCase() === 'no'
+    )?.token_id;
+    const all = tokensArr.map((t: any) => t.token_id || t.tokenId).filter(Boolean);
+    if (yesT || noT || all.length) {
+      return { yes: yesT, no: noT, tokenIds: all.length ? all : (yesT || noT ? [yesT, noT].filter(Boolean) as string[] : undefined) };
+    }
+  }
+
+  return {};
+}
+
 function truncateAddress(addr?: string | null): string | undefined {
   if (!addr || typeof addr !== 'string') return undefined;
   if (addr.length <= 10) return addr;
@@ -116,11 +164,9 @@ export function formatMarket(market: Market): object {
   const yesPrice = market.outcomes?.yes?.price ?? market.prices?.lastTradePrice;
   const noPrice = market.outcomes?.no?.price;
 
-  // Expose token identifiers so agents can go from discovery directly to trading tools
-  // (fetch_order_book, place orders, etc.). Data comes from the official SDK/Gamma.
-  const yesTokenId = market.outcomes?.yes?.tokenId;
-  const noTokenId = market.outcomes?.no?.tokenId;
-  const clobTokenIds = (market as any)?.clobTokenIds ?? (market as any)?.tokenIds;
+  // Robust extraction guarantees tokenIds are surfaced for trading tools (create_and_post_order etc.)
+  // even when SDK returns partial normalized shapes or raw Gamma responses.
+  const tok = extractOutcomeTokens(market);
 
   return omitUndefined({
     'Question': market.question,
@@ -130,9 +176,9 @@ export function formatMarket(market: Market): object {
     'Category': market.category,
     'Yes Price': formatPriceDisplay(yesPrice),
     'No Price': formatPriceDisplay(noPrice),
-    'Yes Token Id': yesTokenId,
-    'No Token Id': noTokenId,
-    'Token Ids': Array.isArray(clobTokenIds) && clobTokenIds.length > 0 ? clobTokenIds : undefined,
+    'Yes Token Id': tok.yes,
+    'No Token Id': tok.no,
+    'Token Ids': tok.tokenIds && tok.tokenIds.length > 0 ? tok.tokenIds : undefined,
     'Volume': formatDecimal(market.metrics?.volume),
     'Liquidity': formatDecimal(market.metrics?.liquidity),
     'Status': market.state?.closed ? 'CLOSED' : (market.state?.active ? 'OPEN' : 'RESOLVED'),
@@ -144,13 +190,17 @@ export function formatMarket(market: Market): object {
 export function formatEvent(event: Event): object {
   // Include lightweight market summaries from the event when the SDK provides them (helps discovery)
   const markets = Array.isArray(event.markets) && event.markets.length > 0
-    ? event.markets.slice(0, 10).map((m: any) => omitUndefined({
-        'Question': m.question,
-        'Slug': m.slug,
-        'Id': m.id,
-        'Yes Token Id': m.outcomes?.yes?.tokenId,
-        'No Token Id': m.outcomes?.no?.tokenId,
-      }))
+    ? event.markets.slice(0, 10).map((m: any) => {
+        const tok = extractOutcomeTokens(m);
+        return omitUndefined({
+          'Question': m.question,
+          'Slug': m.slug,
+          'Id': m.id,
+          'Yes Token Id': tok.yes,
+          'No Token Id': tok.no,
+          'Token Ids': tok.tokenIds && tok.tokenIds.length ? tok.tokenIds : undefined,
+        });
+      })
     : undefined;
 
   return omitUndefined({
@@ -680,10 +730,9 @@ export function formatTeam(team: Team): object {
 }
 
 export function formatMarketInfo(info: MarketInfo): object {
-  // Attempt to surface token identifiers if the underlying response (or extended shape) contains them
+  // Robust token extraction for fetch_market_info (same guarantee as list/search)
   const anyInfo = info as any;
-  const clobTokenIds = anyInfo?.clobTokenIds ?? anyInfo?.tokenIds;
-  const outcomes = anyInfo?.outcomes;
+  const tok = extractOutcomeTokens(anyInfo);
 
   return omitUndefined({
     'Market Id': info.marketId,
@@ -696,9 +745,9 @@ export function formatMarketInfo(info: MarketInfo): object {
     'Image': info.image,
     'Resolution Source': info.resolutionSource,
     'Tags': info.tags,
-    'Yes Token Id': outcomes?.yes?.tokenId,
-    'No Token Id': outcomes?.no?.tokenId,
-    'Token Ids': Array.isArray(clobTokenIds) && clobTokenIds.length > 0 ? clobTokenIds : undefined,
+    'Yes Token Id': tok.yes,
+    'No Token Id': tok.no,
+    'Token Ids': tok.tokenIds && tok.tokenIds.length > 0 ? tok.tokenIds : undefined,
   });
 }
 
