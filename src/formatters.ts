@@ -160,25 +160,30 @@ function formatArray<T>(arr: T[] | null | undefined, mapFn: (x: T) => any): any 
 
 // ===================== Discovery =====================
 
-export function formatMarket(market: Market): object {
+export function formatMarket(market: any): object {
   const yesPrice = market.outcomes?.yes?.price ?? market.prices?.lastTradePrice;
   const noPrice = market.outcomes?.no?.price;
 
-  // Robust extraction guarantees tokenIds are surfaced for trading tools (create_and_post_order etc.)
-  // even when SDK returns partial normalized shapes or raw Gamma responses.
-  const tok = extractOutcomeTokens(market);
+  // Official SDK paths
+  const yesTokenId = market.outcomes?.yes?.tokenId 
+    ?? market.tokens?.find((t: any) => t.outcome === 'Yes' || t.side === 'Yes')?.tokenId 
+    ?? market.yesTokenId 
+    ?? market.tokens?.[0]?.tokenId;
+
+  const noTokenId = market.outcomes?.no?.tokenId 
+    ?? market.tokens?.find((t: any) => t.outcome === 'No' || t.side === 'No')?.tokenId 
+    ?? market.noTokenId 
+    ?? market.tokens?.[1]?.tokenId;
 
   return omitUndefined({
     'Question': market.question,
     'Slug': market.slug,
     'Id': market.id,
     'Condition Id': market.conditionId,
-    'Category': market.category,
     'Yes Price': formatPriceDisplay(yesPrice),
     'No Price': formatPriceDisplay(noPrice),
-    'Yes Token Id': tok.yes,
-    'No Token Id': tok.no,
-    'Token Ids': tok.tokenIds && tok.tokenIds.length > 0 ? tok.tokenIds : undefined,
+    'Yes TokenId': yesTokenId,
+    'No TokenId': noTokenId,
     'Volume': formatDecimal(market.metrics?.volume),
     'Liquidity': formatDecimal(market.metrics?.liquidity),
     'Status': market.state?.closed ? 'CLOSED' : (market.state?.active ? 'OPEN' : 'RESOLVED'),

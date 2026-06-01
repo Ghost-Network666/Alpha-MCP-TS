@@ -153,12 +153,18 @@ async function callPaginatedWithFormat(paginatorPromise: Promise<any>, formatter
 const publicTools = [
   {
     name: 'list_markets',
-    description: 'List Polymarket markets',
+    description: 'List Polymarket markets using the official SDK listMarkets(). Supports all standard filters including category, search terms, active/closed status, resolution dates, etc. Best for targeted discovery (e.g. crypto, specific slugs, short-duration markets).',
     inputSchema: {
       type: 'object',
       properties: {
         closed: { type: 'boolean' },
-        pageSize: { type: 'number' }
+        active: { type: 'boolean' },
+        category: { type: 'string' },
+        search: { type: 'string', description: 'Text search within listMarkets (alternative or complement to the dedicated search tool)' },
+        pageSize: { type: 'number' },
+        // Additional common SDK filters are passed through
+        limit: { type: 'number' },
+        offset: { type: 'number' }
       }
     }
   },
@@ -197,12 +203,16 @@ const publicTools = [
   },
   {
     name: 'search',
-    description: 'Full-text search across markets and events',
+    description: 'Official full-text search via client.search(). Excellent for finding short-duration, high-resolution, or niche markets (e.g. "bitcoin 15 minutes", "will bitcoin reach 150k by friday"). Returns markets, events, tags, and profiles. Use precise queries for best results on 5m/15m/1h resolution markets.',
     inputSchema: {
       type: 'object',
       properties: {
-        q: { type: 'string' },
-        pageSize: { type: 'number' }
+        q: { type: 'string', description: 'Search query. Try specific terms like "bitcoin 15 minutes", "15m", "5 minute", or "will bitcoin"' },
+        pageSize: { type: 'number' },
+        // The official SDK search accepts additional options; pass-through supported
+        closed: { type: 'boolean' },
+        active: { type: 'boolean' },
+        category: { type: 'string' }
       },
       required: ['q']
     }
@@ -1178,8 +1188,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'fetch_event':
       return callWithFormat(() => pub.fetchEvent(args), F.formatEvent, name);
     case 'search':
-      // SearchResults is not Market[] — use formatSearchResults
-      return callPaginatedWithFormat(pub.search(args), F.formatSearchResults, name);
+      // Use official SDK search directly (SearchResults shape: { markets, events, tags, profiles }).
+      // Do NOT wrap in callPaginatedWithFormat — it is not a simple item paginator.
+      return callWithFormat(() => pub.search(args), F.formatSearchResults, name);
     case 'fetch_order_book':
       return callWithFormat(() => pub.fetchOrderBook(args), F.formatOrderBook, name);
     case 'fetch_price':
