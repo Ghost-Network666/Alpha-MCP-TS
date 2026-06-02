@@ -1,6 +1,6 @@
 // src/mcp/llms-guide.ts
 // Call-time delivered non-stale .md style guide for agents (SDK README + MCP mappings).
-// Per Polymarket team (suhail): link the official TS SDK README as the base agent instructions (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the Polymarket devs for SDK coverage, APIs, examples). The custom llms.txt is not yet on all docs (SDKs beta).
+// Link the official TS SDK README as the base agent instructions (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers for SDK coverage, APIs, examples). The custom llms.txt is not yet on all docs (SDKs beta).
 // How added/updated to the MCP (instead of stale .MD files or direct llms.txt):
 // - Dedicated src/mcp/llms-guide.ts with buildMcpLlmsGuide() that produces full .MD at *runtime* (call-time, so never stale).
 // - Registered as MCP Prompt "mcp_llms_full_guide" (agents do prompts/get) and Resource "polymarket://mcp/llms.txt" (agents list/read_resource/subscribe).
@@ -26,20 +26,20 @@ export const MCP_CATEGORIES = [
 export function buildMcpLlmsGuide(): string {
   // Built at call time (prompts/get or the mcp/llms.txt resource) to avoid stale committed .MD files.
   // Content curated + kept in sync with the MCP (tool patterns, cards, strategy, public rules, explicit native calls) + MCP mappings.
-  // Base SDK coverage/instructions: link the official Polymarket TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the Polymarket team; covers SDK APIs, clients, examples, concepts for the beta TS SDK that this MCP wraps 100% natively).
+  // Base SDK coverage/instructions: link the official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers; covers SDK APIs, clients, examples, concepts for the beta TS SDK that this MCP wraps 100% natively).
   // Not a fully auto-iterated dump of arrays (the value is the explanatory "how to use without guessing" + exact JSON examples + no-intent rules + MCP overlays on the SDK README).
   // Per team: use the SDK README as agent instructions for the underlying SDK. This MCP version adds the *usage mapping*: "for SDK concepts (see README), call these exact MCP tools with these args".
   // Load the SDK README first, then this + mcp_tool_structure_and_categories at startup. Then use categories + get_strategies().
   // All via official @polymarket/client SDK only. Never guess. Never use intent for trading.
   // The MCP uses the SDK README link for all base instructions (as recommended).
 
-  let md = `# Polymarket MCP Server - Full Agent Guide (SDK README + MCP mappings)
+  let md = `# MCP Server - Full Agent Guide (SDK README + MCP mappings)
 
-This MCP is **lightweight and agent-first** for Polymarket (prediction markets on Polygon via CLOB + CTF).
+This MCP is **lightweight and agent-first** for the CLOB prediction market platform (prediction markets on Polygon via CLOB + CTF).
 **Core principle**: Tiny default tool surface (~10 core tools via CORE_TOOL_NAMES). Use categories + prompts to discover/load more. 
 **Agents must never guess**: Always start with the mandatory sequence below. All your logic/rules/filters/exits in strategy store (get_strategies first every loop). Use only native SDK paths via these explicit tools. Follow every agentDirective. Public: always provide your own keys (no defaults/hardcodes anywhere in this MCP or docs).
 
-**Base instructions:** For the underlying Polymarket TS SDK (all APIs, clients, auth, examples, concepts), read the official README first: https://github.com/Polymarket/ts-sdk/blob/main/README.md (maintained up-to-date by the Polymarket devs — this MCP uses the SDK 100% natively with no custom HTTP). 
+**Base instructions:** For the underlying TS SDK (all APIs, clients, auth, examples, concepts), read the official README first: https://github.com/Polymarket/ts-sdk/blob/main/README.md (maintained up-to-date by the maintainers — this MCP uses the SDK 100% natively with no custom HTTP). 
 
 Instead of duplicating SDK docs or using stale local MDs/llms.txt, this prompt + the MCP resource polymarket://mcp/llms.txt delivers MCP-specific overlays + exact native call mappings on top of the SDK README so consuming agents have zero ambiguity on "how do I do X natively in *this MCP* using the SDK". Load the SDK README first, then this MCP guide.
 
@@ -63,7 +63,7 @@ From tools/list you get only:
 
 Full ~130+ capabilities via on-demand categories (prevents bloat, forces deliberate use). Advanced category for sensitive (sign/send/prepare/deploy).
 
-## Official Polymarket Concepts (from llms.txt + linked .md) — Exact MCP Native Mappings
+## Official Platform Concepts (from linked .md) — Exact MCP Native Mappings
 
 ### Markets & Events (Fetching, Discovery)
 Official: https://docs.polymarket.com/concepts/markets-events.md , market-data/ , api-ref/markets/* , events/*
@@ -174,7 +174,7 @@ list_resources / read_resource / subscribe / unsubscribe.
 - polymarket://mcp/llms.txt (this guide as markdown resource)
 Server pushes notifications on change. Read gives formatted cards.
 
-MCP surface activities/usage (tool calls by agents) are tracked internally via get_mcp_usage tool (call counts, last used, total since start). Polymarket-side activities and "usage" (trades, MAKER_REBATE, rewards, etc.) via list_activity + live user/activity resource + earnings tools.
+MCP surface activities/usage (tool calls by agents) are tracked internally via get_mcp_usage tool (call counts, last used, total since start). Platform-side activities and "usage" (trades, MAKER_REBATE, rewards, etc.) via list_activity + live user/activity resource + earnings tools.
 
 ### Rate Limits & Session Management (from llms.txt + api-ref/rate-limits, trade/send-heartbeat, matching-engine)
 Official: https://docs.polymarket.com/api-reference/rate-limits.md , trade/send-heartbeat.md , matching-engine.md , error-codes.
@@ -207,6 +207,6 @@ For code changes: follow AGENTS.md mandatory reads + research + pre-commit /revi
 
 `;
 
-  md += "\n\n## Current Categories (runtime authoritative via list_tool_categories)\nRewards | Strategy | Account | Utilities | Discovery | Trading | Analytics | Meta (get_mcp_usage for MCP activities/usage tracking) | Advanced\n\n## Notes\n- Tools/prompts evolve; always refresh via prompts/get and categories for latest.\n- Base SDK reference (all concepts, APIs, examples — use this as primary agent instructions): https://github.com/Polymarket/ts-sdk/blob/main/README.md (kept up-to-date by Polymarket team; MCP uses the SDK exclusively).\n- This MCP mapping ensures native use without ever guessing which tool or arg shape (SDK README first + these MCP overlays).";
+  md += "\n\n## Current Categories (runtime authoritative via list_tool_categories)\nRewards | Strategy | Account | Utilities | Discovery | Trading | Analytics | Meta (get_mcp_usage for MCP activities/usage tracking) | Advanced\n\n## Notes\n- Tools/prompts evolve; always refresh via prompts/get and categories for latest.\n- Base SDK reference (all concepts, APIs, examples — use this as primary agent instructions): https://github.com/Polymarket/ts-sdk/blob/main/README.md (kept up-to-date by the maintainers; MCP uses the SDK exclusively).\n- This MCP mapping ensures native use without ever guessing which tool or arg shape (SDK README first + these MCP overlays).";
   return md;
 }

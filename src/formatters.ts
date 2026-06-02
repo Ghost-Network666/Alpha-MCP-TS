@@ -84,7 +84,7 @@ function formatTxLink(txHash?: string | null): string | undefined {
   return `https://polygonscan.com/tx/${clean}`;
 }
 
-/** Builds a direct clickable Polymarket market link. Prefers slug, falls back to condition/market id. */
+/** Builds a direct clickable platform market link. Prefers slug, falls back to condition/market id. */
 function formatMarketLink(slugOrId?: string | null, fallbackId?: string | null): string | undefined {
   const id = slugOrId || fallbackId;
   if (!id) return undefined;
@@ -94,7 +94,7 @@ function formatMarketLink(slugOrId?: string | null, fallbackId?: string | null):
   if (/[a-z-]/.test(clean)) {
     return `https://polymarket.com/market/${clean}`;
   }
-  // Otherwise treat as condition id or market id (Polymarket often supports direct)
+  // Otherwise treat as condition id or market id (platform often supports direct)
   return `https://polymarket.com/market/${clean}`;
 }
 
@@ -933,7 +933,7 @@ export function formatOrderScoring(data: any): object {
       'Recommendation': data 
         ? 'This order is earning maker rewards right now. Keep it resting (GTC + postOnly recommended).'
         : 'This order is not currently scoring. Consider cancelling if you only want to place orders that earn rewards.',
-      'Important': 'Maker reward scoring is determined by Polymarket after the order is live. It can change over time even for the same order.'
+      'Important': 'Maker reward scoring is determined by the platform after the order is live. It can change over time even for the same order.'
     };
   }
 

@@ -1,8 +1,8 @@
-# Polymarket MCP Server
+# MCP Server for CLOB Prediction Markets
 
 ## What this MCP does
 
-This is a Polymarket MCP server designed to work natively with **Hermes** (https://hermes-agent.nousresearch.com/), OpenClaw, and other agent harnesses.
+This is an MCP server for the CLOB prediction market platform, designed to work natively with **Hermes** (https://hermes-agent.nousresearch.com/), OpenClaw, and other agent harnesses.
 
 It is designed as a **lightweight MCP** (tiny core set of ~10 tools by default + on-demand category loading for the full surface of 100+ capabilities) with a complete **Resources + Subscriptions** system covering:
 
@@ -38,7 +38,7 @@ Create a `.env` file in the project root:
 
 ```env
 EOA_PRIVATE_KEY=0x       # EOA wallet private key — used for API key derivation and signing
-DEPOSIT_WALLET_ADDRESS=0x # Polymarket deposit/proxy wallet address
+DEPOSIT_WALLET_ADDRESS=0x # Platform deposit/proxy wallet address
 POLYMARKET_ENV=mainnet    # mainnet or amoy
 ```
 
@@ -65,7 +65,7 @@ Auth note: API keys must be derived from the EOA private key. Every order payloa
 
 **Important for Agents & Safety**: This MCP is deliberately lightweight (tiny default core + categories/prompts for the full surface). Hermes allows you to register it with a safe default subset of tools so agents are not overwhelmed and sensitive actions are not exposed by default.
 
-For LLMs/agents using this MCP: see `AGENTS.md` (especially the "Consuming Agent Quickstart and Exact Native Tool Call Patterns" section) + FIRST read the official Polymarket TS SDK README as primary agent instructions (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the Polymarket team for all SDK coverage/APIs/examples; the MCP uses the SDK exclusively) **then** request the built-in `mcp_llms_full_guide` (SDK README + MCP mappings, no stale files, strong "explicit tools only, no intent for trading") **and** `mcp_tool_structure_and_categories` prompt first. This + categories + strategy store + enhanced output cards (PNL, sentiment/health) ensures agents know how to use the MCP without ever guessing. The resource `polymarket://mcp/llms.txt` also serves the full guide (SDK README link + MCP).
+For LLMs/agents using this MCP: see `AGENTS.md` (especially the "Consuming Agent Quickstart and Exact Native Tool Call Patterns" section) + FIRST read the official TS SDK README as primary agent instructions (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers for all SDK coverage/APIs/examples; the MCP uses the SDK exclusively) **then** request the built-in `mcp_llms_full_guide` (SDK README + MCP mappings, no stale files, strong "explicit tools only, no intent for trading") **and** `mcp_tool_structure_and_categories` prompt first. This + categories + strategy store + enhanced output cards (PNL, sentiment/health) ensures agents know how to use the MCP without ever guessing. The resource `polymarket://mcp/llms.txt` also serves the full guide (SDK README link + MCP).
 
 ### Recommended Registration (with safe defaults)
 
@@ -127,7 +127,7 @@ This opens an interactive checklist.
 
 The SDK only allows **one** `apiKey` strategy per `SecureClient` instance. This MCP therefore supports both strategies as **separate clients**:
 
-- **Relayer** (`RELAYER_API_KEY` + `RELAYER_API_KEY_ADDRESS`): Recommended for gasless trading on verified accounts. The Relayer is typically linked to a Builder on the Polymarket side for attribution/rewards.
+- **Relayer** (`RELAYER_API_KEY` + `RELAYER_API_KEY_ADDRESS`): Recommended for gasless trading on verified accounts. The Relayer is typically linked to a Builder for attribution/rewards.
 - **Builder** (`BUILDER_API_KEY` + `BUILDER_SECRET` + `BUILDER_PASSPHRASE`): Direct HMAC builder authentication (no gasless).
 
 You must provide **at least one** complete set. Both can be supplied at the same time — `getSecureClient()` will prefer Relayer (gasless) when available, while `getRelayerClient()` and `getBuilderClient()` give you explicit access.

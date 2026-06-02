@@ -1,7 +1,7 @@
 {
   "name": "alphamcp-ts",
   "version": "0.1.0",
-  "description": "Production-ready Polymarket MCP server. Exposes 90+ tools for Gamma discovery, CLOB trading, gasless actions, rewards, and realtime via the official @polymarket/client beta SDK.",
+  "description": "Production-ready MCP server for CLOB prediction markets. Exposes 90+ tools for discovery, CLOB trading, gasless actions, rewards, and realtime via the official @polymarket/client beta SDK.",
   "type": "module",
   "main": "dist/lib.js",
   "types": "dist/lib.d.ts",
@@ -29,11 +29,12 @@
     "lint": "echo 'add biome or eslint later'"
   },
   "keywords": [
-    "polymarket",
     "prediction-markets",
     "trading",
     "sdk",
-    "market-making"
+    "market-making",
+    "mcp",
+    "clob"
   ],
   "author": "",
   "license": "MIT",

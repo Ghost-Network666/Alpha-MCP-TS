@@ -2,7 +2,7 @@
 
 **CRITICAL: Follow these rules on every session. Never skip the "Mandatory First Reads".**
 
-This repo implements a **lightweight, agent-controlled Polymarket MCP server**. The entire design goal is:
+This repo implements a **lightweight, agent-controlled MCP server for the CLOB prediction market platform**. The entire design goal is:
 
 > Agents (LLMs) that *use* this MCP via the protocol must **never have to guess** how to use tools, when to load more, what the current strategy is, or what the best practices are.
 
@@ -11,7 +11,7 @@ The MCP achieves this with:
 - Explicit category discovery (`list_tool_categories` + `get_tools_by_category`).
 - On-demand guidance via the MCP `prompts` API (`mcp_tool_structure_and_categories`, `reward_farming_best_practices`, `mispricing_quick_flips`, `mcp_llms_full_guide` — the full guide linking the official SDK README first (https://github.com/Polymarket/ts-sdk/blob/main/README.md as primary agent instructions) + MCP mappings, non-stale/dynamic).
 - The in-MCP **strategy store** (`get_strategies` / `set_strategy` / `update_strategy` / `clear_strategy`) as the *single source of truth* for all agent rules, filters, prefs, exit conditions, etc. The agent evolves its own "brain" here instead of bloating its system prompt or guessing.
-- Built-in **MCP usage/activity tracking** via `get_mcp_usage` (in core) + file logs + Polymarket activity resources (`list_activity`, live `polymarket://user/activity`). This is how activities (tool calls) and usage (stats, patterns) are tracked.
+- Built-in **MCP usage/activity tracking** via `get_mcp_usage` (in core) + file logs + platform activity resources (`list_activity`, live `polymarket://user/activity`). This is how activities (tool calls) and usage (stats, patterns) are tracked.
 
 ---
 
@@ -21,7 +21,7 @@ You **MUST** execute these steps in order using your tools:
 
 1. Read this entire `AGENTS.md`.
 2. Read `README.md` (full).
-3. Read `POLYMARKET_MCP_SERVER_OVERVIEW.md` (full).
+3. Read `MCP_SERVER_OVERVIEW.md` (full).
 4. Use the `read_file` tool (with limits) to thoroughly read **src/mcp.ts** — it is the heart of everything:
    - Start with lines 1-100 (imports, strategyStore, client setup).
    - Read the category system: `listAllCategories`, `getToolsByCategory`, `list_tool_categories`, `get_tools_by_category` (search for these).
@@ -62,7 +62,7 @@ The MCP registers prompts (see `PROMPTS` and `GetPromptRequestSchema`):
 - `mcp_tool_structure_and_categories` — the primary "how this MCP is meant to be used" document. It tells the agent the core surface, the category loading pattern, and that the strategy store is where *all* its custom logic lives.
 - `reward_farming_best_practices` — detailed, X-sourced tactics + exact mapping to the tiny set of native tools + the autonomous loop the agent must follow.
 - `mispricing_quick_flips` — similar for the other common pattern.
-- `mcp_llms_full_guide` — **full guide: FIRST the official Polymarket TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the Polymarket team; link this as primary agent instructions for all SDK coverage, APIs, concepts, clients, examples) + MCP-specific mappings (dynamically generated from live code, no stale .MDs). Explicitly maps SDK concepts (see README) → exact native MCP tools + JSON call shapes + "never use intent for trading; always explicit place_limit_order etc with your numbers from strategy/calc". Documents enhanced formatter output cards (PNL in positions/activity, sentiment/liquidity health in markets/farmability via spreads/depth/skew/competitionSignal, new RewardMarketCard + FarmabilityCard + PnlSummary). Also covers resources (polymarket://mcp/llms.txt serves the same), startup, public rules. **Call the SDK README first, then this (and structure prompt) first for complete non-guessing experience. The MCP uses the SDK README link for all base instructions.**
+- `mcp_llms_full_guide` — **full guide: FIRST the official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers; link this as primary agent instructions for all SDK coverage, APIs, concepts, clients, examples) + MCP-specific mappings (dynamically generated from live code, no stale .MDs). Explicitly maps SDK concepts (see README) → exact native MCP tools + JSON call shapes + "never use intent for trading; always explicit place_limit_order etc with your numbers from strategy/calc". Documents enhanced formatter output cards (PNL in positions/activity, sentiment/liquidity health in markets/farmability via spreads/depth/skew/competitionSignal, new RewardMarketCard + FarmabilityCard + PnlSummary). Also covers resources (polymarket://mcp/llms.txt serves the same), startup, public rules. **Call the SDK README first, then this (and structure prompt) first for complete non-guessing experience. The MCP uses the SDK README link for all base instructions.**
 
 **Consuming agents are expected to call `prompts/get` for these** (especially `mcp_tool_structure_and_categories` + `mcp_llms_full_guide`) early, instead of guessing from tool names/descriptions alone.
 
@@ -105,7 +105,7 @@ After code changes that touch logging, recordToolUsage, mcpUsageTracker, list_to
 
 ## SDK Surface (what @polymarket/client v0.1.0-beta.2 actually provides) + Known Issues / Gaps / MCP Workarounds
 
-**Per team (suhail rec accepted):** The MCP now uses the official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md) as the primary/base agent instructions for all SDK coverage (APIs, clients, examples — kept up-to-date by Polymarket devs). The previous custom llms.txt wiring is replaced/pivoted: mcp_llms_full_guide + //mcp/llms.txt now explicitly link the SDK README first + provide MCP mappings/overlays on top. Updated in llms-guide.ts (build + comments), mcp.ts (prompt desc + comments), resources.ts (desc + handler), AGENTS.md (all refs + quickstarts), README.md. This ensures "the mcp uses this for all" per the suggestion. Confirmed via native tests post-build.
+**Per documented SDK guidance:** The MCP now uses the official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md) as the primary/base agent instructions for all SDK coverage (APIs, clients, examples — kept up-to-date by the maintainers). The previous custom llms.txt wiring is replaced/pivoted: mcp_llms_full_guide + //mcp/llms.txt now explicitly link the SDK README first + provide MCP mappings/overlays on top. Updated in llms-guide.ts (build + comments), mcp.ts (prompt desc + comments), resources.ts (desc + handler), AGENTS.md (all refs + quickstarts), README.md. This ensures "the mcp uses this for all". Confirmed via native tests post-build.
 
 **Research performed**: local runtime inspection (`createPublicClient()`, method enumeration, call probes with category/search/pageSize), node_modules/@polymarket/client/dist/*.d.ts (Zod schemas for requests), GitHub source (packages/client/src/clients.ts + decorators/discovery.ts + actions/markets.ts + rewards decorators + pagination), official SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md as primary) + linked API refs (markets list/keyset, search, get-market-by-token, rewards active, WS channels, keyset pagination notes), and cross-checks against MCP wrappers.
 
@@ -133,7 +133,7 @@ After code changes that touch logging, recordToolUsage, mcpUsageTracker, list_to
 
 ### Concrete Issues / Gaps / Gotchas (why the agent's situation happened + how MCP mitigates)
 1. **tokenId resolution for CLOB** (core for rewards/orders): SDK fetchMarket has no tokenId support (design of this beta; REST has "get market by token" but client fetch does not expose equivalent first-class). listMarkets *does* support `clobTokenIds` filter (and conditionIds). **MCP fix (correct per ts-sdk source + prior PR research)**: getMarket({tokenId}) + fetch_market tool + tokenId resources internally do `listMarkets({ clobTokenIds: [tokenId], pageSize:1 })` + first. This is why the resource gave the agent exact Yes/No TokenIds that "matched what you wanted". Always use the MCP wrappers; do not call raw SDK fetchMarket with a tokenId.
-2. **`polymarket://markets` resource only a tiny skewed snapshot** (direct cause of "many more events on Polymarket than returned", "heavily skewed toward the GTA VI meme markets"): Impl is literally `pub.listMarkets({closed:false, pageSize:20})` + format (first page, default Gamma ordering, no filters). Not an enumerator. "Active Markets (first page)" in description. **Mitigation**: Documented now in AGENTS + llms-guide. Primary discovery = load "Discovery" category then `list_markets({active:true, pageSize:30, ...})` / with `category`/`rewardsMinSize`/`clobTokenIds` etc. + dedicated `search` tool + `list_events({category?})`. Native tests here confirmed volume (10k+ chars, weather category, search hits for politics/crypto/sports).
+2. **`polymarket://markets` resource only a tiny skewed snapshot** (direct cause of "many more events than returned", "heavily skewed toward the GTA VI meme markets"): Impl is literally `pub.listMarkets({closed:false, pageSize:20})` + format (first page, default Gamma ordering, no filters). Not an enumerator. "Active Markets (first page)" in description. **Mitigation**: Documented now in AGENTS + llms-guide. Primary discovery = load "Discovery" category then `list_markets({active:true, pageSize:30, ...})` / with `category`/`rewardsMinSize`/`clobTokenIds` etc. + dedicated `search` tool + `list_events({category?})`. Native tests here confirmed volume (10k+ chars, weather category, search hits for politics/crypto/sports).
 3. **Rewards programs require enrichment for usable cards**: listCurrentRewards gives programs (conditionId, min/max, rates) but *no* question text, no yes/noTokenIds, no current mids/prices. **MCP does the work** (in list_active_maker_reward_markets: fetch page, optional early minSize filter, batch listMarkets({conditionIds}) for metadata + token extraction + mids, compute USD cost + attractiveness, rank, formatActiveRewardMarket + farmability). Then get_farmability for live book signals. This is why list_active is the "PRIMARY tool for autonomous reward market selection".
 4. **listCurrentRewards page size control limited in SDK**: Request schema minimal (cursor/sponsored). MCP hardcodes 50 in the protected call ("always fetch a healthy page") then slices/ranks client-side (maxResults cap 20 default, relaxable). Similar for other paginators — use pageSize where supported (markets/events do), fall back to firstPage + post-filter.
 5. **Meta/introspection tools (list_tool_categories, get_tools_by_category, get_mcp_usage) are 100% MCP, not SDK**: They live in the CallToolRequestSchema handler + pure functions. Adding `recordToolUsage(name)` (which does `logger.info`) at the *very top* (before switch, for every call incl. meta) without the import in the committed tree = exact "logger is not defined" on first use of categories or list_markets etc. (even if resource still limped along). **Lesson + fix applied**: import must be present; native stdio tests (pure, no scripts) after every change that touches handler/tracking. get_mcp_usage + file logs + strategyStore now directly answer "how do you track the activities? the usage?".
@@ -261,7 +261,7 @@ Similar: use `list_markets` or `list_active...` for candidates, `get_farmability
 ### Live Data (Avoid Polling)
 - Use MCP **Resources** for real-time: subscribe to `polymarket://market/{tokenId}/book`, `polymarket://user/orders`, etc.
 - The server notifies on updates via the protocol. Read the resource for latest formatted snapshot.
-- This is the native, efficient way (bridged from Polymarket WS).
+- This is the native, efficient way (bridged from platform WS).
 - **Note on `polymarket://markets`**: This is a convenience snapshot only (internally `listMarkets({closed:false, pageSize:20})` first page, default API ordering). It can be heavily skewed toward high-visibility/trending meme markets (e.g. GTA VI variants) and does **not** enumerate the full active set. For "many more events" use the **tools** after loading categories: `list_markets({active:true, pageSize:50})`, `list_markets({category:"WEATHER"|"SPORTS"|"POLITICS"|"CRYPTO", pageSize:20})`, `search({q:"politics OR crypto OR sports", pageSize:30})`, or `list_events`. The `search` tool (official SDK full-text over markets+events) and `list_markets` (with filters/keyword/clobTokenIds) are the primary discovery surface. TokenIds in the resource *are* correct for immediate CLOB use (`fetch_market({tokenId})`, `place_*` etc.).
 
 ### Strategy Store as Your Persistent Brain (Use for *Everything*)
@@ -378,11 +378,24 @@ When in doubt, re-read the prompt contents inside `src/mcp.ts`. They are the con
 
 **Memory update**: This rule is now permanent. Re-read this section before any commit or PR.
 
+## No Personal Names or Platform Branding in the Repo (Permanent Rule)
+
+**Hard rule (per developer instructions)**: Do not have any person's name in the repo (including any past contributors or team members) or the word "polymarket" (except in strictly functional contexts: exact package imports like `@polymarket/client`, the canonical GitHub SDK README URL https://github.com/Polymarket/ts-sdk/blob/main/README.md , resource URI scheme `polymarket://...`, config keys in examples, env var POLYMARKET_ENV, and external doc links). 
+
+- No attributions, quotes, or references to individuals in source, comments, docs (AGENTS.md, README, llms-guide, prompts, etc.), commit messages, review artifacts, or generated text.
+- Generalize all historical feedback or recs to neutral language: "per documented SDK guidance", "kept up-to-date by the maintainers", "per platform SDK recommendations".
+- When editing or generating, remove or rephrase any branding prose ("Polymarket MCP server", "Polymarket price", "Polymarket rewards", "Polymarket WS", etc.) to "platform", "the CLOB", "SDK", "prediction market platform".
+- This applies to all files in the tree (sources, .md docs, package metadata where prose, logs paths are ok if not branding). Rebuild after changes so dist is clean.
+- Update AGENTS.md memory and all guidance when new instances are found.
+- The rule is permanent. Re-read this section before any commit, PR, or edit session. "i am giving you what the devs are saying do NOT add there name !!!"
+
+**Memory update**: This name/branding rule is now permanent. Zero tolerance. Audit with grep before committing.
+
 ## Agent Documentation Requirements (MCP is for Agents Only)
 
 The MCP exists **only for agents** (LLMs/consuming systems). Agents must **never guess** how to use tools.
 
-- There **must** be a .MD file (this AGENTS.md + the MCP's own prompts, especially `mcp_llms_full_guide` which links the official SDK README https://github.com/Polymarket/ts-sdk/blob/main/README.md (as primary agent instructions, kept up-to-date by Polymarket) + MCP mappings, and `mcp_tool_structure_and_categories`) that tells agents:
+- There **must** be a .MD file (this AGENTS.md + the MCP's own prompts, especially `mcp_llms_full_guide` which links the official SDK README https://github.com/Polymarket/ts-sdk/blob/main/README.md (as primary agent instructions, kept up-to-date by the maintainers) + MCP mappings, and `mcp_tool_structure_and_categories`) that tells agents:
   - How to call a supported tool (exact `tools/call` with `name` and `arguments` matching the inputSchema).
   - What it is for.
   - How to use it (native SDK only, no direct HTTP).

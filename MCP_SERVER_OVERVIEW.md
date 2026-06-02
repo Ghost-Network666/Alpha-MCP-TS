@@ -1,9 +1,9 @@
-# Polymarket MCP Server – Technical Overview
+# MCP Server – Technical Overview
 
 **Purpose**  
-This is a production-grade Model Context Protocol (MCP) server that exposes Polymarket functionality to AI agents and LLM-powered applications (Hermes, OpenClaw, and similar agent frameworks).
+This is a production-grade Model Context Protocol (MCP) server that exposes CLOB prediction market platform functionality to AI agents and LLM-powered applications (Hermes, OpenClaw, and similar agent frameworks).
 
-It is designed so that agents can discover markets, place and manage orders, monitor positions, and interact with on-chain CTF actions **natively through the MCP protocol**, without the agent needing to understand or directly call the Polymarket SDK.
+It is designed so that agents can discover markets, place and manage orders, monitor positions, and interact with on-chain CTF actions **natively through the MCP protocol**, without the agent needing to understand or directly call the official SDK.
 
 ---
 
@@ -12,7 +12,7 @@ It is designed so that agents can discover markets, place and manage orders, mon
 - **Agent-first output**: Every tool returns clean, structured, human- and LLM-readable data. Raw SDK responses are never passed through.
 - **Official SDK only**: All blockchain and API interactions go exclusively through the official `@polymarket/client` SDK (beta). No custom HTTP clients or reverse-engineered endpoints.
 - **Clear separation of public vs authenticated surfaces**.
-- **Live data via MCP Resources**: Order books, user orders/fills, positions, and portfolio support real-time subscriptions using WebSocket bridging.
+- **Live data via MCP Resources**: Order books, user orders/fills, positions, and portfolio support real-time subscriptions using WebSocket bridging from the platform.
 - **Safety and formatting by default**: Tools include helpful descriptions, validation schemas, and consistent formatting (prices shown as both decimal and percentage, status emojis, truncated addresses, direct Polygonscan links, etc.).
 
 ---
@@ -49,7 +49,7 @@ It is designed so that agents can discover markets, place and manage orders, mon
 - Balance allowance updates
 
 ### 5. Live Subscriptions (MCP Resources)
-The server bridges Polymarket WebSocket feeds to the MCP Resources system, allowing agents to subscribe to:
+The server bridges platform WebSocket feeds to the MCP Resources system, allowing agents to subscribe to:
 - Real-time order books per outcome token
 - User order and fill streams
 - Position and portfolio updates
@@ -75,7 +75,7 @@ When subscribed data changes, the server notifies the agent, which can then read
 - **Language**: TypeScript (Node.js ≥ 22)
 - **Core dependency**: Official `@polymarket/client` (beta) SDK only
 - **MCP Implementation**: `@modelcontextprotocol/sdk` (stdio transport)
-- **Real-time**: Native WebSocket subscriptions from the Polymarket SDK, bridged to MCP `resources/subscribe`
+- **Real-time**: Native WebSocket subscriptions from the SDK, bridged to MCP `resources/subscribe`
 - **Output formatting**: Dedicated formatter layer that converts SDK responses into consistent, agent-ready structures before returning them
 - **Process model**: Long-lived stdio child process managed by the agent host
 
@@ -109,7 +109,7 @@ This MCP is intended to be registered with agent runtimes (e.g. via `hermes mcp 
 - This server is a **tooling and integration layer**, not a trading bot or strategy engine (although it contains some example strategy code for reference).
 - It does **not** implement its own order matching, risk engine, or custody.
 - It deliberately does **not** expose every low-level method of the underlying SDK. The surface is intentionally curated for agent usability and safety.
-- It is not a general-purpose Polymarket REST or WebSocket client.
+- It is not a general-purpose platform REST or WebSocket client.
 
 ---
 

@@ -66,7 +66,7 @@ export const STATIC_RESOURCES = [
   {
     uri: 'polymarket://markets',
     name: 'Active Markets',
-    description: 'List of currently active Polymarket markets (first page).',
+    description: 'List of currently active platform markets (first page snapshot).',
     mimeType: 'application/json',
   },
   {
@@ -84,7 +84,7 @@ export const STATIC_RESOURCES = [
   {
     uri: 'polymarket://mcp/llms.txt',
     name: 'MCP Full Usage Guide (SDK README + MCP mappings)',
-    description: 'Complete guide: first link the official Polymarket TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by Polymarket devs for all SDK coverage) as base agent instructions, then MCP-specific mappings (exact native tool calls, no guessing, strategyStore, cards, etc.). Call prompts/get "mcp_llms_full_guide" or read this resource. Always in sync with code + SDK.',
+    description: 'Complete guide: first link the official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers for all SDK coverage) as base agent instructions, then MCP-specific mappings (exact native tool calls, no guessing, strategyStore, cards, etc.). Call prompts/get "mcp_llms_full_guide" or read this resource. Always in sync with code + SDK.',
     mimeType: 'text/markdown',
   },
 ];
@@ -100,7 +100,7 @@ interface ActiveUserSub {
   refCount: number;
 }
 
-export class PolymarketResourceManager {
+export class ResourceManager {
   private server: Server;
   private getPub: () => PublicClient;
   private getSec: () => Promise<SecureClient>;
@@ -342,7 +342,7 @@ export class PolymarketResourceManager {
 
       case 'mcp': {
         if (parsed.subPath === 'llms.txt' || parsed.subPath === 'usage.md') {
-          // Full dynamic guide: SDK README link first (https://github.com/Polymarket/ts-sdk/blob/main/README.md as primary agent instructions per team — kept up-to-date) + MCP mappings (same builder as the prompt).
+          // Full dynamic guide: SDK README link first (https://github.com/Polymarket/ts-sdk/blob/main/README.md as primary agent instructions — kept up-to-date by maintainers) + MCP mappings (same builder as the prompt).
           // Imported cleanly from sibling llms-guide.js (no cycle, always in sync with tools/prompts + SDK).
           const guide = buildMcpLlmsGuide();
           return {
@@ -552,6 +552,6 @@ export function createResourceManager(
   server: Server,
   getPub: () => PublicClient,
   getSec: () => Promise<SecureClient>
-): PolymarketResourceManager {
-  return new PolymarketResourceManager(server, getPub, getSec);
+): ResourceManager {
+  return new ResourceManager(server, getPub, getSec);
 }

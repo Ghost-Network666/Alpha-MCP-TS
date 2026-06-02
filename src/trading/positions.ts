@@ -103,7 +103,7 @@ export async function redeemPositions(params: {
 }
 
 /**
- * Transfer ERC-20 (usually the collateral token pUSD/USDC) out of the Polymarket wallet/proxy.
+ * Transfer ERC-20 (usually the collateral token pUSD/USDC) out of the platform wallet/proxy.
  */
 export async function transferCollateral(params: {
   amount: bigint;

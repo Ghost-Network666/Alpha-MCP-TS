@@ -66,7 +66,7 @@ export function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Rate limit resilient wrapper for Polymarket SDK calls.
+ * Rate limit resilient wrapper for SDK calls.
  * On RateLimitError it does exponential backoff with jitter (max 3 attempts).
  * Returns a structured result so the agent can react gracefully instead of the
  * MCP host seeing repeated hard failures that mark the server "unreachable".
@@ -95,7 +95,7 @@ export async function callWithRateLimitProtection<T>(
             ok: false,
             rateLimited: true,
             retryAfterMs: Math.floor(delay * 1.8),
-            message: `Polymarket rate limited ${context}. Wait ~${Math.ceil(delay / 1000)}s before retrying this type of call.`
+            message: `Rate limited ${context}. Wait ~${Math.ceil(delay / 1000)}s before retrying this type of call.`
           };
         }
         // Non-rate-limit error — let the normal error path handle it

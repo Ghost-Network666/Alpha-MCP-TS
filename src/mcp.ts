@@ -54,7 +54,7 @@ function getStrategyKey(tokenId: string, market?: string) {
 // Tracks tool call counts + last usage time (in-memory, reset on restart).
 // This answers "how do you track the activities? the usage?" for the MCP surface itself.
 // Exposed via the get_mcp_usage tool (always in core for observability).
-// Polymarket-side activities (trades, rebates, rewards, positions) are tracked via list_activity + live user WS resources.
+// Platform-side activities (trades, rebates, rewards, positions) are tracked via list_activity + live user WS resources.
 const mcpUsageTracker = {
   toolCalls: new Map<string, { count: number; lastCalled: string }>(),
   startTime: new Date().toISOString(),
@@ -149,7 +149,7 @@ function calculateRecommendedSize(params: {
  * posterior = (1 - weight) * prior + weight * signal
  */
 function computeBayesianPosterior(params: {
-  prior: number;      // Polymarket price (0-1)
+  prior: number;      // Platform price (0-1)
   signal: number;     // External signal, e.g. Kalshi price or Claude prob (0-1)
   weight: number;     // 0 to 1, how much to trust the signal
 }): { posterior: number; divergence: number; reasoning: string } {
@@ -353,13 +353,13 @@ const publicTools = [
   },
   {
     name: 'get_mcp_usage',
-    description: '[Meta] Returns internal MCP usage and activity tracking stats: total tool calls since start, per-tool counts + last called timestamps, start time. This is how the MCP tracks its own activities and usage (tool invocations by consuming agents). Complements Polymarket-side activity via list_activity + live polymarket://user/activity resources. Always available in core surface.',
+    description: '[Meta] Returns internal MCP usage and activity tracking stats: total tool calls since start, per-tool counts + last called timestamps, start time. This is how the MCP tracks its own activities and usage (tool invocations by consuming agents). Complements platform-side activity via list_activity + live polymarket://user/activity resources. Always available in core surface.',
     inputSchema: { type: 'object', properties: {} }
   },
 
   {
     name: 'list_markets',
-    description: '[Discovery] List Polymarket markets using the official SDK listMarkets(). Supports filters like category (WEATHER, SPORTS etc.), rewardsMinSize for farming, search, volume, liquidity, and clobTokenIds (array of specific CLOB token IDs) to filter. Note: fetchMarket() SDK only supports id/slug/url; for fetching by tokenId we internally resolve via listMarkets({ clobTokenIds: [tokenId] }) in the fetch_market tool + getMarket helper. Use for mispricing scans or reward discovery. Pass category or rewardsMinSize for structure. Always returns Yes TokenId + No TokenId via clobTokenIds fallback (per Polymarket SDK). Use resolve_market before trading.',
+    description: '[Discovery] List platform markets using the official SDK listMarkets(). Supports filters like category (WEATHER, SPORTS etc.), rewardsMinSize for farming, search, volume, liquidity, and clobTokenIds (array of specific CLOB token IDs) to filter. Note: fetchMarket() SDK only supports id/slug/url; for fetching by tokenId we internally resolve via listMarkets({ clobTokenIds: [tokenId] }) in the fetch_market tool + getMarket helper. Use for mispricing scans or reward discovery. Pass category or rewardsMinSize for structure. Always returns Yes TokenId + No TokenId via clobTokenIds fallback (per SDK). Use fetch_market before trading.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -380,7 +380,7 @@ const publicTools = [
   },
   {
     name: 'fetch_market',
-    description: 'Fetch a single market by id, slug, url or tokenId (e.g. yes/no clobTokenId from reward lists or orders). Supports fetching the specific market for a given token. Always returns Yes TokenId + No TokenId via clobTokenIds fallback (per Polymarket SDK). Use resolve_market before trading.',
+    description: 'Fetch a single market by id, slug, url or tokenId (e.g. yes/no clobTokenId from reward lists or orders). Supports fetching the specific market for a given token. Always returns Yes TokenId + No TokenId via clobTokenIds fallback (per SDK). Use fetch_market (or internal resolver) to obtain trading tokenIds.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -393,7 +393,7 @@ const publicTools = [
   },
   {
     name: 'list_events',
-    description: 'List Polymarket events (supports categories like WEATHER, SPORTS, POLITICS, CRYPTO via filters if passed). Use for discovering weather events/markets or sports. Combine with fetch_event for details. Pass category to filter.',
+    description: 'List platform events (supports categories like WEATHER, SPORTS, POLITICS, CRYPTO via filters if passed). Use for discovering weather events/markets or sports. Combine with fetch_event for details. Pass category to filter.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -983,7 +983,7 @@ const secureTools = [
   },
   {
     name: 'create_and_post_order',
-    description: 'Recommended unified tool for placing GTC maker orders that earn Polymarket rewards. Creates and posts a limit order using the SDK. Defaults to orderType=GTC and postOnly=true (rests on book as maker, no taker fees, eligible for rewards). Use this instead of raw place_limit_order for most maker workflows.',
+    description: 'Recommended unified tool for placing GTC maker orders that earn platform rewards. Creates and posts a limit order using the SDK. Defaults to orderType=GTC and postOnly=true (rests on book as maker, no taker fees, eligible for rewards). Use this instead of raw place_limit_order for most maker workflows.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1613,11 +1613,11 @@ const secureTools = [
   },
   {
     name: 'compute_bayesian_update',
-    description: '[Utilities] Performs a precision-weighted Bayesian update (posterior = (1-w)*prior + w*signal). Useful for combining Polymarket price (prior) with external signals (Kalshi, Claude, your own research) when hunting mispriced markets for quick flips.',
+    description: '[Utilities] Performs a precision-weighted Bayesian update (posterior = (1-w)*prior + w*signal). Useful for combining platform price (prior) with external signals (Kalshi, Claude, your own research) when hunting mispriced markets for quick flips.',
     inputSchema: {
       type: 'object',
       properties: {
-        prior: { type: 'number', description: 'Current Polymarket price (0-1)' },
+        prior: { type: 'number', description: 'Current platform price (0-1)' },
         signal: { type: 'number', description: 'External probability estimate (0-1)' },
         weight: { type: 'number', description: 'How much to trust the signal (0-1). Typical: 0.3-0.6' }
       },
@@ -1640,7 +1640,7 @@ const secureTools = [
   // Agents can store full trading plans (entry, TP, SL, size, notes) server-side in the MCP.
   // This keeps the agent's context window clean and enables disciplined, rate-limit-respecting
   // execution loops (use with wait_seconds + watches). The MCP becomes the agent's "trading brain"
-  // for persistent state while respecting Polymarket rate limits.
+  // for persistent state while respecting platform rate limits.
   {
     name: 'set_strategy',
     description: '[Strategy] Create or replace a full entry (trading plan OR any operating rules/filters). This is your universal lightweight persistent store. Use for: market farming rules (quoteNearMid, bothSides, stickyReprice, lowCompOnly, maxSpreadRatio, exitConditions, etc.), liquidity/volume/spread/cost filters, preferred event categories (WEATHER, CRYPTO, best-to-high yield, etc.), custom ranking/scoring logic, 24/7 uptime params, or any other rules the agent wants to evolve. For partial changes use update_strategy (preferred for filters). Key can be a tokenId or any rule identifier (e.g. "rules:current_farming", "filter:liquidity_high", "config:best_events"). Extra fields you send are preserved.',
@@ -1740,7 +1740,7 @@ const secureTools = [
   },
   {
     name: 'send_transaction',
-    description: '[Advanced] SECURITY-SENSITIVE: Directly sends a raw transaction from the connected wallet. This bypasses all high-level Polymarket flows. Extremely dangerous. Only use with strong additional safeguards.',
+    description: '[Advanced] SECURITY-SENSITIVE: Directly sends a raw transaction from the connected wallet. This bypasses all high-level platform flows. Extremely dangerous. Only use with strong additional safeguards.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1809,7 +1809,7 @@ const PROMPTS = [
   },
   {
     name: 'mcp_llms_full_guide',
-    description: 'Returns complete guide: FIRST the official Polymarket TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by Polymarket devs; use as primary agent instructions for all SDK coverage/APIs/examples) + MCP-specific mappings (overview, startup, concepts mapped to exact native MCP tool calls + JSON examples (explicit place_* only — no intent ever for trading), strategy store as brain, live resources (incl. polymarket://mcp/llms.txt), prompts, best practices, public rules, enhanced formatter output cards (PNL in positions, sentiment/liquidity health + farm scores in markets/rewards)). Call this prompt (and structure one) first to get full guidance so agents know everything without ever guessing (SDK README for base + this for MCP). Always in sync with current tools + SDK (dynamic from code).',
+    description: 'Returns complete guide: FIRST the official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers; use as primary agent instructions for all SDK coverage/APIs/examples) + MCP-specific mappings (overview, startup, concepts mapped to exact native MCP tool calls + JSON examples (explicit place_* only — no intent ever for trading), strategy store as brain, live resources (incl. polymarket://mcp/llms.txt), prompts, best practices, public rules, enhanced formatter output cards (PNL in positions, sentiment/liquidity health + farm scores in markets/rewards)). Call this prompt (and structure one) first to get full guidance so agents know everything without ever guessing (SDK README for base + this for MCP). Always in sync with current tools + SDK (dynamic from code).',
     arguments: []
   }
 ];
@@ -1891,7 +1891,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             totalToolCalls: mcpUsageTracker.totalCalls,
             uniqueToolsUsed: mcpUsageTracker.toolCalls.size,
             perTool: perTool,
-            note: 'This tracks MCP surface usage (which tools agents call and how often). For Polymarket account activities (trades, rebates, rewards usage etc.) use list_activity or the live polymarket://user/activity resource (powered by user WS). Logs also capture activity to logs/polymarket.log (file only in MCP mode).',
+            note: 'This tracks MCP surface usage (which tools agents call and how often). For platform account activities (trades, rebates, rewards usage etc.) use list_activity or the live polymarket://user/activity resource (powered by user WS). Logs also capture activity to logs/polymarket.log (file only in MCP mode).',
           }, null, 2)
         }]
       };
@@ -2217,7 +2217,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             content: [{ type: 'text' as const, text: JSON.stringify({
               success: false, rateLimited: true, retryAfterMs: protectedCall.retryAfterMs,
               message: protectedCall.message,
-              directive: "Polymarket is rate limiting. Slow down. Do not call list_active_maker_reward_markets more than once every 4-6 seconds. Use the previous ranked list you already received."
+              directive: "Platform is rate limiting. Slow down. Do not call list_active_maker_reward_markets more than once every 4-6 seconds. Use the previous ranked list you already received."
             }) }]
           };
         }
@@ -2479,7 +2479,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (sizeOk !== null || spreadLikelyOk !== null) {
           overallEligible = (sizeOk !== false) && (spreadLikelyOk !== false);
           reason = overallEligible 
-            ? "Proposal looks compatible with typical active program rules (size + spread). Final scoring decided by Polymarket after order is live."
+            ? "Proposal looks compatible with typical active program rules (size + spread). Final scoring decided by the platform after order is live."
             : "Proposal likely violates at least one rule (size too small or price too aggressive vs current book + max spread).";
         }
 
@@ -2777,7 +2777,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             ? "Balance and allowance look usable for small maker orders."
             : [
                 "1. If allowance is low: call approve_erc20 with the correct USDC token address and a large spender amount (or the CLOB proxy).",
-                "2. If balance is low: deposit USDC into your Polymarket deposit wallet (use deposit or the deposit wallet flow).",
+                "2. If balance is low: deposit USDC into your platform deposit wallet (use deposit or the deposit wallet flow).",
                 "3. After approve/deposit: call update_balance_allowance({assetType: 'COLLATERAL'}) to sync.",
                 "4. Then retry place_maker_reward_order or place_optimized_reward_order."
               ],
@@ -3554,7 +3554,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
   if (name === 'reward_farming_best_practices') {
     content = `KEY INSIGHTS FROM X (current tactics for daily USDC LP maker rewards — incorporate directly):
 
-Polymarket runs daily USDC LP rewards for limit orders placed within a “max spread” (often shown as a blue zone in the order book).
+The platform runs daily USDC LP rewards for limit orders placed within a “max spread” (often shown as a blue zone in the order book).
 Best practices commonly mentioned:
 - Quote near the midpoint for higher reward weighting.
 - Quote both sides (Yes + No) when possible for 2x weighting.
@@ -3646,7 +3646,7 @@ Store reflections in long-term memory after sessions. Reprice and monitor contin
     content = `For quick flips on mispriced markets (aligns with external Bayesian scanners):
 1. Scan liquid opportunities: list_active_maker_reward_markets (with maxMinCostUsd) or list_markets with volume/liquidity filters for 20-80 cent range. Prioritize high volume/liquidity to avoid dead/wide spread markets.
 2. Use get_farmability(tokenId) to confirm tight spreads, liquidity (book depth), and low inventory risk before flipping.
-3. For signals: use compute_bayesian_update (prior = Polymarket price; signal = external/Kalshi/NLP estimate; weight 0.3-0.6). Flag >=5pp divergence (strong at 8pp).
+3. For signals: use compute_bayesian_update (prior = platform price; signal = external/Kalshi/NLP estimate; weight 0.3-0.6). Flag >=5pp divergence (strong at 8pp).
 4. Sizing: use suggest_qualified_size with intent="quick_flip" (hard $5 cap unless highConfidenceEdge=true for near-guaranteed edge).
 5. Prefer maker (create_and_post_order with postOnly) for cost efficiency; avoid market orders unless edge is strong.
 6. Store plan + any filters/rules in set_strategy / update_strategy (use for liquidity filters, event prefs, your own "best" logic too). Monitor with watch_order_until_filled + resources.
@@ -3717,11 +3717,10 @@ Resources for live data. The MCP provides building blocks; you run the autonomou
   };
 });
 
-// buildMcpLlmsGuide now sourced from ./mcp/llms-guide.js (per team rec: link official SDK README https://github.com/Polymarket/ts-sdk/blob/main/README.md as base agent instructions — kept up-to-date by Polymarket; this MCP adds the runtime-generated mappings/overlay for exact native calls on top of it, no stale copy, no intent for trading).
+// buildMcpLlmsGuide now sourced from ./mcp/llms-guide.js (link official SDK README https://github.com/Polymarket/ts-sdk/blob/main/README.md as base agent instructions — kept up-to-date by the maintainers; this MCP adds the runtime-generated mappings/overlay for exact native calls on top of it, no stale copy, no intent for trading).
 // Call-time delivery via prompt/resource prevents stale committed .MDs. Single source. Imported by resources.ts for polymarket://mcp/llms.txt. (Content links SDK README first + MCP specifics; hand-curated for rich guidance rather than raw auto-enum of arrays.) See top of llms-guide.ts for full "how we used it and added to MCP". The MCP uses the SDK README link for all base instructions.
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  // Use fetch_market_info if tokenIds null from list_markets.
   try {
     const uri = request.params.uri;
     const result = await resourceManager.readResource(uri);
@@ -3763,7 +3762,7 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // Startup message only on stderr — never pollute stdout
-  console.error('Polymarket MCP server listening on stdio (name=polymarket-mcp, version=1.0.0) — resources + subscriptions enabled');
+  console.error('MCP server listening on stdio (name=polymarket-mcp, version=1.0.0) — resources + subscriptions enabled');
 
   // Graceful cleanup of WebSocket subscriptions when the process exits
   const shutdown = async () => {
@@ -3777,6 +3776,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('Fatal error starting Polymarket MCP server:', error);
+  console.error('Fatal error starting MCP server:', error);
   // Do not exit hard in some hosts; let the transport close naturally
 });

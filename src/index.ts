@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Polymarket Trading Client — Production-Ready TypeScript SDK Demo
+ * Trading Client — Production-Ready TypeScript SDK Demo for the CLOB platform
  *
  * Usage examples:
  *   pnpm dev                    # runs this file (default market maker or discovery)
@@ -19,7 +19,7 @@ import { getAllPositions, setupTradingEnvironment } from './trading/positions.js
 import { runExampleMarketMaker } from './strategies/marketMaker.js';
 
 const USAGE = `
-Polymarket TS SDK Client (Unified @polymarket/client@beta)
+TS SDK Client for CLOB platform (Unified @polymarket/client@beta)
 
 One SDK for everything:
   • Gamma (markets, events, search)
@@ -48,9 +48,9 @@ async function main() {
 
   // Only log wallet when we actually have one (public commands work with zero config)
   if (env.WALLET_ADDRESS) {
-    logger.info('Polymarket Client starting', { node: process.version, wallet: env.WALLET_ADDRESS.slice(0, 8) + '...' });
+    logger.info('Client starting', { node: process.version, wallet: env.WALLET_ADDRESS.slice(0, 8) + '...' });
   } else {
-    logger.info('Polymarket Client starting (public / read-only mode)', { node: process.version });
+    logger.info('Client starting (public / read-only mode)', { node: process.version });
   }
 
   switch (cmd) {

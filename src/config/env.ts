@@ -90,7 +90,7 @@ export function requireAuthEnv(): AuthEnv {
     if (!hasAnyApiKey) {
       // Neither strategy present — tell the user both options
       const msg = [
-        'Authentication required for Polymarket MCP.',
+        'Authentication required for MCP.',
         'You must provide wallet credentials + at least ONE of the following API key strategies:',
         '',
         'Option A — Relayer (recommended for gasless trading on verified accounts):',
@@ -107,7 +107,7 @@ export function requireAuthEnv(): AuthEnv {
     }
 
     // Wallet was the problem (or partial keys)
-    const msg = `Authentication required for Polymarket MCP. Missing/invalid wallet or API key config. Errors: ${JSON.stringify(errors)}`;
+    const msg = `Authentication required for MCP. Missing/invalid wallet or API key config. Errors: ${JSON.stringify(errors)}`;
     throw new Error(msg);
   }
 
