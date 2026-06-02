@@ -104,7 +104,7 @@ See previous sessions and the test driver patterns used:
 1. Call the MCP `prompts/get` for `"mcp_llms_full_guide"` (full .md llms.txt-style concepts-to-tools mapping, no guessing, no intent) **and** `"mcp_tool_structure_and_categories"`.
 2. Call `"reward_farming_best_practices"` (and `"mispricing_quick_flips"` if relevant).
 3. Call `list_tool_categories`.
-4. Call `get_tools_by_category` for needed groups (e.g., "Rewards", "Discovery", "Strategy").
+4. Call `get_tools_by_category` for needed groups (e.g., "Rewards", "Discovery", "Strategy"). Use "Meta" for get_mcp_usage (activities/usage tracking).
 5. Call `get_strategies()` with no arguments to load your full current rules/filters from the store.
 6. (For observability) Call `get_mcp_usage` to inspect tracked MCP activities and tool usage.
 7. From then on: always start loops with `get_strategies()`, use categories for discovery, follow every `agentDirective` in tool responses exactly, use `wait_seconds` for discipline. Use the live resource `polymarket://mcp/llms.txt` for the same guide as markdown if preferred.

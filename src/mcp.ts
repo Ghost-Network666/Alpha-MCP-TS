@@ -313,6 +313,7 @@ function getToolsByCategory(category: string) {
     if (catLower === 'trading' && /place|order|cancel|maker/i.test(desc)) return true;
     if (catLower === 'discovery' && /list_market|fetch_market|search/i.test(desc)) return true;
     if (catLower === 'advanced' && /security-sensitive|sign_|send_transaction|prepare_|deploy_|end_authentication|get_secure_client_info|advanced/i.test(desc)) return true;
+    if (catLower === 'meta' && /\[meta\]|meta|usage|track|discover/i.test(desc)) return true;
     return false;
   });
 }
@@ -327,6 +328,7 @@ function listAllCategories() {
     'Discovery',
     'Trading',
     'Analytics',
+    'Meta',       // Meta tools for discovery, usage tracking (get_mcp_usage), etc.
     'Advanced'  // Low-level, security-sensitive, prepare workflows. Load only if needed to keep default surface lightweight.
   ];
 }
@@ -337,12 +339,12 @@ const publicTools = [
   // === Category Discovery Tools (added to solve 100+ tool bloat) ===
   {
     name: 'list_tool_categories',
-    description: '[Meta] Lists the available tool categories. This MCP intentionally exposes only a small core set of tools by default (~8) to keep things fast and structured for the agent. Use this + get_tools_by_category to load additional tools when you need them. The MCP does NOT guide your strategy — it only provides structured access to capabilities.',
+    description: '[Meta] Lists the available tool categories. This MCP intentionally exposes only a small core set of tools by default (~8) to keep things fast and structured for the agent. Use this + get_tools_by_category to load additional tools when you need them. Includes Meta category for get_mcp_usage (tracks activities and usage). The MCP does NOT guide your strategy — it only provides structured access to capabilities.',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'get_tools_by_category',
-    description: '[Meta] Returns tools for a specific category only. This is the main way to expand your available tools without being overwhelmed by 100+ at once. Categories include: Rewards, Strategy, Account, Trading, Discovery, Analytics, Utilities, Advanced (low-level/signing/prepare only when needed).',
+    description: '[Meta] Returns tools for a specific category only. This is the main way to expand your available tools without being overwhelmed by 100+ at once. Categories include: Rewards, Strategy, Account, Trading, Discovery, Analytics, Utilities, Meta (discovery + get_mcp_usage for activities/usage tracking), Advanced (low-level/signing/prepare only when needed).',
     inputSchema: {
       type: 'object',
       properties: {

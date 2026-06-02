@@ -180,6 +180,6 @@ For code changes: follow AGENTS.md mandatory reads + research + pre-commit /revi
 
 `;
 
-  md += "\n\n## Current Categories (runtime authoritative via list_tool_categories)\nRewards | Strategy | Account | Utilities | Discovery | Trading | Analytics | Advanced\n\n## Notes\n- Tools/prompts evolve; always refresh via prompts/get and categories for latest.\n- Official reference: https://docs.polymarket.com/llms.txt + linked .md (concepts, trading/*, market-makers/*, rewards api etc).\n- This MCP mapping ensures native use without ever guessing which tool or arg shape.";
+  md += "\n\n## Current Categories (runtime authoritative via list_tool_categories)\nRewards | Strategy | Account | Utilities | Discovery | Trading | Analytics | Meta (get_mcp_usage for MCP activities/usage tracking) | Advanced\n\n## Notes\n- Tools/prompts evolve; always refresh via prompts/get and categories for latest.\n- Official reference: https://docs.polymarket.com/llms.txt + linked .md (concepts, trading/*, market-makers/*, rewards api etc).\n- This MCP mapping ensures native use without ever guessing which tool or arg shape.";
   return md;
 }
