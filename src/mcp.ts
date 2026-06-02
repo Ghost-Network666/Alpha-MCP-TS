@@ -323,7 +323,7 @@ function getToolsByCategory(category: string) {
 }
 
 function listAllCategories() {
-  // Source of truth for categories is in llms-guide.ts (for the non-stale llms.txt-style guide).
+  // Source of truth for categories is in llms-guide.ts (for the non-stale guide: SDK README first + MCP mappings).
   // This ensures the documented concepts in the MCP's llms guide stay in sync with runtime discovery.
   return [...MCP_CATEGORIES];
 }
@@ -1809,7 +1809,7 @@ const PROMPTS = [
   },
   {
     name: 'mcp_llms_full_guide',
-    description: 'Returns a complete, up-to-date llms.txt-style markdown guide for this MCP (inspired by https://docs.polymarket.com/llms.txt). Includes overview, startup, concepts (markets, positions, order lifecycle, prices/orderbook, rewards/rebates, trading) mapped to exact native MCP tool calls + JSON examples (explicit place_* only — no intent ever for trading), strategy store as brain, live resources (incl. polymarket://mcp/llms.txt), prompts, best practices, public rules, enhanced formatter output cards (PNL in positions, sentiment/liquidity health + farm scores in markets/rewards). Call this prompt (and structure one) first to get full non-stale .md guidance so agents know everything without ever guessing. Always in sync with current tools (dynamic from code).',
+    description: 'Returns complete guide: FIRST the official Polymarket TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by Polymarket devs; use as primary agent instructions for all SDK coverage/APIs/examples) + MCP-specific mappings (overview, startup, concepts mapped to exact native MCP tool calls + JSON examples (explicit place_* only — no intent ever for trading), strategy store as brain, live resources (incl. polymarket://mcp/llms.txt), prompts, best practices, public rules, enhanced formatter output cards (PNL in positions, sentiment/liquidity health + farm scores in markets/rewards)). Call this prompt (and structure one) first to get full guidance so agents know everything without ever guessing (SDK README for base + this for MCP). Always in sync with current tools + SDK (dynamic from code).',
     arguments: []
   }
 ];
@@ -3717,8 +3717,8 @@ Resources for live data. The MCP provides building blocks; you run the autonomou
   };
 });
 
-// buildMcpLlmsGuide now sourced from ./mcp/llms-guide.js (we used https://docs.polymarket.com/llms.txt as the basis for concepts + .MD style; added as runtime-generated prompt + resource with exact native MCP mappings, no stale copy, no intent for trading).
-// Call-time delivery via prompt/resource prevents stale committed .MDs. Single source. Imported by resources.ts for polymarket://mcp/llms.txt. (Content is hand-curated for rich guidance rather than raw auto-enum of arrays.) See top of llms-guide.ts for full "how we used it and added to MCP".
+// buildMcpLlmsGuide now sourced from ./mcp/llms-guide.js (per team rec: link official SDK README https://github.com/Polymarket/ts-sdk/blob/main/README.md as base agent instructions — kept up-to-date by Polymarket; this MCP adds the runtime-generated mappings/overlay for exact native calls on top of it, no stale copy, no intent for trading).
+// Call-time delivery via prompt/resource prevents stale committed .MDs. Single source. Imported by resources.ts for polymarket://mcp/llms.txt. (Content links SDK README first + MCP specifics; hand-curated for rich guidance rather than raw auto-enum of arrays.) See top of llms-guide.ts for full "how we used it and added to MCP". The MCP uses the SDK README link for all base instructions.
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   // Use fetch_market_info if tokenIds null from list_markets.

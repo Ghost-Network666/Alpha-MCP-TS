@@ -83,8 +83,8 @@ export const STATIC_RESOURCES = [
   },
   {
     uri: 'polymarket://mcp/llms.txt',
-    name: 'MCP Full Usage Guide (llms.txt style)',
-    description: 'Complete, up-to-date markdown guide for agents (inspired by Polymarket llms.txt). Call prompts/get "mcp_llms_full_guide" or read this resource for full non-stale instructions on using all tools, native calls, strategy store, without guessing. Always in sync.',
+    name: 'MCP Full Usage Guide (SDK README + MCP mappings)',
+    description: 'Complete guide: first link the official Polymarket TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by Polymarket devs for all SDK coverage) as base agent instructions, then MCP-specific mappings (exact native tool calls, no guessing, strategyStore, cards, etc.). Call prompts/get "mcp_llms_full_guide" or read this resource. Always in sync with code + SDK.',
     mimeType: 'text/markdown',
   },
 ];
@@ -342,8 +342,8 @@ export class PolymarketResourceManager {
 
       case 'mcp': {
         if (parsed.subPath === 'llms.txt' || parsed.subPath === 'usage.md') {
-          // Full dynamic non-stale llms.txt-style guide (same builder as the prompt).
-          // Imported cleanly from sibling llms-guide.js (no cycle, always in sync with tools/prompts).
+          // Full dynamic guide: SDK README link first (https://github.com/Polymarket/ts-sdk/blob/main/README.md as primary agent instructions per team — kept up-to-date) + MCP mappings (same builder as the prompt).
+          // Imported cleanly from sibling llms-guide.js (no cycle, always in sync with tools/prompts + SDK).
           const guide = buildMcpLlmsGuide();
           return {
             contents: [{
