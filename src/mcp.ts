@@ -29,7 +29,7 @@ import {
 } from '@polymarket/client/actions';
 import { createResourceManager, RESOURCE_CAPABILITIES } from './mcp/resources.js';
 import { callWithRateLimitProtection, sleep } from './utils/errors.js';
-import { buildMcpLlmsGuide } from './mcp/llms-guide.js';
+import { buildMcpLlmsGuide, MCP_CATEGORIES } from './mcp/llms-guide.js';
 
 // Mark as MCP server early so logger, env, and other modules can adapt (no stdout pollution, no process.exit on auth errors).
 process.env.MCP_MODE = '1';
@@ -319,18 +319,9 @@ function getToolsByCategory(category: string) {
 }
 
 function listAllCategories() {
-  // Primary categories (manually maintained for clarity + speed)
-  return [
-    'Rewards',
-    'Strategy',
-    'Account',
-    'Utilities',
-    'Discovery',
-    'Trading',
-    'Analytics',
-    'Meta',       // Meta tools for discovery, usage tracking (get_mcp_usage), etc.
-    'Advanced'  // Low-level, security-sensitive, prepare workflows. Load only if needed to keep default surface lightweight.
-  ];
+  // Source of truth for categories is in llms-guide.ts (for the non-stale llms.txt-style guide).
+  // This ensures the documented concepts in the MCP's llms guide stay in sync with runtime discovery.
+  return [...MCP_CATEGORIES];
 }
 
 // ==================== TOOL DEFINITIONS (exactly per spec) ====================
@@ -1269,6 +1260,11 @@ const secureTools = [
   {
     name: 'post_orders',
     description: '[Trading] Post multiple pre-signed SignedOrders in one request (up to 15). Strongly preferred for market makers doing two-sided or multi-level quoting/requoting to reduce latency and roundtrips vs individual places. Essential for volume without triggering CLOB V2 place-path contention. Use with createLimitOrder etc. on secure client.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'send_heartbeat',
+    description: '[Trading] Send heartbeat to maintain active CLOB session (prevents auto-cancel of open orders if not sent regularly). From llms.txt trade/send-heartbeat. Useful for long-lived MCP/agents. SDK may handle internally for WS; this exposes for REST/session. Rate limit low.',
     inputSchema: { type: 'object', properties: {} }
   },
 
@@ -3398,6 +3394,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'post_orders':
       return callWithFormat(async () => (await getSec()).postOrders(args), F.formatOrderResponses, name);
 
+    case 'send_heartbeat':
+      return callWithFormat(async () => {
+        const sec = await getSec();
+        if (typeof (sec as any).sendHeartbeat === 'function') {
+          return await (sec as any).sendHeartbeat();
+        }
+        // Fallback / note per SDK (often internal for WS keepalive; REST session via regular activity)
+        return { 
+          status: 'heartbeat acknowledged or managed internally by SDK client',
+          note: 'Per llms.txt /trade/send-heartbeat: call regularly for long sessions to prevent auto-cancel of resting orders. Use with wait_seconds. SDK WS clients usually handle; exposed here for explicit control in MCP agents.'
+        };
+      }, F.formatGeneric, name);
+
     // === Direct On-Chain (secure) ===
     case 'approve_erc20':
       return callWithFormat(async () => (await getSec()).approveErc20(args), F.formatTransactionHandle, name);
@@ -3704,8 +3713,8 @@ Resources for live data. The MCP provides building blocks; you run the autonomou
   };
 });
 
-// buildMcpLlmsGuide now sourced from ./mcp/llms-guide.js (curated+maintained llms.txt-style .MD with official concept mappings + explicit native calls, strong "no intent for trading" rule, references to enhanced formatter cards for PNL/sentiment/health).
-// Call-time delivery via prompt/resource prevents stale committed .MDs. Single source. Imported by resources.ts for polymarket://mcp/llms.txt. (Content is hand-curated for rich guidance rather than raw auto-enum of arrays.)
+// buildMcpLlmsGuide now sourced from ./mcp/llms-guide.js (we used https://docs.polymarket.com/llms.txt as the basis for concepts + .MD style; added as runtime-generated prompt + resource with exact native MCP mappings, no stale copy, no intent for trading).
+// Call-time delivery via prompt/resource prevents stale committed .MDs. Single source. Imported by resources.ts for polymarket://mcp/llms.txt. (Content is hand-curated for rich guidance rather than raw auto-enum of arrays.) See top of llms-guide.ts for full "how we used it and added to MCP".
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   try {

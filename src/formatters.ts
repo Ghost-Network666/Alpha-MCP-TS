@@ -1241,7 +1241,7 @@ export function formatPnlSummary(positions: any[]): object {
     'Total Unrealized (est)': formatDecimal(totalUnrealEst),
     'Grand Total PnL (est)': formatDecimal(grand),
     'Status': grand > 0.01 ? '🟢 Overall profitable' : (grand < -0.01 ? '🔴 Overall underwater' : '⚪ Flat'),
-    'Note': 'Unrealized is estimate (size × (curPx - avgPx)). For live prices use fetch_midpoint or order book. See list_activity for rebate/ reward contributions to realized.',
+    'Note': 'Unrealized is estimate (size × (curPx - avgPx)). For live prices use fetch_midpoint or order book. See list_activity + get_mcp_usage (for MCP surface usage) for rebate/reward contributions + overall activity/usage tracking. Enhanced via llms.txt concepts mapping.',
   });
 }
 

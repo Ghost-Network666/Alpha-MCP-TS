@@ -1,12 +1,27 @@
 // src/mcp/llms-guide.ts
 // Call-time delivered non-stale .md style guide for agents (llms.txt inspired).
-// Inspired by https://docs.polymarket.com/llms.txt (curated index of official Polymarket concepts, trading, rewards, orderbook, etc. in .MD form for LLMs).
-// Purpose: Agents using this MCP get a fresh, always-in-sync (call-time) markdown document via prompts/get "mcp_llms_full_guide"
-// (or read resource polymarket://mcp/llms.txt) that maps official concepts directly to *exact* native MCP tool calls + patterns.
-// Content is curated+maintained alongside the MCP surface (tools, categories, cards, rules) so it stays accurate; not a raw auto-dump (rich explanations + "how to call" matter more than exhaustive enum).
-// This replaces reliance on stale local .MDs. Agents must load this (and mcp_tool_structure_and_categories) first.
-// CRITICAL: No "intent" layers for trading. All trading is explicit place_limit_order / place_market_order / place_maker_reward_order with concrete args.
-// The strategy store holds your policy/brains; MCP is pure building blocks (official SDK only).
+// We DID use https://docs.polymarket.com/llms.txt : its curated .md index structure and list of official concepts (Markets & Events, Order Lifecycle, Positions & Tokens, Prices & Orderbook, Rewards/Maker Rebates, Trading, Clients/SDKs, Rate Limits, Error Codes, Matching Engine, etc.) was the direct basis/template for the section "## Official Polymarket Concepts (from llms.txt + linked .md) — Exact MCP Native Mappings".
+// How added to the MCP (instead of stale .MD files):
+// - Dedicated src/mcp/llms-guide.ts with buildMcpLlmsGuide() that produces full .MD at *runtime* (call-time, so never stale).
+// - Registered as MCP Prompt "mcp_llms_full_guide" (agents do prompts/get) and Resource "polymarket://mcp/llms.txt" (agents list/read_resource/subscribe).
+// - The content does NOT copy the link list (that would stale); instead, it provides rich, MCP-specific mappings: for each official concept, the exact native tool(s) + JSON call shape + "use explicit place_* , never intent" warnings + cross to strategyStore, resources, cards, get_mcp_usage for tracking.
+// - Imported in mcp.ts (for PROMPTS + GetPrompt dispatch + build) and resources.ts (for the URI handler).
+// - Heavily referenced/required in AGENTS.md (mandatory reads), mcp_tool_structure_and_categories prompt, README, etc. Agents told to load it first.
+// - Categories list moved to be exported from here and used by runtime list_tool_categories for sync.
+// - Updated for no-intent trading, CLOB v2 requoting, usage tracking, etc.
+// This gives agents the "how to use the MCP without ever guessing" in official .MD style, using only native SDK explicit calls.
+
+export const MCP_CATEGORIES = [
+  'Rewards',
+  'Strategy',
+  'Account',
+  'Utilities',
+  'Discovery',
+  'Trading',
+  'Analytics',
+  'Meta',       // get_mcp_usage for MCP activities/usage tracking
+  'Advanced'    // Low-level, security-sensitive, prepare workflows.
+];
 
 export function buildMcpLlmsGuide(): string {
   // Built at call time (prompts/get or the mcp/llms.txt resource) to avoid stale committed .MD files.
@@ -157,6 +172,15 @@ list_resources / read_resource / subscribe / unsubscribe.
 Server pushes notifications on change. Read gives formatted cards.
 
 MCP surface activities/usage (tool calls by agents) are tracked internally via get_mcp_usage tool (call counts, last used, total since start). Polymarket-side activities and "usage" (trades, MAKER_REBATE, rewards, etc.) via list_activity + live user/activity resource + earnings tools.
+
+### Rate Limits & Session Management (from llms.txt + api-ref/rate-limits, trade/send-heartbeat, matching-engine)
+Official: https://docs.polymarket.com/api-reference/rate-limits.md , trade/send-heartbeat.md , matching-engine.md , error-codes.
+- All limits are Cloudflare-enforced: exceeding causes *throttling/queuing* (added latency, e.g. place 400ms+) rather than immediate 429 in many cases. Per-account effects possible for heavy requoting.
+- POST /order burst ~5k/10s, sustained lower; general CLOB 9k/10s etc. (check live with tools if needed).
+- Use \`wait_seconds\` (core tool) between mutations. Our get_mcp_usage helps monitor your own call rates.
+- Send heartbeat (to keep session, prevent auto-cancel of open orders): use the \`send_heartbeat\` tool if exposed, or rely on SDK WS client internals + long-lived MCP.
+- Matching engine restarts: expect 425 "Too Early", post-only mode (use postOnly: true), cancel-only. Handle with backoff + our agentDirectives.
+- In strategyStore: track your rates, e.g. "myCallRate": {...}, backoff on slow places (see CLOB v2 requoting note).
 
 ## Best Practices & Public Rules (Never Guess)
 - Startup seq + get_strategies() first every autonomous loop.

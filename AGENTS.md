@@ -90,7 +90,7 @@ See previous sessions and the test driver patterns used:
 - Always `npm run build`.
 - Load the MCP (`node dist/mcp.js`) over stdio.
 - Perform full handshake (initialize + notifications/initialized).
-- Call `list_tool_categories`, `get_tools_by_category`, `prompts/list`, `prompts/get "mcp_tool_structure_and_categories"`.
+- Call `list_tool_categories`, `get_tools_by_category`, `get_mcp_usage`, `prompts/list`, `prompts/get "mcp_tool_structure_and_categories"`.
 - Exercise the new/ changed tool (e.g. `list_markets` with `clobTokenIds`, `fetch_market` with `tokenId`).
 - Assert that the response contains the expected data and follows the lightweight contract.
 - Use real tokens from `listAllMarkets` or `list_active_maker_reward_markets` for tests.
