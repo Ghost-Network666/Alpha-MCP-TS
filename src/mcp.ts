@@ -24,6 +24,8 @@ import {
   createOrDeriveApiKey,
   fetchApiKeys,
   deleteApiKey,
+  fetchBalanceAllowance,
+  updateBalanceAllowance,
 } from '@polymarket/client/actions';
 import { createResourceManager, RESOURCE_CAPABILITIES } from './mcp/resources.js';
 import { callWithRateLimitProtection, sleep } from './utils/errors.js';
@@ -2141,14 +2143,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'list_active_maker_reward_markets': {
       // PRIMARY tool for autonomous reward market selection. Ultra-tiny by design.
       // Default: top 5 ranked only (max 8). If you ever see >5k chars, restart your MCP server process.
-      const maxResults = Math.min(Math.max(1, args.maxResults || 5), 8);
+      const maxResults = Math.min(Math.max(1, args.maxResults || 5), 20);  // raised cap for relaxed discovery
       const maxMinSize = args.maxMinSize != null ? parseFloat(args.maxMinSize) : null;
       const maxMinCostUsd = args.maxMinCostUsd != null ? parseFloat(args.maxMinCostUsd) : null;
 
       let rewardItems: any[] = [];
       try {
         const protectedCall = await callWithRateLimitProtection(
-          () => pub.listCurrentRewards({ pageSize: Math.min(30, maxResults * 2) }),
+          () => pub.listCurrentRewards({ pageSize: 50 }),  // always fetch a healthy page to support relaxed filters / more programs
           'listCurrentRewards (active reward markets)'
         );
         if (!protectedCall.ok) {
@@ -2172,7 +2174,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           });
         }
 
-        rewardItems = items.slice(0, maxResults);
+        rewardItems = items;  // consider full page after basic filter; final top-N after ranking below
       } catch (e: any) {
         return {
           content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: "Failed to fetch current reward programs", detail: e?.message || String(e) }) }]
@@ -2183,9 +2185,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return {
           content: [{ type: 'text' as const, text: JSON.stringify({
             success: true,
-            message: "No active maker reward programs right now.",
+            count: 0,
+            message: "No active maker reward programs returned by listCurrentRewards (even after fetching 50 and applying any relaxed maxMin* filters you passed).",
             markets: [],
-            directive: "No opportunities. Wait and retry later or check back with this tool."
+            note: "Maker reward campaigns are time-limited and not always active. Relaxed filters on this tool only filter existing programs; they cannot invent programs if upstream listCurrentRewards returns none.",
+            suggestions: [
+              "Call the raw 'list_current_rewards' tool directly to see current response.",
+              "Use list_markets({ rewardsMinSize: 1, closed: false, pageSize: 20 }) to discover markets that support/have had rewards (may not have live rate right now).",
+              "Cross-check https://polymarket.com/ or rewards dashboards for live campaigns.",
+              "Poll this tool periodically (with wait_seconds between calls)."
+            ],
+            directive: "No current maker-reward-eligible markets. Switch to general discovery (list_markets or search) or wait for new programs. Do not keep calling with same params expecting different results."
           }) }]
         };
       }
@@ -2664,7 +2674,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         let data: any;
         try {
           const balRes = await callWithRateLimitProtection(
-            () => sec.fetchBalanceAllowance({ assetType }),
+            () => fetchBalanceAllowance(sec, { assetType }),
             'fetchBalanceAllowance'
           );
           if (!balRes.ok) {
@@ -3341,7 +3351,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // === Account / Wallet Additional (secure) ===
     case 'update_balance_allowance':
-      return callWithFormat(async () => (await getSec()).updateBalanceAllowance(args), F.formatGeneric, name);
+      return callWithFormat(async () => {
+        const sec = await getSec();
+        return updateBalanceAllowance(sec, args || {});
+      }, F.formatGeneric, name);
     case 'deploy_deposit_wallet':
       return callWithFormat(async () => (await getSec()).deployDepositWallet(), F.formatTransactionHandle, name);
     case 'download_accounting_snapshot':
