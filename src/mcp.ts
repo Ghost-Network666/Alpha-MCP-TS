@@ -31,12 +31,16 @@ import { callWithRateLimitProtection, sleep } from './utils/errors.js';
 process.env.MCP_MODE = '1';
 process.env.MCP_SERVER = 'true';
 
-// === Simple in-memory strategy store for autonomous agents ===
-// Allows agents to persist trading plans (entry, TP, SL, size, notes) across tool calls
-// without bloating their context window. Keyed by tokenId (or can be extended).
-// This gives agents a real advantage for disciplined SL/TP and strategy execution
-// while the MCP handles rate limiting and backoffs.
-const strategyStore = new Map<string, any>(); // tokenId -> strategy object
+// === Simple in-memory strategy / rules / config store for autonomous agents (lightweight by design) ===
+// The core reason the MCP can stay tiny (~8-9 default tools via categories) while giving the agent
+// full power to dynamically manage *anything*: filters (liquidity, volume, spread, cost), operating rules,
+// which events/categories, "best to high" ranking prefs, market farming rules (quote near mid, both sides,
+// sticky, low-comp, exit conditions, 24/7 params), custom scoring, preferred markets, etc.
+// Agent stores/evolves its own rules here using any key (e.g. "rules:current_farming", "filter:liquidity_high",
+// "config:best_events", "global:operating_rules", or a tokenId). No extra tools = lightweight.
+// Partial updates via update_strategy; retrieve all with get_strategies (no args).
+// Persist critical long-term ones to your memory layer (e.g. Honcho). Lost on MCP restart otherwise.
+const strategyStore = new Map<string, any>(); // key (tokenId or ruleKey) -> arbitrary object the agent owns
 function getStrategyKey(tokenId: string, market?: string) {
   return market ? `${tokenId}:${market}` : tokenId;
 }
@@ -1584,26 +1588,28 @@ const secureTools = [
   // for persistent state while respecting Polymarket rate limits.
   {
     name: 'set_strategy',
-    description: '[Strategy] Create or fully replace a trading plan. For editing specific fields (TP, SL, entry, size, notes, etc.) use the preferred `update_strategy` tool instead — it makes adapting filters much easier without resending everything.',
+    description: '[Strategy] Create or replace a full entry (trading plan OR any operating rules/filters). This is your universal lightweight persistent store. Use for: market farming rules (quoteNearMid, bothSides, stickyReprice, lowCompOnly, maxSpreadRatio, exitConditions, etc.), liquidity/volume/spread/cost filters, preferred event categories (WEATHER, CRYPTO, best-to-high yield, etc.), custom ranking/scoring logic, 24/7 uptime params, or any other rules the agent wants to evolve. For partial changes use update_strategy (preferred for filters). Key can be a tokenId or any rule identifier (e.g. "rules:current_farming", "filter:liquidity_high", "config:best_events"). Extra fields you send are preserved.',
     inputSchema: {
       type: 'object',
       properties: {
-        tokenId: { type: 'string', description: 'The Yes or No tokenId this strategy applies to' },
-        market: { type: 'string', description: 'Optional slug/conditionId for easier grouping' },
+        tokenId: { type: 'string', description: 'Key for this entry: tokenId, or any rule/config key like "rules:farming_v2" or "global:filters"' },
+        market: { type: 'string', description: 'Optional grouping (or sub-key)' },
         entryPrice: { type: 'number' },
         takeProfitPrice: { type: 'number' },
         stopLossPrice: { type: 'number' },
         size: { type: 'number' },
         side: { type: 'string', enum: ['BUY', 'SELL'] },
-        notes: { type: 'string', description: 'Your full plan (e.g. "Spread capture on Jesus Christ — entry 0.48, TP 0.52, SL 0.44, $5 size")' },
-        maxWaitSecondsBetweenChecks: { type: 'number', description: 'Suggested backoff for monitoring loops (use wait_seconds tool)' }
+        notes: { type: 'string' },
+        maxWaitSecondsBetweenChecks: { type: 'number' },
+        // Any additional fields the agent sends (liquidityMin, preferredCategories, farmingRules, bestToHighThreshold, quoteNearMid, etc.) are stored as-is.
       },
-      required: ['tokenId']
+      required: ['tokenId'],
+      additionalProperties: true
     }
   },
   {
     name: 'get_strategies',
-    description: '[Strategy] Retrieve your stored strategies. Core tool for maintaining your own plans across steps.',
+    description: '[Strategy] Retrieve ALL your stored strategies, rules, filters, and operating configs. Call with no args to get your complete current rule set (farming rules, liquidity filters, event prefs, everything). Core tool — this is how the agent loads its own evolved logic at the start of loops without any MCP bloat.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1614,7 +1620,7 @@ const secureTools = [
   },
   {
     name: 'clear_strategy',
-    description: 'Delete a stored strategy (call after full execution or when abandoning the plan).',
+    description: 'Delete a stored strategy or rule set (e.g. after abandoning a filter preset or farming rule version).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1626,12 +1632,12 @@ const secureTools = [
   },
   {
     name: 'update_strategy',
-    description: '[Strategy] Edit specific fields of an existing strategy (TP, SL, entry, size, notes, etc.) without resending the whole plan. This is the easiest way for the agent to adapt filters, stop-loss, take-profit, or any other parameter dynamically. Only the provided fields are updated.',
+    description: '[Strategy] THE KEY TOOL for lightweight power: partial update any fields on an existing entry (or create). Perfect for dynamically evolving filters, operating rules, market farming rules, liquidity thresholds, event category lists, "best to high" params, exit conditions, quoteNearMid toggles, etc. Only provided fields change; everything else (including prior custom rules) is preserved. Use keys like "rules:current", "filter:liquidity". This (plus categories + prompts) is why the MCP can stay tiny while the agent fully controls its strategy.',
     inputSchema: {
       type: 'object',
       properties: {
-        tokenId: { type: 'string', description: 'The tokenId of the strategy to update' },
-        market: { type: 'string', description: 'Optional market key if used when storing' },
+        tokenId: { type: 'string', description: 'Key of the entry to update (tokenId or rule key like "rules:farming")' },
+        market: { type: 'string' },
         entryPrice: { type: 'number' },
         takeProfitPrice: { type: 'number' },
         stopLossPrice: { type: 'number' },
@@ -1639,8 +1645,10 @@ const secureTools = [
         side: { type: 'string', enum: ['BUY', 'SELL'] },
         notes: { type: 'string' },
         maxWaitSecondsBetweenChecks: { type: 'number' }
+        // Send ANY other fields (liquidityMinUsd, maxSpreadRatio, preferredCategories, bothSides, sticky, lowCompetitionOnly, farmingExitRules, etc.) — they will be merged/persisted.
       },
-      required: ['tokenId']
+      required: ['tokenId'],
+      additionalProperties: true
     }
   },
 
@@ -2892,7 +2900,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case 'set_strategy': {
       const key = getStrategyKey(args.tokenId, args.market);
-      const strategy = {
+      // General-purpose store: preserve ALL fields the agent sends (trading + arbitrary rules/filters/configs).
+      // This is the lightweight mechanism that lets the agent own every filter, farming rule, event pref, etc.
+      // without requiring dozens of dedicated MCP tools.
+      const strategy: any = {
         tokenId: args.tokenId,
         market: args.market || null,
         entryPrice: args.entryPrice ?? null,
@@ -2904,16 +2915,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         maxWaitSecondsBetweenChecks: args.maxWaitSecondsBetweenChecks ?? 30,
         updatedAt: new Date().toISOString()
       };
+      // Attach every extra property the agent provided (liquidity filters, farming rules, categories, thresholds, etc.)
+      Object.keys(args).forEach((k) => {
+        if (!['tokenId', 'market', 'entryPrice', 'takeProfitPrice', 'stopLossPrice', 'size', 'side', 'notes', 'maxWaitSecondsBetweenChecks'].includes(k)) {
+          strategy[k] = args[k];
+        }
+      });
       strategyStore.set(key, strategy);
       return {
         content: [{
           type: 'text' as const,
           text: JSON.stringify({
             success: true,
-            message: "Strategy stored in MCP (persistent for this session).",
+            message: "Strategy / rules / config stored (persistent for this session). Use for any filters or operating rules.",
             key,
             strategy,
-            directive: "Use get_strategies to recall it. Combine with watch_order_until_filled, watch_order_scoring, and wait_seconds for autonomous execution within rate limits."
+            directive: "Use get_strategies (no args) to load your full current rule set. This is how you evolve filters, farming rules, event prefs etc. without bloating the MCP."
           }, null, 0)
         }]
       };
@@ -2934,7 +2951,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             success: true,
             count: results.length,
             strategies: results,
-            note: "These are your stored plans. Use them to drive disciplined SL/TP and entry logic without losing state between steps."
+            note: "Your complete persisted rules, filters, farming configs, event preferences, and trading plans. Call with no args to load everything the agent has evolved. This is the lightweight source of truth for all your operating rules."
           }, null, 0)
         }]
       };
@@ -2957,6 +2974,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case 'update_strategy': {
       const key = getStrategyKey(args.tokenId, args.market);
+      // Start from whatever exists (may contain custom rules/filters the agent previously stored)
       const existing = strategyStore.get(key) || {
         tokenId: args.tokenId,
         market: args.market || null,
@@ -2970,18 +2988,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         updatedAt: new Date().toISOString()
       };
 
-      // Merge only the provided fields (partial update)
-      const updated = {
-        ...existing,
-        ...(args.entryPrice !== undefined && { entryPrice: args.entryPrice }),
-        ...(args.takeProfitPrice !== undefined && { takeProfitPrice: args.takeProfitPrice }),
-        ...(args.stopLossPrice !== undefined && { stopLossPrice: args.stopLossPrice }),
-        ...(args.size !== undefined && { size: args.size }),
-        ...(args.side !== undefined && { side: args.side }),
-        ...(args.notes !== undefined && { notes: args.notes }),
-        ...(args.maxWaitSecondsBetweenChecks !== undefined && { maxWaitSecondsBetweenChecks: args.maxWaitSecondsBetweenChecks }),
-        updatedAt: new Date().toISOString()
-      };
+      // General partial merge: every provided arg (except the key fields) + preserve ALL prior custom fields.
+      // This is the lightweight "update any filter or rule" primitive the agent relies on.
+      const updated: any = { ...existing, updatedAt: new Date().toISOString() };
+
+      // Overlay every field the agent actually sent in this call
+      Object.keys(args).forEach((k) => {
+        if (k !== 'tokenId' && k !== 'market') {
+          updated[k] = args[k];
+        }
+      });
 
       strategyStore.set(key, updated);
 
@@ -2990,10 +3006,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           type: 'text' as const,
           text: JSON.stringify({
             success: true,
-            message: "Strategy updated (only provided fields changed).",
+            message: "Entry updated (partial; all custom rules/filters preserved and new ones merged).",
             key,
             strategy: updated,
-            directive: "Use get_strategies to confirm. Continue using suggest_qualified_size + get_farmability for ongoing decisions."
+            directive: "Use get_strategies (no args) to see your full current set of filters, farming rules, event prefs, etc. This mechanism keeps the entire MCP lightweight while giving you complete control over every operating rule."
           }, null, 0)
         }]
       };
@@ -3474,14 +3490,14 @@ Use (simple native tools for easy agent work, all SDK under the hood):
 - list_tool_categories + get_tools_by_category("Rewards") for discovery (keeps surface tiny).
 - get_farmability(tokenId) as PRIMARY pre-farm check (SDK fetchOrderBook + listMarketRewards + fetchSpreads; now includes near-mid suggestions, spread vs allowed, depth, competitionSignal, score).
 - suggest_qualified_size for correct sizing per rules (no artificial caps for makers).
-- set_strategy / update_strategy / get_strategies for your plans (easy partial edits to filters/TP/SL without full resend).
+- set_strategy / update_strategy / get_strategies (THE lightweight mechanism for ALL your dynamic rules): persist and evolve filters (liquidity, volume, spread, cost, maxMinCostUsd), operating rules, which events/categories, "best to high" ranking/scoring, market farming rules (quoteNearMid, bothSides2x, stickyAutoRepeg, lowCompetitionFocus, avoidNearResolution, timeSizeWeighted, 24/7Params, adverseSelectionExit, etc.), exit conditions, preferred "best events", custom yield thresholds — everything. Use descriptive keys ("rules:current_farming", "filter:liquidity_strict", "config:best_to_high"). Call get_strategies() with no arguments to load your full current rule set at the start of every loop. update_strategy for cheap partial changes.
 - list_active_maker_reward_markets (core, ranked, tiny, with yes/no + real USD costs + mids).
 - compute_bayesian_update if combining with mispricing signals.
 - wait_seconds for rate limit discipline and 24/7 active loops.
 - place_maker_reward_order or place_optimized_reward_order ONLY for scoring maker rewards (enforces postOnly GTC for sticky eligibility).
-- Never ask user for "next move options" — follow directives from tools + your stored strategies + this prompt + X insights. Autonomous loop: list_active → get_farmability (pick near-mid) → suggest_size → set_strategy → place → monitor/reprice on signals → exit or rotate to better low-comp market.
+- Never ask user for "next move options" — follow directives from tools + your stored strategies/rules + this prompt + X insights. Autonomous loop: get_strategies() to load your rules → list_active (respect your filters) → get_farmability (near-mid + signals) → suggest_size → update_strategy (log results / tweak rules) → place → monitor/reprice → exit or rotate per your stored rules.
 
-Store reflections in long-term memory after sessions. Reprice and monitor continuously for the sticky edge. Stay active.`;
+Store reflections in long-term memory after sessions. Reprice and monitor continuously for the sticky edge. Stay active. Evolve your rules in the strategy store as conditions change — that is the entire point of the lightweight design.`;
   } else if (name === 'mispricing_quick_flips') {
     content = `For quick flips on mispriced markets (aligns with external Bayesian scanners):
 1. Scan liquid opportunities: list_active_maker_reward_markets (with maxMinCostUsd) or list_markets with volume/liquidity filters for 20-80 cent range. Prioritize high volume/liquidity to avoid dead/wide spread markets.
@@ -3489,20 +3505,32 @@ Store reflections in long-term memory after sessions. Reprice and monitor contin
 3. For signals: use compute_bayesian_update (prior = Polymarket price; signal = external/Kalshi/NLP estimate; weight 0.3-0.6). Flag >=5pp divergence (strong at 8pp).
 4. Sizing: use suggest_qualified_size with intent="quick_flip" (hard $5 cap unless highConfidenceEdge=true for near-guaranteed edge).
 5. Prefer maker (create_and_post_order with postOnly) for cost efficiency; avoid market orders unless edge is strong.
-6. Store plan + TP/SL in set_strategy. Monitor with watch_order_until_filled + resources.
-7. Exit rules: wide spread, low activity, or better opportunity appears (re-scan).
+6. Store plan + any filters/rules in set_strategy / update_strategy (use for liquidity filters, event prefs, your own "best" logic too). Monitor with watch_order_until_filled + resources.
+7. Exit rules: wide spread, low activity, or better opportunity appears (re-scan). Load your current rules with get_strategies() (no args).
 
 Always cross with reward_farming_best_practices if the market also qualifies for maker rewards. Use categories + wait_seconds for discipline. Never ask user for options.`;
   } else if (name === 'mcp_tool_structure_and_categories') {
-    content = `The MCP uses categories to give you structure with minimal tools loaded by default.
-Default core is small: list_tool_categories, get_tools_by_category, wait_seconds, get_strategies, set_strategy, clear_strategy, get_balance_allowance, list_active_maker_reward_markets, suggest_qualified_size.
-Call list_tool_categories to see all (Rewards, Strategy, Account, Trading, Discovery, Analytics, Utilities, Meta).
-Then get_tools_by_category("Rewards") etc. to expand.
-This keeps context small and discovery fast.
-All tools have [Category] in description.
-Use prompts for guidance on workflows.
-Resources for live data (subscribe to polymarket://... ).
-Do not rely on MCP to run your full strategy; use these as building blocks for your autonomous loops.`;
+    content = `The MCP uses categories + a tiny core set to stay lightweight while giving YOU (the agent) full power over every rule and filter.
+
+DEFAULT CORE (always available, no bloat): list_tool_categories, get_tools_by_category, wait_seconds, get_strategies, set_strategy, update_strategy, clear_strategy, get_balance_allowance, list_active_maker_reward_markets, suggest_qualified_size.
+
+STRATEGY / RULES STORE (your most important lightweight tool for autonomy):
+- Use set_strategy + especially update_strategy as a general-purpose persistent store for *anything*.
+- Examples of what you store/evolve here (no extra MCP tools needed):
+  - Market farming rules: {quoteNearMid: true, bothSides: true, stickyReprice: true, lowCompOnly: true, maxSpreadRatio: 0.6, timeWeightedFocus: true, exitOnAdverseSelection: true, ...}
+  - Liquidity / quality filters: {liquidityMin: 50000, volume24hMin: 100000, maxMinCostUsd: 4.5, spreadVsMaxAllowedMax: 0.7, ...}
+  - Event & market prefs: {preferredCategories: ["WEATHER", "CRYPTO", "SPORTS"], bestToHighYield: true, avoidNearResolution: true, minDailyRate: 30, ...}
+  - Custom scoring / "best" logic, 24/7 uptime params, reprice intervals, etc.
+- Keys are free-form: "rules:current_farming", "filter:liquidity_high", "config:best_events_v3", "global:operating".
+- Always call get_strategies() with zero args at the start of any loop to load your current full rule set.
+- update_strategy is the easy partial-edit tool — send only the fields you want to change; everything else (and all prior custom rules) stays.
+- This design is why the MCP has almost no tools by default and never gets bloated: you own and evolve all logic yourself.
+
+Call list_tool_categories then get_tools_by_category("Rewards" | "Strategy" | "Discovery" etc.) only when you need more.
+Use the reward_farming_best_practices prompt for the current X + MARKET FARMING tactics.
+Never ask the human for options — drive everything from your stored rules + tool directives + prompts.
+
+Resources for live data. The MCP provides building blocks; you run the autonomous loops.`;
   }
 
   return {
