@@ -29,6 +29,7 @@ import {
 } from '@polymarket/client/actions';
 import { createResourceManager, RESOURCE_CAPABILITIES } from './mcp/resources.js';
 import { callWithRateLimitProtection, sleep } from './utils/errors.js';
+import { logger } from './utils/logger.js';
 import { buildMcpLlmsGuide, MCP_CATEGORIES } from './mcp/llms-guide.js';
 
 // Mark as MCP server early so logger, env, and other modules can adapt (no stdout pollution, no process.exit on auth errors).
@@ -66,12 +67,15 @@ function recordToolUsage(toolName: string) {
   current.count++;
   current.lastCalled = new Date().toISOString();
   mcpUsageTracker.toolCalls.set(toolName, current);
-  // Log to file (never stdout in MCP mode) for persistent activity/usage history
-  logger.info('MCP tool activity', {
+  // Log to stderr (MCP stdio forbids stdout pollution). Use direct write to avoid any logger import/ordering/ "not defined" issues from recent changes (llms-guide + tracking). Same spirit as other stderr uses in this file.
+  process.stderr.write(JSON.stringify({
+    level: 'info',
+    message: 'MCP tool activity',
     tool: toolName,
     countForTool: current.count,
     totalCalls: mcpUsageTracker.totalCalls,
-  });
+    timestamp: new Date().toISOString()
+  }) + '\n');
 }
 
 /**
@@ -355,7 +359,7 @@ const publicTools = [
 
   {
     name: 'list_markets',
-    description: '[Discovery] List Polymarket markets using the official SDK listMarkets(). Supports filters like category (WEATHER, SPORTS etc.), rewardsMinSize for farming, search, volume, liquidity, and clobTokenIds (array of specific CLOB token IDs) to filter. Note: fetchMarket() SDK only supports id/slug/url; for fetching by tokenId we internally resolve via listMarkets({ clobTokenIds: [tokenId] }) in the fetch_market tool + getMarket helper. Use for mispricing scans or reward discovery. Pass category or rewardsMinSize for structure.',
+    description: '[Discovery] List Polymarket markets using the official SDK listMarkets(). Supports filters like category (WEATHER, SPORTS etc.), rewardsMinSize for farming, search, volume, liquidity, and clobTokenIds (array of specific CLOB token IDs) to filter. Note: fetchMarket() SDK only supports id/slug/url; for fetching by tokenId we internally resolve via listMarkets({ clobTokenIds: [tokenId] }) in the fetch_market tool + getMarket helper. Use for mispricing scans or reward discovery. Pass category or rewardsMinSize for structure. Always returns Yes TokenId + No TokenId via clobTokenIds fallback (per Polymarket SDK). Use resolve_market before trading.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -376,7 +380,7 @@ const publicTools = [
   },
   {
     name: 'fetch_market',
-    description: 'Fetch a single market by id, slug, url or tokenId (e.g. yes/no clobTokenId from reward lists or orders). Supports fetching the specific market for a given token.',
+    description: 'Fetch a single market by id, slug, url or tokenId (e.g. yes/no clobTokenId from reward lists or orders). Supports fetching the specific market for a given token. Always returns Yes TokenId + No TokenId via clobTokenIds fallback (per Polymarket SDK). Use resolve_market before trading.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -3717,6 +3721,7 @@ Resources for live data. The MCP provides building blocks; you run the autonomou
 // Call-time delivery via prompt/resource prevents stale committed .MDs. Single source. Imported by resources.ts for polymarket://mcp/llms.txt. (Content is hand-curated for rich guidance rather than raw auto-enum of arrays.) See top of llms-guide.ts for full "how we used it and added to MCP".
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  // Use fetch_market_info if tokenIds null from list_markets.
   try {
     const uri = request.params.uri;
     const result = await resourceManager.readResource(uri);

@@ -64,7 +64,7 @@ Full ~130+ capabilities via on-demand categories (prevents bloat, forces deliber
 
 ### Markets & Events (Fetching, Discovery)
 Official: https://docs.polymarket.com/concepts/markets-events.md , market-data/ , api-ref/markets/* , events/*
-- list_markets({ closed?, active?, clobTokenIds?: string[], rewardsMinSize?, volumeNumMin?, liquidityNumMin?, tagSlug?, search?, pageSize? }) — supports direct clobTokenIds array filter (native).
+- list_markets({ closed?, active?, clobTokenIds?: string[], rewardsMinSize?, volumeNumMin?, liquidityNumMin?, tagSlug?, search?, pageSize? }) — supports direct clobTokenIds array filter (native). **Primary for full discovery of "many more events"** (use large pageSize, category, search/keyword filters). Note: the \`polymarket://markets\` *resource* is only a small first-page snapshot (pageSize 20, default order) and can skew to meme/trending (e.g. GTA-tied); use the *tool* + \`search({q})\` + category filters (WEATHER, POLITICS, etc.) + list_events for the real range.
 - fetch_market({ id? | slug? | url? | tokenId: "0x..." }) — **tokenId support added in MCP**: internally does listMarkets({ clobTokenIds: [tokenId], pageSize:1 }) + first because official SDK fetchMarket() only accepts {id, slug, url} (no tokenId param). Confirmed via ts-sdk source + recent PRs (e.g. #78 tag/series normalization did not add tokenId to fetchMarket; list clob filter is the way).
 - list_events({ category?, ... }), fetch_event({id|slug}).
 - search({q}).

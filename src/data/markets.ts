@@ -25,6 +25,9 @@ export async function getFirstMarketsPage(params?: any) {
  * Fetch single market by id, slug, url, or tokenId (clobTokenId / yes/no tokenId).
  * For tokenId we resolve via listMarkets clobTokenIds filter (supported by SDK),
  * since direct fetchMarket({tokenId}) may not be in all SDK versions yet.
+ * Note: Gamma markets (the primary source for listMarkets / getFirstMarketsPage etc.)
+ * support clobTokenIds in their responses (per SDK Market type); this is the reliable
+ * bridge from Gamma discovery to CLOB trading tokenIds.
  */
 export async function getMarket(params: { id?: string; slug?: string; url?: string; tokenId?: string }): Promise<Market> {
   if (params.tokenId) {

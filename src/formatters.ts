@@ -102,6 +102,7 @@ function formatMarketLink(slugOrId?: string | null, fallbackId?: string | null):
  *  Prefers normalized SDK shape (outcomes.yes/no.tokenId), falls back to clobTokenIds array
  *  (index 0 = Yes, 1 = No for binary markets). Handles stringified clobTokenIds too.
  *  This ensures list_markets / search / fetch_market / resources always surface usable tokenIds.
+ *  Centralized (updated per resolver-first + SDK audit of outcomes/clobTokenIds/tokens).
  */
 function extractOutcomeTokens(m: any): { yes?: string; no?: string; tokenIds?: string[] } {
   if (!m) return {};
@@ -114,7 +115,7 @@ function extractOutcomeTokens(m: any): { yes?: string; no?: string; tokenIds?: s
     return { yes: yesNorm || undefined, no: noNorm || undefined, tokenIds: ids.length ? ids : undefined };
   }
 
-  // 2. Raw clobTokenIds (GammaMarket or partial responses) — canonical for CLOB trading
+  // 2. Raw clobTokenIds (GammaMarket or partial responses) — canonical for CLOB trading (resolver path)
   let clob: any = m.clobTokenIds ?? m.tokenIds ?? (m as any).clob_token_ids;
   if (typeof clob === 'string') {
     try { clob = JSON.parse(clob); } catch { /* leave as string */ }
@@ -207,16 +208,10 @@ export function formatMarket(market: any): object {
   const yesPrice = market.outcomes?.yes?.price ?? market.prices?.lastTradePrice;
   const noPrice = market.outcomes?.no?.price;
 
-  // Official SDK paths
-  const yesTokenId = market.outcomes?.yes?.tokenId 
-    ?? market.tokens?.find((t: any) => t.outcome === 'Yes' || t.side === 'Yes')?.tokenId 
-    ?? market.yesTokenId 
-    ?? market.tokens?.[0]?.tokenId;
-
-  const noTokenId = market.outcomes?.no?.tokenId 
-    ?? market.tokens?.find((t: any) => t.outcome === 'No' || t.side === 'No')?.tokenId 
-    ?? market.noTokenId 
-    ?? market.tokens?.[1]?.tokenId;
+  // Use centralized extraction: Gamma markets (listMarkets) support clobTokenIds (in SDK Market type + ListMarketsRequest filter).
+  // extractOutcomeTokens prioritizes outcomes.yes/no.tokenId then clobTokenIds[0/1] (Gamma -> CLOB bridge) then tokens etc.
+  // This is why tokenId resolution in getMarket uses listMarkets({clobTokenIds}) and formatters reliably expose for trading.
+  const tok = extractOutcomeTokens(market);
 
   // Trading config / minimums (very useful for agents)
   const minOrderSize = market.minimumOrderSize ?? market.trading?.minimumOrderSize ?? market.minOrderSize;
@@ -229,8 +224,6 @@ export function formatMarket(market: any): object {
     'Condition Id': market.conditionId,
     'Yes Price': formatPriceDisplay(yesPrice),
     'No Price': formatPriceDisplay(noPrice),
-    'Yes TokenId': yesTokenId,
-    'No TokenId': noTokenId,
     'Volume': formatDecimal(market.metrics?.volume),
     'Liquidity': formatDecimal(market.metrics?.liquidity),
     'Min Order Size': formatDecimal(minOrderSize),
@@ -246,13 +239,18 @@ export function formatMarket(market: any): object {
   const liq = parseFloat(market?.metrics?.liquidity || '0') || 0;
   const bias = yesP > noP + 0.02 ? 'Yes favored (bullish yes proxy)' : (noP > yesP + 0.02 ? 'No favored (bullish no proxy)' : 'Balanced');
   const liqHealth = liq > 200000 ? 'High (deep, good for size)' : (liq > 30000 ? 'Medium' : 'Low (size with caution)');
-  return {
+  // Ensure Yes/No TokenId always present (even if null) per step 2
+  const result = {
     ...base,
+    'Yes TokenId': tok.yes ?? null,
+    'No TokenId': tok.no ?? null,
+    'Token Ids': tok.tokenIds ?? undefined,
     'Yes/No Bias (sentiment proxy)': bias,
     'Liquidity Health': liqHealth,
     'Volume Health': vol > 500000 ? 'High activity' : (vol > 50000 ? 'Moderate' : 'Low (verify live)'),
     'Card Note': 'For precise spreads/competition use fetch_spread or get_farmability(tokenId). Positions in this market via list_positions show Cash/Realized PnL + est unrealized.',
   };
+  return result;
 }
 
 export function formatEvent(event: Event): object {
@@ -995,9 +993,8 @@ export function formatTeam(team: Team): object {
 }
 
 export function formatMarketInfo(info: MarketInfo): object {
-  // Robust token extraction for fetch_market_info (same guarantee as list/search)
-  const anyInfo = info as any;
-  const tok = extractOutcomeTokens(anyInfo);
+  // Use centralized extractOutcomeTokens (keep extract exactly as-is)
+  const tok = extractOutcomeTokens(info as any);
 
   // Include trading minimums when available
   const minOrder = (info as any).minimumOrderSize ?? (info as any).minOrderSize;
@@ -1014,9 +1011,9 @@ export function formatMarketInfo(info: MarketInfo): object {
     'Image': info.image,
     'Resolution Source': info.resolutionSource,
     'Tags': info.tags,
-    'Yes Token Id': tok.yes,
-    'No Token Id': tok.no,
-    'Token Ids': tok.tokenIds && tok.tokenIds.length > 0 ? tok.tokenIds : undefined,
+    'Yes TokenId': tok.yes ?? null,
+    'No TokenId': tok.no ?? null,
+    'Token Ids': tok.tokenIds ?? undefined,
     'Min Order Size': formatDecimal(minOrder),
     'Min Tick Size': formatDecimal(minTick),
   });
