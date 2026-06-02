@@ -32,3 +32,9 @@ coverage/
 # Temporary
 New folder/
 
+
+# Temporary / diagnostic / verification drivers (MCP stdio tests, etc. must never be committed; use /tmp outside tree or gitignored)
+tmp/
+*verify*
+*test-driver*
+*diagnose*

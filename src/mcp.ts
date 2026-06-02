@@ -27,6 +27,7 @@ import {
 } from '@polymarket/client/actions';
 import { createResourceManager, RESOURCE_CAPABILITIES } from './mcp/resources.js';
 import { callWithRateLimitProtection, sleep } from './utils/errors.js';
+import { buildMcpLlmsGuide } from './mcp/llms-guide.js';
 
 // Mark as MCP server early so logger, env, and other modules can adapt (no stdout pollution, no process.exit on auth errors).
 process.env.MCP_MODE = '1';
@@ -135,20 +136,17 @@ function computeBayesianPosterior(params: {
 // Map prompt-specified env var names (EOA_PRIVATE_KEY / DEPOSIT_WALLET_ADDRESS)
 // onto the names expected by the existing getPublicClient / getSecureClient factories.
 // This lets the MCP server work without modifying any other file in the codebase.
+//
+// IMPORTANT: This MCP is public. No hardcoded wallets, private keys, or defaults
+// are allowed anywhere in the source or docs. Agent hosts / users MUST always
+// supply their own EOA_PRIVATE_KEY and DEPOSIT_WALLET_ADDRESS (or WALLET_ADDRESS).
+// The secure client will error if they are missing.
 function normalizeEnvAliases() {
   if (process.env.EOA_PRIVATE_KEY && !process.env.PRIVATE_KEY) {
     process.env.PRIVATE_KEY = process.env.EOA_PRIVATE_KEY;
   }
   if (process.env.DEPOSIT_WALLET_ADDRESS && !process.env.WALLET_ADDRESS) {
     process.env.WALLET_ADDRESS = process.env.DEPOSIT_WALLET_ADDRESS;
-  }
-
-  // For this builder's verified account, default the deposit wallet if not provided
-  // (This address is for API use only — do not send funds to it)
-  const isMcp = process.env.MCP_MODE === '1' || process.env.MCP_SERVER === 'true';
-  if (isMcp && !process.env.WALLET_ADDRESS && !process.env.DEPOSIT_WALLET_ADDRESS) {
-    process.env.DEPOSIT_WALLET_ADDRESS = '0xe467d9930e0577bd2beb5e29cb3ae3b457cfb33f';
-    process.env.WALLET_ADDRESS = '0xe467d9930e0577bd2beb5e29cb3ae3b457cfb33f';
   }
 }
 normalizeEnvAliases();
@@ -281,12 +279,13 @@ function getToolsByCategory(category: string) {
     const desc = t.description || '';
     // Match by prefix tag
     if (desc.toLowerCase().startsWith(`[${catLower}]`)) return true;
-    // Match by keywords for untagged tools (temporary until full tagging)
+    // Match by keywords for untagged tools (or use [Category] prefix in desc for exact; Advanced uses keywords too)
     if (catLower === 'rewards' && /reward|maker reward|scoring/i.test(desc)) return true;
     if (catLower === 'strategy' && /strategy|stop loss|take profit|sl\/tp/i.test(desc)) return true;
     if (catLower === 'account' && /balance|allowance|portfolio|position/i.test(desc)) return true;
     if (catLower === 'trading' && /place|order|cancel|maker/i.test(desc)) return true;
     if (catLower === 'discovery' && /list_market|fetch_market|search/i.test(desc)) return true;
+    if (catLower === 'advanced' && /security-sensitive|sign_|send_transaction|prepare_|deploy_|end_authentication|get_secure_client_info|advanced/i.test(desc)) return true;
     return false;
   });
 }
@@ -300,7 +299,8 @@ function listAllCategories() {
     'Utilities',
     'Discovery',
     'Trading',
-    'Analytics'
+    'Analytics',
+    'Advanced'  // Low-level, security-sensitive, prepare workflows. Load only if needed to keep default surface lightweight.
   ];
 }
 
@@ -315,7 +315,7 @@ const publicTools = [
   },
   {
     name: 'get_tools_by_category',
-    description: '[Meta] Returns tools for a specific category only. This is the main way to expand your available tools without being overwhelmed by 100+ at once. Categories include: Rewards, Strategy, Account, Trading, Discovery, Analytics, Utilities.',
+    description: '[Meta] Returns tools for a specific category only. This is the main way to expand your available tools without being overwhelmed by 100+ at once. Categories include: Rewards, Strategy, Account, Trading, Discovery, Analytics, Utilities, Advanced (low-level/signing/prepare only when needed).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1182,47 +1182,47 @@ const secureTools = [
   // Gasless prepare workflows (secure)
   {
     name: 'prepare_limit_order',
-    description: 'Prepare a limit order workflow (gasless)',
+    description: '[Advanced] Prepare a limit order workflow (gasless)',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'prepare_market_order',
-    description: 'Prepare a market order workflow (gasless)',
+    description: '[Advanced] Prepare a market order workflow (gasless)',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'prepare_gasless_transaction',
-    description: 'Prepare a gasless transaction',
+    description: '[Advanced] Prepare a gasless transaction',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'prepare_split_position',
-    description: 'Prepare split position workflow (CTF)',
+    description: '[Advanced] Prepare split position workflow (CTF)',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'prepare_merge_positions',
-    description: 'Prepare merge positions workflow (CTF)',
+    description: '[Advanced] Prepare merge positions workflow (CTF)',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'prepare_redeem_positions',
-    description: 'Prepare redeem positions workflow (CTF). Auto-redeem requires the redemption approval (see setup_trading_approvals which includes it).',
+    description: '[Advanced] Prepare redeem positions workflow (CTF). Auto-redeem requires the redemption approval (see setup_trading_approvals which includes it).',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'prepare_erc20_approval',
-    description: 'Prepare ERC20 approval workflow',
+    description: '[Advanced] Prepare ERC20 approval workflow',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'prepare_erc1155_approval_for_all',
-    description: 'Prepare ERC1155 setApprovalForAll workflow',
+    description: '[Advanced] Prepare ERC1155 setApprovalForAll workflow',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'prepare_erc20_transfer',
-    description: 'Prepare ERC20 transfer workflow',
+    description: '[Advanced] Prepare ERC20 transfer workflow',
     inputSchema: { type: 'object', properties: {} }
   },
 
@@ -1263,17 +1263,17 @@ const secureTools = [
   // Account / wallet additional (secure)
   {
     name: 'update_balance_allowance',
-    description: 'Update balance allowance',
+    description: '[Advanced] Update balance allowance',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'deploy_deposit_wallet',
-    description: 'Deploy deposit wallet',
+    description: '[Advanced] Deploy deposit wallet',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'download_accounting_snapshot',
-    description: 'Download accounting snapshot',
+    description: '[Advanced] Download accounting snapshot',
     inputSchema: { type: 'object', properties: {} }
   },
   {
@@ -1290,7 +1290,7 @@ const secureTools = [
   // API Key Management (via actions; low-level L1 signed payloads for create/derive)
   {
     name: 'create_api_key',
-    description: 'Create API key from signed L1 auth payload. API keys must be derived from EOA private key, not deposit wallet',
+    description: '[Advanced] Create API key from signed L1 auth payload. API keys must be derived from EOA private key, not deposit wallet',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1304,7 +1304,7 @@ const secureTools = [
   },
   {
     name: 'derive_api_key',
-    description: 'Derive existing API key from signed L1 auth payload. API keys must be derived from EOA private key, not deposit wallet',
+    description: '[Advanced] Derive existing API key from signed L1 auth payload. API keys must be derived from EOA private key, not deposit wallet',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1318,7 +1318,7 @@ const secureTools = [
   },
   {
     name: 'create_or_derive_api_key',
-    description: 'Create or fall back to derive API key from signed L1 auth payload. API keys must be derived from EOA private key, not deposit wallet',
+    description: '[Advanced] Create or fall back to derive API key from signed L1 auth payload. API keys must be derived from EOA private key, not deposit wallet',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1332,12 +1332,12 @@ const secureTools = [
   },
   {
     name: 'fetch_api_keys',
-    description: 'Fetch all API keys for the authenticated account. API keys must be derived from EOA private key, not deposit wallet',
+    description: '[Advanced] Fetch all API keys for the authenticated account. API keys must be derived from EOA private key, not deposit wallet',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'delete_api_key',
-    description: 'Delete the currently authenticated API key. API keys must be derived from EOA private key, not deposit wallet',
+    description: '[Advanced] Delete the currently authenticated API key. API keys must be derived from EOA private key, not deposit wallet',
     inputSchema: { type: 'object', properties: {} }
   },
 
@@ -1681,7 +1681,7 @@ const secureTools = [
   // ===================================================================
   {
     name: 'sign_message',
-    description: 'SECURITY-SENSITIVE: Signs an arbitrary message with the connected wallet. This can be used for authentication or arbitrary signatures. Only use if you fully trust the agent and have additional controls in place.',
+    description: '[Advanced] SECURITY-SENSITIVE: Signs an arbitrary message with the connected wallet. This can be used for authentication or arbitrary signatures. Only use if you fully trust the agent and have additional controls in place.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1692,7 +1692,7 @@ const secureTools = [
   },
   {
     name: 'sign_typed_data',
-    description: 'SECURITY-SENSITIVE: Signs EIP-712 typed data with the connected wallet. This is used for gasless orders and other structured signatures. Only use if you fully trust the agent.',
+    description: '[Advanced] SECURITY-SENSITIVE: Signs EIP-712 typed data with the connected wallet. This is used for gasless orders and other structured signatures. Only use if you fully trust the agent.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1706,7 +1706,7 @@ const secureTools = [
   },
   {
     name: 'send_transaction',
-    description: 'SECURITY-SENSITIVE: Directly sends a raw transaction from the connected wallet. This bypasses all high-level Polymarket flows. Extremely dangerous. Only use with strong additional safeguards.',
+    description: '[Advanced] SECURITY-SENSITIVE: Directly sends a raw transaction from the connected wallet. This bypasses all high-level Polymarket flows. Extremely dangerous. Only use with strong additional safeguards.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1720,7 +1720,7 @@ const secureTools = [
   },
   {
     name: 'end_authentication',
-    description: 'SECURITY-SENSITIVE: Revokes the current API key session and returns a public client. This invalidates the current authenticated session.',
+    description: '[Advanced] SECURITY-SENSITIVE: Revokes the current API key session and returns a public client. This invalidates the current authenticated session.',
     inputSchema: {
       type: 'object',
       properties: {}
@@ -1728,7 +1728,7 @@ const secureTools = [
   },
   {
     name: 'get_secure_client_info',
-    description: 'SECURITY-SENSITIVE: Returns raw authentication internals (account identity and API credentials). Do not expose these publicly.',
+    description: '[Advanced] SECURITY-SENSITIVE: Returns raw authentication internals (account identity and API credentials). Do not expose these publicly.',
     inputSchema: {
       type: 'object',
       properties: {}
@@ -1769,7 +1769,12 @@ const PROMPTS = [
   },
   {
     name: 'mcp_tool_structure_and_categories',
-    description: 'How to use the MCP efficiently with minimal tool surface. Explains default core tools, using list_tool_categories and get_tools_by_category to load only needed groups (Rewards, Strategy, etc.), avoiding bloat, and keeping the agent in control.',
+    description: 'MANDATORY "never guess" contract + full quickstart for this MCP. Exact startup sequence, core vs categories, strategy store as your brain, specific native call patterns (including clobTokenIds for list_markets and tokenId for fetch_market via internal listMarkets because SDK fetchMarket only supports id/slug/url), public repo rules (always supply your own keys, use placeholders only), live resources, and how to use without guessing. Load this prompt first.',
+    arguments: []
+  },
+  {
+    name: 'mcp_llms_full_guide',
+    description: 'Returns a complete, up-to-date llms.txt-style markdown guide for this MCP (inspired by https://docs.polymarket.com/llms.txt). Includes overview, startup, concepts (markets, positions, order lifecycle, prices/orderbook, rewards/rebates, trading) mapped to exact native MCP tool calls + JSON examples (explicit place_* only — no intent ever for trading), strategy store as brain, live resources (incl. polymarket://mcp/llms.txt), prompts, best practices, public rules, enhanced formatter output cards (PNL in positions, sentiment/liquidity health + farm scores in markets/rewards). Call this prompt (and structure one) first to get full non-stale .md guidance so agents know everything without ever guessing. Always in sync with current tools (dynamic from code).',
     arguments: []
   }
 ];
@@ -2308,6 +2313,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         .slice(0, maxResults)
         .map((x, i) => { x.entry.rank = i + 1; return x.entry; });
 
+      const formattedMarkets = ranked.map((r: any) => F.formatActiveRewardMarket(r));
       const payload = {
         success: true,
         count: ranked.length,
@@ -2315,9 +2321,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           ...(maxMinSize != null ? { maxMinSize } : {}),
           ...(maxMinCostUsd != null ? { maxMinCostUsd } : {})
         },
-        note: "Ranked best-first. Now shows exact USD cost to qualify on Yes and No sides (minSize × current mid). Use maxMinCostUsd: 4.5 for strict $5 cap agents. This is the primary tool for discovering which reward programs your small orders can actually participate in.",
-        markets: ranked,
-        usage: "For $5 cap: list_active_maker_reward_markets({maxMinCostUsd: 4.5}). Look at cheapestMinCostUsd. Only place on markets where your size meets minSize and cost is under cap."
+        note: "Ranked best-first (Reward Market Cards via formatters). Shows exact USD cost to qualify. Use maxMinCostUsd: 4.5 for strict $5 cap. Primary for autonomous discovery. Enhanced cards include links + notes.",
+        markets: formattedMarkets,
+        usage: "For $5 cap: list_active_maker_reward_markets({maxMinCostUsd: 4.5}). Only place on markets where your size meets minSize and cost under cap. Then get_farmability(yes/noTokenId) for health/sentiment/near-mid."
       };
 
       let json = JSON.stringify(payload, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 0);
@@ -2887,26 +2893,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                               farmabilityScore > 35 ? "Marginal - check for wide spreads or low activity; consider smaller test size or different market" :
                               "Poor right now - wide spread vs allowed, high cost, or low eligibility. Look for better opportunities per exit rules.";
 
+        const farmCard = F.formatFarmability({
+          success: true,
+          tokenId,
+          rewardsMinSize: minSize || undefined,
+          rewardsMaxSpread: maxSpread || undefined,
+          currentMid: mid ? Number(mid.toFixed(4)) : undefined,
+          currentSpread: accurateCurrentSpread ? Number(accurateCurrentSpread.toFixed(4)) : undefined,
+          spreadVsMaxAllowed: spreadVsAllowed ? Number(spreadVsAllowed.toFixed(2)) : undefined,
+          costToQualifyUsd: costToQualify ? Number(costToQualify.toFixed(2)) : undefined,
+          approximateBookDepth: Number(totalDepth.toFixed(0)),
+          suggestedNearMidBuy: suggestedNearMidBuy,
+          suggestedNearMidSell: suggestedNearMidSell,
+          competitionSignal: competitionSignal,
+          farmabilityScore: Math.min(100, farmabilityScore),
+          recommendation,
+          notes: "SDK-native only (fetchOrderBook + listMarketRewards + fetchSpreads). Quote near midpoint (use suggestedNearMidBuy/Sell) for higher reward weighting. Both-sides (yes+no) for 2x when possible. Use place_maker_reward_order (forces postOnly GTC) + active reprice/monitor for 'sticky' major edge. Thin/moderate depth = potential low-competition; avoid high adverse selection. Exit on spread collapse, low activity, or better low-comp opp. Use with suggest_qualified_size + list_active_maker_reward_markets."
+        });
         return {
           content: [{
             type: 'text' as const,
-            text: JSON.stringify({
-              success: true,
-              tokenId,
-              rewardsMinSize: minSize || undefined,
-              rewardsMaxSpread: maxSpread || undefined,
-              currentMid: mid ? Number(mid.toFixed(4)) : undefined,
-              currentSpread: accurateCurrentSpread ? Number(accurateCurrentSpread.toFixed(4)) : undefined,
-              spreadVsMaxAllowed: spreadVsAllowed ? Number(spreadVsAllowed.toFixed(2)) : undefined,
-              costToQualifyUsd: costToQualify ? Number(costToQualify.toFixed(2)) : undefined,
-              approximateBookDepth: Number(totalDepth.toFixed(0)),
-              suggestedNearMidBuy: suggestedNearMidBuy,
-              suggestedNearMidSell: suggestedNearMidSell,
-              competitionSignal: competitionSignal,
-              farmabilityScore: Math.min(100, farmabilityScore),
-              recommendation,
-              notes: "SDK-native only (fetchOrderBook + listMarketRewards + fetchSpreads). Quote near midpoint (use suggestedNearMidBuy/Sell) for higher reward weighting. Both-sides (yes+no) for 2x when possible. Use place_maker_reward_order (forces postOnly GTC) + active reprice/monitor for 'sticky' major edge. Thin/moderate depth = potential low-competition; avoid high adverse selection. Exit on spread collapse, low activity, or better low-comp opp. Use with suggest_qualified_size + list_active_maker_reward_markets."
-            }, null, 2)
+            text: JSON.stringify(farmCard, null, 2)
           }]
         };
       } catch (e: any) {
@@ -3095,7 +3102,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
     case 'list_positions':
-      return callPaginatedWithFormat((await getSec()).listPositions(args), F.formatPosition, name);
+      // Custom to attach enhanced PnL summary card (uses new formatPnlSummary + enhance logic for richer agent output cards)
+      try {
+        const res: any = await (await getSec()).listPositions(args);
+        const items = res?.items || res || [];
+        const formatted = items.map((p: any) => F.formatPosition(p));
+        const summary = F.formatPnlSummary(items);
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ Positions: formatted, PnLSummary: summary }, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 2) }] };
+      } catch (e: any) {
+        return { isError: true, content: [{ type: 'text' as const, text: `list_positions error: ${e?.message || e}` }] };
+      }
     case 'list_closed_positions':
       return callPaginatedWithFormat((await getSec()).listClosedPositions?.(args) ?? Promise.resolve({ items: [] }), F.formatClosedPosition, name);
     case 'fetch_portfolio_value':
@@ -3540,9 +3556,23 @@ Store reflections in long-term memory after sessions. Reprice and monitor contin
 
 Always cross with reward_farming_best_practices if the market also qualifies for maker rewards. Use categories + wait_seconds for discipline. Never ask user for options.`;
   } else if (name === 'mcp_tool_structure_and_categories') {
-    content = `The MCP uses categories + a tiny core set to stay lightweight while giving YOU (the agent) full power over every rule and filter.
+    content = `AGENT INSTRUCTION — READ THIS FIRST AND NEVER GUESS:
+You are using a deliberately lightweight MCP. The MCP will NEVER expose a giant flat list of 100+ tools by default, and it will NEVER make you guess the right way to use it.
+
+MANDATORY STARTUP SEQUENCE (do this on every new conversation/session that uses this MCP):
+1. Call the "mcp_tool_structure_and_categories" prompt (via the MCP prompts/get API).
+2. Call "reward_farming_best_practices" (and "mispricing_quick_flips" when relevant).
+3. Call list_tool_categories.
+4. Call get_tools_by_category for the groups you actually need right now ("Rewards", "Strategy", "Discovery", etc.).
+5. Call get_strategies() (no args) to load your complete current rule set from the store.
+
+After that, follow the directives in this prompt, the other prompts, and every tool response's agentDirective field.
+
+The MCP uses categories + a tiny core set to stay lightweight while giving YOU (the agent) full power over every rule and filter.
 
 DEFAULT CORE (always available, no bloat): list_tool_categories, get_tools_by_category, wait_seconds, get_strategies, set_strategy, update_strategy, clear_strategy, get_balance_allowance, list_active_maker_reward_markets, suggest_qualified_size.
+
+Load 'Advanced' category only for low-level/signing/prepare tools (e.g. sign_message, send_transaction, prepare_*, api key mgmt). This keeps default surface tiny and safe.
 
 STRATEGY / RULES STORE (your most important lightweight tool for autonomy):
 - Use set_strategy + especially update_strategy as a general-purpose persistent store for *anything*.
@@ -3557,10 +3587,24 @@ STRATEGY / RULES STORE (your most important lightweight tool for autonomy):
 - This design is why the MCP has almost no tools by default and never gets bloated: you own and evolve all logic yourself.
 
 Call list_tool_categories then get_tools_by_category("Rewards" | "Strategy" | "Discovery" etc.) only when you need more.
+**For full .md-style non-stale guidance (official llms.txt inspired concepts mapped to exact MCP calls)**: call prompts/get "mcp_llms_full_guide" (or read resource polymarket://mcp/llms.txt). It covers Markets/Positions/Orderbook/Rewards/Trading/Order Lifecycle etc with "use THIS explicit tool + args, never intent for trading".
 Use the reward_farming_best_practices prompt for the current X + MARKET FARMING tactics.
 Never ask the human for options — drive everything from your stored rules + tool directives + prompts.
 
+**Token/Market by clobTokenId (rewards, orders, etc.):** The SDK fetchMarket only supports id/slug/url. When you receive tokenIds (yesTokenId/noTokenId/clobTokenIds), use:
+- fetch_market({ "tokenId": "<the token>" })  → full market metadata (internally uses listMarkets({clobTokenIds: [...]}) + first result).
+- Or list_markets({ "clobTokenIds": ["<token>"], "pageSize": 5 }).
+Then use the tokenId directly for order_book, price, midpoint, place orders, etc.
+
+**Output Cards (formatters — improved)**: All responses are clean cards (never raw SDK). formatMarket now includes Yes/No Bias (sentiment proxy), Liquidity/Volume Health. formatPosition (and closed) include Cash/Realized PnL + est Unrealized + Total + PnL Status + Health. New: formatActiveRewardMarket (ranked reward cards), formatFarmability (score + competitionSignal/sentiment + near-mid + recs), formatPnlSummary. Use these for decisions (e.g. only enter healthy liq + favorable score per your strategy rules). See mcp_llms_full_guide for more.
+
+**Live data (preferred over polling):** Use MCP Resources (subscribe to polymarket://market/{tokenId}/book, user orders/fills, etc.). Server pushes updates; read the resource for latest formatted data.
+
+**Public MCP rules:** This is a public project. Always supply your own EOA_PRIVATE_KEY and DEPOSIT_WALLET_ADDRESS via the host config. The code has no hardcoded defaults and will error without them. Use only placeholders in any agent prompts or shared configs. Never hardcode real keys/addresses.
+
 Resources for live data. The MCP provides building blocks; you run the autonomous loops.`;
+  } else if (name === 'mcp_llms_full_guide') {
+    content = buildMcpLlmsGuide();
   }
 
   return {
@@ -3573,6 +3617,9 @@ Resources for live data. The MCP provides building blocks; you run the autonomou
     ]
   };
 });
+
+// buildMcpLlmsGuide now sourced from ./mcp/llms-guide.js (curated+maintained llms.txt-style .MD with official concept mappings + explicit native calls, strong "no intent for trading" rule, references to enhanced formatter cards for PNL/sentiment/health).
+// Call-time delivery via prompt/resource prevents stale committed .MDs. Single source. Imported by resources.ts for polymarket://mcp/llms.txt. (Content is hand-curated for rich guidance rather than raw auto-enum of arrays.)
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   try {

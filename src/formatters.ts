@@ -222,7 +222,7 @@ export function formatMarket(market: any): object {
   const minOrderSize = market.minimumOrderSize ?? market.trading?.minimumOrderSize ?? market.minOrderSize;
   const minTickSize = market.minimumTickSize ?? market.trading?.minimumTickSize ?? market.tickSize ?? market.minTickSize;
 
-  return omitUndefined({
+  const base = omitUndefined({
     'Question': market.question,
     'Slug': market.slug,
     'Id': market.id,
@@ -239,6 +239,20 @@ export function formatMarket(market: any): object {
     'End Date': formatDate(market.state?.endDate),
     'Image': market.image,
   });
+  // Append sentiment/health proxies (improved display cards per request: PNL context + sentiment/liquidity)
+  const yesP = parseFloat(market?.outcomes?.yes?.price ?? market?.prices?.lastTradePrice ?? '0.5');
+  const noP = parseFloat(market?.outcomes?.no?.price ?? (1 - yesP));
+  const vol = parseFloat(market?.metrics?.volume || '0') || 0;
+  const liq = parseFloat(market?.metrics?.liquidity || '0') || 0;
+  const bias = yesP > noP + 0.02 ? 'Yes favored (bullish yes proxy)' : (noP > yesP + 0.02 ? 'No favored (bullish no proxy)' : 'Balanced');
+  const liqHealth = liq > 200000 ? 'High (deep, good for size)' : (liq > 30000 ? 'Medium' : 'Low (size with caution)');
+  return {
+    ...base,
+    'Yes/No Bias (sentiment proxy)': bias,
+    'Liquidity Health': liqHealth,
+    'Volume Health': vol > 500000 ? 'High activity' : (vol > 50000 ? 'Moderate' : 'Low (verify live)'),
+    'Card Note': 'For precise spreads/competition use fetch_spread or get_farmability(tokenId). Positions in this market via list_positions show Cash/Realized PnL + est unrealized.',
+  };
 }
 
 export function formatEvent(event: Event): object {
@@ -549,7 +563,7 @@ export function formatOrderFillWatch(order: any, watchedOrderId: string): object
 // ===================== Account =====================
 
 export function formatPosition(position: Position): object {
-  return omitUndefined({
+  const base = omitUndefined({
     'Title': position.title,
     'Outcome': position.outcome,
     'Size': formatDecimal(position.size),
@@ -564,6 +578,23 @@ export function formatPosition(position: Position): object {
     'Mergeable': position.mergeable ? 'Yes' : 'No',
     'Slug': position.slug,
   });
+  // Enhanced with explicit est unreal + total + status (PNL/sentiment improvements for agent cards)
+  const cash = parseFloat((position as any)?.cashPnl || '0') || 0;
+  const realized = parseFloat((position as any)?.realizedPnl || '0') || 0;
+  const size = parseFloat((position as any)?.size || '0') || 0;
+  const avg = parseFloat((position as any)?.avgPrice || '0') || 0;
+  const cur = parseFloat((position as any)?.curPrice || (position as any)?.currentPrice || '0') || 0;
+  const unrealEst = size && avg && cur ? size * (cur - avg) : 0;
+  const total = cash + realized + unrealEst;
+  const pnlStatus = total > 0.01 ? '🟢 Profitable' : (total < -0.01 ? '🔴 Underwater' : '⚪ Flat');
+  const health = (position.redeemable ? 'Redeemable (claim pUSD)' : (position.mergeable ? 'Mergeable back to collateral' : 'Open - monitor via book/resources'));
+  return {
+    ...base,
+    'Unrealized PnL (est from avg vs cur)': formatDecimal(unrealEst),
+    'Total PnL (cash+real+est unreal)': formatDecimal(total),
+    'PnL Status': pnlStatus,
+    'Position Health': health,
+  };
 }
 
 export function formatClosedPosition(position: ClosedPosition): object {
@@ -1136,3 +1167,82 @@ export function formatAccountingSnapshot(data: any): object {
     'Note': 'Raw data — save to file. This is binary/blob content.',
   };
 }
+
+// ===================== Enhanced Output Cards: PNL, Sentiment, Health, Reward Cards =====================
+// These improve agent-facing "displayer" cards for better autonomous decisions (PNL visibility, liquidity/sentiment proxies, farmability signals).
+// Never raw; always Title Case, formatted prices, actionable notes. Used by mcp handlers + resources.
+
+export function formatActiveRewardMarket(entry: any): object {
+  // Structured "Reward Market Card" for list_active_maker_reward_markets (ranked, cost-aware).
+  return omitUndefined({
+    'Rank': entry.rank,
+    'Question': entry.question,
+    'Slug': entry.slug,
+    'Condition Id': entry.conditionId,
+    'Yes TokenId': entry.yesTokenId,
+    'No TokenId': entry.noTokenId,
+    'Min Size (shares)': formatDecimal(entry.minSize),
+    'Max Spread Allowed': entry.maxSpread,
+    'Daily Rate (USDC)': formatDecimal(entry.dailyRate),
+    'Cheapest Qualify Cost (USD)': entry.cheapestMinCostUsd,
+    'Yes Mid': entry.yesMid,
+    'No Mid': entry.noMid,
+    'Volume': formatDecimal(entry.volume),
+    'Liquidity': formatDecimal(entry.liquidity),
+    'Attractiveness Score': entry.attractiveness,
+    'Why Recommended': entry.whyRecommended,
+    'Market Link': entry.marketLink,
+    'Min Tick Size': formatDecimal(entry.minTickSize),
+    'Payout Assets': entry.payoutAssets,
+    'Note': 'Use get_farmability on yes/noTokenId for spread health, near-mid suggestions, competitionSignal (sentiment proxy). Place only with place_maker_reward_order for scoring.',
+  });
+}
+
+export function formatFarmability(data: any): object {
+  // Enhanced card for get_farmability output: includes explicit health/sentiment/competition signals + score + rec.
+  if (!data || data.success === false) return { 'Farmability': data?.error || 'Unavailable' };
+  return omitUndefined({
+    'Token Id': data.tokenId,
+    'Rewards Min Size': formatDecimal(data.rewardsMinSize),
+    'Rewards Max Spread': data.rewardsMaxSpread,
+    'Current Mid': data.currentMid,
+    'Current Spread': data.currentSpread,
+    'Spread vs Max Allowed': data.spreadVsMaxAllowed,
+    'Cost to Qualify (USD)': data.costToQualifyUsd,
+    'Book Depth (approx)': data.approximateBookDepth,
+    'Suggested Near-Mid Buy': data.suggestedNearMidBuy,
+    'Suggested Near-Mid Sell': data.suggestedNearMidSell,
+    'Competition / Sentiment Signal': data.competitionSignal,
+    'Farmability Score (0-100)': data.farmabilityScore,
+    'Recommendation': data.recommendation,
+    'Notes': data.notes,
+    'Agent Guidance': 'Quote near suggested mids for reward weighting (X insight). Thin/moderate balanced depth often = lower comp opportunity. Exit if spreadVsAllowed worsens or score drops. Cross with list_active + your strategy rules.',
+  });
+}
+
+/** Simple PNL summary card over a list of positions (for portfolio overview). */
+export function formatPnlSummary(positions: any[]): object {
+  if (!positions || positions.length === 0) return { 'PnL Summary': 'No positions' };
+  let totalCash = 0, totalReal = 0, totalUnrealEst = 0, count = 0;
+  for (const p of positions) {
+    const cash = parseFloat((p as any)?.cashPnl || '0') || 0;
+    const real = parseFloat((p as any)?.realizedPnl || '0') || 0;
+    const size = parseFloat((p as any)?.size || '0') || 0;
+    const avg = parseFloat((p as any)?.avgPrice || '0') || 0;
+    const cur = parseFloat((p as any)?.curPrice || (p as any)?.currentPrice || '0') || 0;
+    const unreal = size && avg && cur ? size * (cur - avg) : 0;
+    totalCash += cash; totalReal += real; totalUnrealEst += unreal; count++;
+  }
+  const grand = totalCash + totalReal + totalUnrealEst;
+  return omitUndefined({
+    'Positions Count': count,
+    'Total Cash PnL': formatDecimal(totalCash),
+    'Total Realized PnL': formatDecimal(totalReal),
+    'Total Unrealized (est)': formatDecimal(totalUnrealEst),
+    'Grand Total PnL (est)': formatDecimal(grand),
+    'Status': grand > 0.01 ? '🟢 Overall profitable' : (grand < -0.01 ? '🔴 Overall underwater' : '⚪ Flat'),
+    'Note': 'Unrealized is estimate (size × (curPx - avgPx)). For live prices use fetch_midpoint or order book. See list_activity for rebate/ reward contributions to realized.',
+  });
+}
+
+

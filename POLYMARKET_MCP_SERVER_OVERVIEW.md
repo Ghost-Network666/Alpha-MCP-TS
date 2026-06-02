@@ -83,7 +83,7 @@ When subscribed data changes, the server notifies the agent, which can then read
 
 ## Tool Surface
 
-The server currently exposes approximately **100+ tools** plus a full set of Resources and Resource Templates.
+The server is deliberately **lightweight** (tiny core set of ~10 tools advertised by default via tools/list, plus `list_tool_categories` + `get_tools_by_category` for on-demand discovery of the full surface) plus a full set of Resources and Resource Templates.
 
 Tools are split into:
 - Public discovery / data tools (no auth)

@@ -8,6 +8,7 @@ import {
 import * as F from '../formatters.js';
 import { getMarket } from '../data/markets.js';
 import { logWs } from '../utils/logger.js';
+import { buildMcpLlmsGuide } from './llms-guide.js';
 
 export const RESOURCE_CAPABILITIES = {
   subscribe: true,
@@ -79,6 +80,12 @@ export const STATIC_RESOURCES = [
     name: 'Trader Leaderboard',
     description: 'Top traders by PNL or volume.',
     mimeType: 'application/json',
+  },
+  {
+    uri: 'polymarket://mcp/llms.txt',
+    name: 'MCP Full Usage Guide (llms.txt style)',
+    description: 'Complete, up-to-date markdown guide for agents (inspired by Polymarket llms.txt). Call prompts/get "mcp_llms_full_guide" or read this resource for full non-stale instructions on using all tools, native calls, strategy store, without guessing. Always in sync.',
+    mimeType: 'text/markdown',
   },
 ];
 
@@ -331,6 +338,22 @@ export class PolymarketResourceManager {
             text: JSON.stringify({ Markets: formatted }, null, 2),
           }],
         };
+      }
+
+      case 'mcp': {
+        if (parsed.subPath === 'llms.txt' || parsed.subPath === 'usage.md') {
+          // Full dynamic non-stale llms.txt-style guide (same builder as the prompt).
+          // Imported cleanly from sibling llms-guide.js (no cycle, always in sync with tools/prompts).
+          const guide = buildMcpLlmsGuide();
+          return {
+            contents: [{
+              uri,
+              mimeType: 'text/markdown',
+              text: guide,
+            }],
+          };
+        }
+        throw new Error(`Unknown mcp resource: ${uri}`);
       }
 
       case 'market': {

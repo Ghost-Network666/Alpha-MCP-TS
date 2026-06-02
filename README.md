@@ -4,7 +4,7 @@
 
 This is a Polymarket MCP server designed to work natively with **Hermes** (https://hermes-agent.nousresearch.com/), OpenClaw, and other agent harnesses.
 
-It exposes **90+ tools** + a complete **Resources + Subscriptions** system covering:
+It is designed as a **lightweight MCP** (tiny core set of ~10 tools by default + on-demand category loading for the full surface of 100+ capabilities) with a complete **Resources + Subscriptions** system covering:
 
 - Market + event discovery, tags, series, sports, teams
 - Full order lifecycle (limit/market + every cancel variant)
@@ -63,14 +63,16 @@ Auth note: API keys must be derived from the EOA private key. Every order payloa
 
 ## Hermes Installation (Recommended)
 
-**Important for Agents & Safety**: This MCP exposes 100+ tools. Hermes allows you to register it with a safe default subset of tools so agents are not overwhelmed and sensitive actions are not exposed by default.
+**Important for Agents & Safety**: This MCP is deliberately lightweight (tiny default core + categories/prompts for the full surface). Hermes allows you to register it with a safe default subset of tools so agents are not overwhelmed and sensitive actions are not exposed by default.
+
+For LLMs/agents using this MCP: see `AGENTS.md` (especially the "Consuming Agent Quickstart and Exact Native Tool Call Patterns" section) + request the built-in `mcp_llms_full_guide` (full llms.txt-style .MD inspired by https://docs.polymarket.com/llms.txt — maps official concepts to exact native MCP calls, no stale files, strong "explicit tools only, no intent for trading") **and** `mcp_tool_structure_and_categories` prompt first. This + categories + strategy store + enhanced output cards (PNL, sentiment/health) ensures agents know how to use the MCP without ever guessing. The resource `polymarket://mcp/llms.txt` also serves the full guide.
 
 ### Recommended Registration (with safe defaults)
 
 **What the MCP actually expects from an agent at install/registration time (these are now enforced as required or defaulted when the MCP runs):**
 
-- `EOA_PRIVATE_KEY` (or `PRIVATE_KEY`) — required
-- `DEPOSIT_WALLET_ADDRESS` (or `WALLET_ADDRESS`) — required, **defaults to 0xe467d9930e0577bd2beb5e29cb3ae3b457cfb33f** in MCP mode (API use only)
+- `EOA_PRIVATE_KEY` (or `PRIVATE_KEY`) — required (your EOA private key)
+- `DEPOSIT_WALLET_ADDRESS` (or `WALLET_ADDRESS`) — required (your deposit/proxy wallet address; this MCP is public — no defaults or hardcoded values are provided or allowed)
 - `BUILDER_API_KEY` + `BUILDER_SECRET` + `BUILDER_PASSPHRASE` — one valid auth strategy (direct builder HMAC)
 - `RELAYER_API_KEY` + `RELAYER_API_KEY_ADDRESS` — the other valid auth strategy (gasless on verified accounts)
 
@@ -130,10 +132,9 @@ The SDK only allows **one** `apiKey` strategy per `SecureClient` instance. This 
 
 You must provide **at least one** complete set. Both can be supplied at the same time — `getSecureClient()` will prefer Relayer (gasless) when available, while `getRelayerClient()` and `getBuilderClient()` give you explicit access.
 
-**Default wallet (this builder's deposit/proxy):**
-`0xe467d9930e0577bd2beb5e29cb3ae3b457cfb33f` — API use only.
+**Public repo note:** This is a public project. Always use your own keys in production. The examples below use placeholders for user-provided setups. For the project's own recommended Relayer setup (which "works" for gasless with builder attribution), see the specific example.
 
-**Recommended config example:**
+**Recommended config example (user provides everything - most common for personal use):**
 
 ```yaml
 mcp_servers:
@@ -141,15 +142,33 @@ mcp_servers:
     command: node
     args: ["/path/to/Alpha-MCP-TS/dist/mcp.js"]
     env:
-      EOA_PRIVATE_KEY: "0x..."                              # Required (your EOA)
-      DEPOSIT_WALLET_ADDRESS: "0xe467d9930e0577bd2beb5e29cb3ae3b457cfb33f"
+      EOA_PRIVATE_KEY: "0xYOUR_EOA_PRIVATE_KEY"             # Required (your EOA)
+      DEPOSIT_WALLET_ADDRESS: "0xYOUR_DEPOSIT_WALLET_ADDRESS"  # Required (your deposit/proxy)
       POLYMARKET_ENV: mainnet
       # At least one of the two strategies below:
       RELAYER_API_KEY: "..."                                # Preferred for gasless
-      RELAYER_API_KEY_ADDRESS: "0xe467d9930e0577bd2beb5e29cb3ae3b457cfb33f"
+      RELAYER_API_KEY_ADDRESS: "0xYOUR_RELAYER_ADDRESS"
       # BUILDER_API_KEY: "..."
       # BUILDER_SECRET: "..."
       # BUILDER_PASSPHRASE: "..."
+    enabled: true
+```
+
+**Example for this project's recommended Relayer setup (gasless, uses project's builder for attribution - this is the one that "works" with the project's keys):**
+
+This uses the project's builder deposit address (public on-chain) paired with the project's RELAYER_API_KEY. Your activity will be attributed to the project's builder.
+
+```yaml
+mcp_servers:
+  polymarket:
+    command: node
+    args: ["/path/to/Alpha-MCP-TS/dist/mcp.js"]
+    env:
+      EOA_PRIVATE_KEY: "0xYOUR_EOA_PRIVATE_KEY"   # Your EOA (still required for signing in some flows)
+      DEPOSIT_WALLET_ADDRESS: "0xe467d9930e0577bd2beb5e29cb3ae3b457cfb33f"  # Project's builder deposit for this setup
+      POLYMARKET_ENV: mainnet
+      RELAYER_API_KEY: "your-project-relayer-key-here"   # The RELAYER_API_KEY from the project
+      RELAYER_API_KEY_ADDRESS: "0xe467d9930e0577bd2beb5e29cb3ae3b457cfb33f"  # Matches the deposit for the builder
     enabled: true
 ```
 
@@ -173,14 +192,9 @@ This is the correct and safe way for agents to keep the MCP updated:
 
 3. (Recommended) Start a fresh session.
 
-A helper script is included for agents:
-```bash
-./scripts/hermes-safe-update.sh
-```
-
-This script safely updates + rebuilds and explicitly reminds that your keys in `~/.hermes/config.yaml` are left alone.
-
 **Registration is one-time only.** After the initial `hermes mcp add`, you should only ever pull the repo + rebuild + `/reload-mcp`. Never re-run the add command on updates.
+
+(No helper scripts are included or referenced — all updates are manual git pull + rebuild to keep the tree free of testing/integration files.)
 
 **Note**: Requires Node.js ≥ 22.
 
