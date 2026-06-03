@@ -19,6 +19,7 @@ export const MCP_CATEGORIES = [
   'Discovery',
   'Trading',
   'Analytics',
+  'Weather',    // Free UK weather (multi-provider fallback APIs for forecasts/historical/current, native tools for agents + heartbeat)
   'Meta',       // get_mcp_usage for MCP activities/usage tracking
   'Advanced'    // Low-level, security-sensitive, prepare workflows.
 ];
@@ -265,6 +266,26 @@ MCP Advanced category for prepare/sign/send/raw tx where needed. Most agents nev
 
 See also the SDK README for examples/patterns. MCP keeps its mcp_llms_full_guide + this in sync at call-time.
 
+### External Free UK Weather Data (multi-API fallbacks, native tools for agents + heartbeat)
+Use completely free/no-key (Open-Meteo primary, pulls UK Met Office UKV 2km high-res for UK + global models) + other free-tier APIs (OpenWeatherMap, Visual Crossing, WeatherAPI) as fallbacks on rate limit/error.
+- No cost for non-commercial (Open-Meteo: 10k calls/day free, no key; others free tiers ~1k/day with key).
+- Supports forecast (hourly/daily temp, precip, cloud, wind etc.), historical (1940+), current.
+- Resolve UK cities (London, Manchester, Birmingham, Edinburgh etc.) or lat,lon.
+- Native MCP tools (load via list_tool_categories + get_tools_by_category("Weather")).
+- Use with WEATHER category markets for mispricing (compare forecast to market prices via fetch_market + bayesian or strategy).
+- Heartbeat enhancement: X signals + live weather data for real leads (e.g. X rain hype but forecast dry → signal).
+- Cache 15min, rate protected, attribution in cards.
+- If one rate limited: auto fallback to next provider.
+- Example: get_uk_weather_forecast({city: "London", days: 7}) → card with data. Then cross with list_markets({category: "WEATHER"}).
+
+MCP tools added (native, public, Weather category):
+- get_uk_weather_forecast({city: "London" | "51.5,-0.12", days?, variables?})
+- get_uk_weather_historical({city, start_date, end_date, variables?})
+- get_uk_weather_current({city, variables?})
+Providers (fallback order, first with key or no-key): OpenMeteo (no key, UKMO UKV), OpenWeatherMap (env OPENWEATHERMAP_API_KEY), VisualCrossing (VISUALCROSSING_API_KEY), WeatherAPI (WEATHERAPI_KEY). All free tiers/no-cost for base use. See formatWeather cards.
+
+See exhaustive SDK section for pattern. Update your strategy with weather rules for edge.
+
 ## Official Platform Concepts (condensed legacy mappings — prefer the exhaustive section above) — Exact MCP Native Mappings
 
 ### Markets & Events (Fetching, Discovery)
@@ -326,7 +347,7 @@ Official: https://docs.polymarket.com/api-reference/rate-limits.md , trade/send-
 - No guessing: If unsure, re-call the llms guide prompt + structure prompt + get_strategies + relevant category. The combination of AGENTS.md (for code agents), these prompts, categories, strategyStore, agentDirectives, and rich tool descs = zero ambiguity.
 
 ## Full Tool Surface (Discover at Runtime)
-Use list_tool_categories + get_tools_by_category("Rewards" | "Trading" | ...). Schemas + descriptions in protocol are authoritative + include native notes (clobTokenIds, tokenId resolution, warnings on Advanced).
+Use list_tool_categories + get_tools_by_category("Rewards" | "Trading" | "Weather" | ...). Schemas + descriptions in protocol are authoritative + include native notes (clobTokenIds, tokenId resolution, warnings on Advanced). Weather category: free UK APIs (Open-Meteo etc) for forecasts etc.
 
 See also AGENTS.md in repo root for code maintainers (research reqs, no hardcodes, no test files in tree, source split recs for bloat prevention, etc.).
 
@@ -336,6 +357,6 @@ For code changes: follow AGENTS.md mandatory reads + research + pre-commit /revi
 
 `;
 
-  md += "\n\n## Current Categories (runtime authoritative via list_tool_categories)\nRewards | Strategy | Account | Utilities | Discovery | Trading | Analytics | Meta (get_mcp_usage for MCP activities/usage tracking) | Advanced\n\n## Notes\n- Tools/prompts evolve; always refresh via prompts/get and categories for latest.\n- Base SDK reference (all concepts, APIs, examples — use this as primary agent instructions): https://github.com/Polymarket/ts-sdk/blob/main/README.md (kept up-to-date by the maintainers; MCP uses the SDK exclusively).\n- This MCP mapping (full exhaustive SDK surface) ensures native use without ever guessing which tool or arg shape (SDK README first + these MCP overlays).";
+  md += "\n\n## Current Categories (runtime authoritative via list_tool_categories)\nRewards | Strategy | Account | Utilities | Discovery | Trading | Analytics | Weather (free UK multi-API forecasts/historical/current with fallbacks) | Meta (get_mcp_usage for MCP activities/usage tracking) | Advanced\n\n## Notes\n- Tools/prompts evolve; always refresh via prompts/get and categories for latest.\n- Base SDK reference (all concepts, APIs, examples — use this as primary agent instructions): https://github.com/Polymarket/ts-sdk/blob/main/README.md (kept up-to-date by the maintainers; MCP uses the SDK exclusively).\n- This MCP mapping (full exhaustive SDK surface) ensures native use without ever guessing which tool or arg shape (SDK README first + these MCP overlays).";
   return md;
 }
