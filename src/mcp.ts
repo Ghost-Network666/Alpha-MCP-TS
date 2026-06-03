@@ -16,6 +16,7 @@ import {
 import { getPublicClient, getSecureClient, setupGaslessWallet } from './lib.js';
 import * as F from './formatters.js';
 import { getMarket } from './data/markets.js';
+import { weatherClient } from './data/weather.js';
 import {
   placeLimitOrder as sportsPlaceLimitOrder,
   placeMarketOrder as sportsPlaceMarketOrder,
@@ -319,6 +320,7 @@ function getToolsByCategory(category: string) {
     if (catLower === 'account' && /balance|allowance|portfolio|position/i.test(desc)) return true;
     if (catLower === 'trading' && /place|order|cancel|maker/i.test(desc)) return true;
     if (catLower === 'discovery' && /list_market|fetch_market|search|list_tag|list_sport|list_team|fetch_tag/i.test(desc)) return true;
+    if (catLower === 'weather' && /weather|uk weather|forecast|historical|precip|temp.*uk/i.test(desc)) return true;
     if (catLower === 'advanced' && /security-sensitive|sign_|send_transaction|prepare_|deploy_|end_authentication|get_secure_client_info|advanced/i.test(desc)) return true;
     if (catLower === 'meta' && /\[meta\]|meta|usage|track|discover/i.test(desc)) return true;
     return false;
@@ -431,6 +433,46 @@ const publicTools = [
         category: { type: 'string' }
       },
       required: ['q']
+    }
+  },
+  // === Weather (free UK-focused multi-provider APIs with auto-fallback for rate limits; native tools for agents + heartbeat enhancement)
+  {
+    name: 'get_uk_weather_forecast',
+    description: '[Weather] Free UK weather forecast (Open-Meteo primary no-key + UK Met Office UKV 2km model; fallbacks to OpenWeatherMap/VisualCrossing/WeatherAPI if rate limited or error). Use for WEATHER category markets, mispricing vs prices, heartbeat signals. Cities: London, Manchester, etc or lat,lon.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        city: { type: 'string', description: 'UK city e.g. "London", "Manchester" or "51.5074,-0.1278"' },
+        days: { type: 'number', description: 'Forecast days (default 7, max 16 for Open-Meteo)' },
+        variables: { type: 'array', items: { type: 'string' }, description: 'Optional hourly vars e.g. ["temperature_2m","precipitation"]' }
+      },
+      required: ['city']
+    }
+  },
+  {
+    name: 'get_uk_weather_historical',
+    description: '[Weather] Free UK historical weather (multi-provider fallback). For verifying past markets or backtesting. Requires dates.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        city: { type: 'string', description: 'UK city or lat,lon' },
+        start_date: { type: 'string', description: 'YYYY-MM-DD' },
+        end_date: { type: 'string', description: 'YYYY-MM-DD' },
+        variables: { type: 'array', items: { type: 'string' } }
+      },
+      required: ['city', 'start_date', 'end_date']
+    }
+  },
+  {
+    name: 'get_uk_weather_current',
+    description: '[Weather] Free current UK weather (multi-provider). For real-time signals.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        city: { type: 'string', description: 'UK city or lat,lon' },
+        variables: { type: 'array', items: { type: 'string' } }
+      },
+      required: ['city']
     }
   },
   {
@@ -1981,6 +2023,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return callWithFormat(() => pub.listTeams(), F.formatGeneric, name);
     case 'fetch_tag':
       return callWithFormat(() => pub.fetchTag(args), F.formatGeneric, name);
+    case 'get_uk_weather_forecast':
+      return callWithFormat(async () => {
+        const res = await weatherClient.getForecast(args.city, args.days, args.variables);
+        return F.formatWeather(res, args.city, 'forecast');
+      }, F.formatGeneric, name);
+    case 'get_uk_weather_historical':
+      return callWithFormat(async () => {
+        const res = await weatherClient.getHistorical(args.city, args.start_date, args.end_date, args.variables);
+        return F.formatWeather(res, args.city, 'historical');
+      }, F.formatGeneric, name);
+    case 'get_uk_weather_current':
+      return callWithFormat(async () => {
+        const res = await weatherClient.getCurrent(args.city, args.variables);
+        return F.formatWeather(res, args.city, 'current');
+      }, F.formatGeneric, name);
     case 'fetch_order_book':
       return callWithFormat(() => pub.fetchOrderBook(args), F.formatOrderBook, name);
     case 'fetch_price':

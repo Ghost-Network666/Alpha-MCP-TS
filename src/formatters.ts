@@ -1242,4 +1242,39 @@ export function formatPnlSummary(positions: any[]): object {
   });
 }
 
+/** Format weather data from any provider (normalized card). Supports forecast, historical, current. */
+export function formatWeather(data: any, location: string, type: 'forecast' | 'historical' | 'current' = 'forecast'): object {
+  if (!data || !data.data) return { 'Weather': 'No data', 'Location': location, 'Provider': data?.provider || 'unknown' };
+  const provider = data.provider || 'unknown';
+  const d = data.data;
+  let summary: any = { 'Location': location, 'Provider': provider, 'Type': type, 'Note': 'Free data via multiple providers with fallback (Open-Meteo primary, includes UK Met Office). Use with weather category markets for mispricing vs prices.' };
+
+  if (type === 'forecast' || type === 'current') {
+    const hourly = d.hourly || d.list || [];
+    const current = d.current || (hourly[0] || {});
+    summary['Current / Next'] = {
+      'Temp °C': current.temperature_2m || current.main?.temp || current.temp,
+      'Precip mm': current.precipitation || current.rain?.['1h'] || current.precip,
+      'Cloud %': current.cloud_cover || current.clouds?.all,
+      'Wind kmh': current.wind_speed_10m || current.wind?.speed,
+    };
+    if (d.daily) {
+      summary['Daily Outlook'] = (d.daily.time || []).slice(0, 3).map((t: string, i: number) => ({
+        Date: t,
+        'Max °C': d.daily.temperature_2m_max?.[i],
+        'Min °C': d.daily.temperature_2m_min?.[i],
+        'Precip Sum mm': d.daily.precipitation_sum?.[i],
+      }));
+    }
+  } else if (type === 'historical') {
+    const daily = d.daily || {};
+    summary['Historical Summary'] = {
+      'Period': `${daily.time?.[0]} to ${daily.time?.[daily.time.length - 1]}`,
+      'Avg Max Temp': daily.temperature_2m_max ? (daily.temperature_2m_max.reduce((a: number, b: number) => a + b, 0) / daily.temperature_2m_max.length).toFixed(1) : null,
+      'Total Precip': daily.precipitation_sum ? daily.precipitation_sum.reduce((a: number, b: number) => a + b, 0) : null,
+    };
+  }
+  return omitUndefined(summary);
+}
+
 
