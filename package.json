@@ -43,7 +43,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@polymarket/client": "beta",
+    "@polymarket/client": "^0.1.0-beta.2",
     "dotenv": "^16.4.5",
     "viem": "^2.21.0",
     "winston": "^3.14.0",

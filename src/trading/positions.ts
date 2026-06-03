@@ -140,6 +140,9 @@ export async function transferCollateral(params: {
 /**
  * One-time (or idempotent) setup for gasless trading + CTF approvals.
  * Already exposed via config/client.ts ensureTradingSetup, but provided here for convenience.
+ *
+ * Updated for latest SDK: approvals idempotent; gasless/deposit defaults in createSecureClient;
+ * setupGaslessWallet deprecated no-op.
  */
 export async function setupTradingEnvironment(): Promise<void> {
   const client = await secure();
@@ -147,11 +150,13 @@ export async function setupTradingEnvironment(): Promise<void> {
 
   const isGasless = await client.isGaslessReady().catch(() => false);
   if (!isGasless) {
-    await client.setupGaslessWallet();
-    // Note: in real usage you would update any cached client reference (see ensureTradingSetup in client.ts)
-    logger.info('Gasless wallet deployed');
+    // Note: per latest SDK, gasless setup for deposit wallets is automatic inside createSecureClient.
+    // setupGaslessWallet is @deprecated no-op. Call kept for compat.
+    await client.setupGaslessWallet().catch(() => {});
+    logger.info('Gasless setup invoked (may be no-op)');
   }
 
+  // setupTradingApprovals is now idempotent per SDK update.
   const handle = await client.setupTradingApprovals();
   await handle.wait();
   logger.info('CTF + ERC20 trading approvals confirmed on-chain');

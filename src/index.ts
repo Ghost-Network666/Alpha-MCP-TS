@@ -110,7 +110,7 @@ async function main() {
       requireAuthEnv();
       const secure = await getSecureClient();
       await ensureTradingSetup(secure);
-      console.log('Trading setup complete.');
+      console.log('Trading setup complete (aligns to latest SDK deposit defaults + idempotent approvals).');
       break;
     }
 

@@ -366,7 +366,7 @@ const publicTools = [
 
   {
     name: 'list_markets',
-    description: '[Discovery] List platform markets using the official SDK listMarkets(). Supports filters like category (WEATHER, SPORTS etc.), rewardsMinSize for farming, search, volume, liquidity, and clobTokenIds (array of specific CLOB token IDs) to filter. Note: fetchMarket() SDK only supports id/slug/url; for fetching by tokenId we internally resolve via listMarkets({ clobTokenIds: [tokenId] }) in the fetch_market tool + getMarket helper. Use for mispricing scans or reward discovery. Pass category or rewardsMinSize for structure. Always returns Yes TokenId + No TokenId via clobTokenIds fallback (per SDK). Use fetch_market before trading.',
+    description: '[Discovery] List platform markets (official SDK: client.listMarkets(params) after createPublicClient().extend(allActions)). Supports filters like category (WEATHER, SPORTS etc.), rewardsMinSize, search/keyword, volume/liquidity, clobTokenIds (array for CLOB token IDs), conditionIds, active/closed, pageSize. Note: official SDK fetchMarket only supports id/slug/url (per README); MCP fetch_market + getMarket helper resolves tokenId via internal listMarkets({ clobTokenIds: [tokenId], pageSize:1 }). Use for discovery. Always includes Yes/No TokenId in formatted output. See official ts-sdk README for full params/pagination.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -387,7 +387,7 @@ const publicTools = [
   },
   {
     name: 'fetch_market',
-    description: 'Fetch a single market by id, slug, url or tokenId (e.g. yes/no clobTokenId from reward lists or orders). Supports fetching the specific market for a given token. Always returns Yes TokenId + No TokenId via clobTokenIds fallback (per SDK). Use fetch_market (or internal resolver) to obtain trading tokenIds.',
+    description: 'Fetch a single market by id, slug, url or tokenId (e.g. yes/no clobTokenId from reward lists or orders). Per official SDK (createPublicClient + listMarkets clob filter for tokenId case, since fetchMarket supports only id/slug/url per README), MCP resolves tokenId internally. Always returns Yes TokenId + No TokenId. Use before trading to get outcomes/tokens. See official ts-sdk README for client.getMarket / listMarkets.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -996,7 +996,7 @@ const publicTools = [
 const secureTools = [
   {
     name: 'place_limit_order',
-    description: '[Trading] Place a limit order (GTC maker by default for rewards). Requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS. Defaults to orderType=GTC and postOnly=true so the order rests on the book as a maker (earns rewards, no taker fees).',
+    description: '[Trading] Place a limit order (official SDK: createSecureClient({signer, wallet}).extend(allActions).placeLimitOrder(params) or postOrder after createLimitOrder). Requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS (per SDK secure client). Defaults to GTC + postOnly for maker (rewards). See official ts-sdk README + client for param shapes (tokenId, price, size, side, orderType, postOnly).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1193,12 +1193,12 @@ const secureTools = [
   },
   {
     name: 'setup_trading_approvals',
-    description: 'Set up trading approvals (ERC20 + CTF). Includes auto-redeem approval for redemption workflows (as noted: auto-redeem is a contract approval).',
+    description: 'Set up trading approvals (ERC20 + CTF). Per latest SDK: idempotent (safe to call repeatedly, no-op if already set). Includes auto-redeem approval for redemption workflows.',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'enable_auto_redeem',
-    description: 'Enable auto-redeem for resolved positions (performs the required contract approval for redemption). This is just the approval step (ERC1155/CTF redeem flow); explicit SDK method coming per feedback. Delegates to setup_trading_approvals which covers it.',
+    description: 'Enable auto-redeem for resolved positions (idempotent per latest SDK; performs the required contract approval for redemption). Delegates to setup_trading_approvals.',
     inputSchema: { type: 'object', properties: {} }
   },
   {
@@ -1350,7 +1350,7 @@ const secureTools = [
   },
   {
     name: 'deploy_deposit_wallet',
-    description: '[Advanced] Deploy deposit wallet',
+    description: '[Advanced] Deploy (current deterministic) deposit wallet (per latest SDK: auto for DEPOSIT_WALLET in createSecureClient; explicit tool for manual).',
     inputSchema: { type: 'object', properties: {} }
   },
   {
@@ -1360,7 +1360,7 @@ const secureTools = [
   },
   {
     name: 'setup_gasless_wallet',
-    description: 'Setup gasless wallet',
+    description: 'Setup gasless wallet (per latest SDK: @deprecated no-op after createSecureClient deposit default; gasless handled at creation for non-EOA. Kept for compat).',
     inputSchema: { type: 'object', properties: {} }
   },
   {
@@ -1467,7 +1467,7 @@ const secureTools = [
   },
   {
     name: 'is_gasless_ready',
-    description: 'Check if the gasless/relayer wallet is ready',
+    description: 'Check if the gasless/relayer wallet is ready (per latest SDK: gasless often auto for deposit wallets created via createSecureClient).',
     inputSchema: { type: 'object', properties: {} }
   },
   {
@@ -1572,7 +1572,7 @@ const secureTools = [
   // === Maker Rewards Focused Workflow (High Success Rate for Earning Rewards) ===
   {
     name: 'place_maker_reward_order',
-    description: '[Rewards] STRICT REWARD-ONLY TOOL. Forces GTC+postOnly and only succeeds on confirmed scoring orders. For volume/requoting: prefer batching via post_orders where possible. See CLOB V2 place latency/contention warnings in reward_farming_best_practices prompt (heavy individual requotes ~200+/sec cause 400ms+ place delays even under limits). IMPORTANT: rate-limited — do NOT tight-loop; use wait_seconds + your strategy requote policy. On failure you get strong autonomous directive.',
+    description: '[Rewards] STRICT REWARD-ONLY TOOL (per official SDK secure client + postOrder with postOnly GTC for maker rewards eligibility). Forces GTC+postOnly and only succeeds on confirmed scoring orders (via listMarketRewards + order book checks). For volume/requoting: prefer batching via post_orders. See CLOB V2 notes in prompts + official ts-sdk README for placeLimitOrder/postOrder patterns. IMPORTANT: rate-limited — use wait_seconds + strategy policy. On failure: strong agentDirective to rotate.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1964,7 +1964,7 @@ const PROMPTS = [
   },
   {
     name: 'mcp_llms_full_guide',
-    description: 'Returns complete guide: FIRST the official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers; use as primary agent instructions for all SDK coverage/APIs/examples) + MCP-specific mappings with FULL EXHAUSTIVE COVERAGE of the unified @polymarket/client TS SDK surface (client factories, allActions/extend, subpaths /actions /viem, Core classes, every Error, All Actions categorized: markets/discovery/CLOB/portfolio/account/wallet/rewards/builders/data/transfers/sports, Decorators public+secure, WS managers bridged to resources, wallet integrations, Types, low-level calls). Maps each to exact native MCP tool + JSON + "explicit only, no intent". Plus strategyStore, cards (PNL/sentiment/farmability), resources, rate notes, public rules. Call this (and structure prompt) first. Always in sync (call-time from code + current SDK).',
+    description: 'Returns complete guide: the official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers) is the PRIMARY/canonical source of truth for all SDK coverage, APIs, client creation (createPublicClient/createSecureClient), decorators (extend(allActions)), methods (listMarkets, fetchMarket, placeLimitOrder etc.), parameters, errors, examples. This MCP adds only runtime-generated overlays/mappings (exact native tool + JSON call shape + "use explicit place_limit_order etc with your numbers from strategy/calc, never intent"). Includes full exhaustive SDK surface mappings + strategyStore + cards (PNL/sentiment/farmability) + resources + rate notes + public rules. Call SDK README first, then this (and structure prompt) for complete non-guessing experience. Always in sync (call-time from code + current SDK).',
     arguments: []
   }
 ];
@@ -3622,11 +3622,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return updateBalanceAllowance(sec, args || {});
       }, F.formatGeneric, name);
     case 'deploy_deposit_wallet':
+      // Explicit deploy for deposit wallet (still supported; auto-deploy now happens in create for DEPOSIT_WALLET type per latest SDK).
       return callWithFormat(async () => (await getSec()).deployDepositWallet(), F.formatTransactionHandle, name);
     case 'download_accounting_snapshot':
       return callWithFormat(async () => (await getSec()).downloadAccountingSnapshot(args), F.formatAccountingSnapshot, name);
     case 'setup_gasless_wallet':
-      // Uses the factory wrapper which performs the required client replacement
+      // Per latest SDK (default secure client to deposit wallet): setupGaslessWallet is @deprecated no-op.
+      // Gasless/deposit setup now automatic in createSecureClient. Wrapper kept for MCP tool compat.
       return callWithFormat(() => setupGaslessWallet(), F.formatGeneric, name);
     case 'fetch_transaction':
       return callWithFormat(async () => (await getSec()).fetchTransaction(args), F.formatGaslessTx, name);
@@ -3889,7 +3891,7 @@ STRATEGY / RULES STORE (your most important lightweight tool for autonomy):
 - This design is why the MCP has almost no tools by default and never gets bloated: you own and evolve all logic yourself.
 
 Call list_tool_categories then get_tools_by_category("Rewards" | "Strategy" | "Discovery" | "Weather" etc.) only when you need more.
-**For full .md-style non-stale guidance (official llms.txt inspired concepts mapped to exact MCP calls)**: call prompts/get "mcp_llms_full_guide" (or read resource polymarket://mcp/llms.txt). It covers Markets/Positions/Orderbook/Rewards/Trading/Order Lifecycle etc with "use THIS explicit tool + args, never intent for trading".
+**For full .md-style non-stale guidance**: the official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers) is the PRIMARY source of truth for SDK patterns (client factories, allActions, listMarkets/fetchMarket/placeLimitOrder signatures, etc.). Call prompts/get "mcp_llms_full_guide" (or read resource polymarket://mcp/llms.txt) for MCP mappings on top of it. It covers "for SDK concept X (see official README), use THIS exact MCP tool + args (never intent for trading)".
 Use the reward_farming_best_practices prompt for the current X + MARKET FARMING tactics.
 Never ask the human for options — drive everything from your stored rules + tool directives + prompts.
 

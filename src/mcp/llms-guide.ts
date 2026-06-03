@@ -1,6 +1,6 @@
 // src/mcp/llms-guide.ts
 // Call-time delivered non-stale .md style guide for agents (SDK README + MCP mappings).
-// Link the official TS SDK README as the base agent instructions (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers for SDK coverage, APIs, examples). The custom llms.txt is not yet on all docs (SDKs beta).
+// The official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers) is the PRIMARY and canonical source of truth for all SDK coverage, APIs, client factories (createPublicClient/createSecureClient), decorators (allActions), methods (listMarkets, placeLimitOrder, etc.), parameters, errors, and examples. The MCP llms guide + prompts provide only MCP-specific overlays/mappings on top (exact tool names + call shapes + "use explicit only, no intent", strategyStore, resources, cards, categories). Never rely on stale local copies.
 // How added/updated to the MCP (instead of stale .MD files or direct llms.txt):
 // - Dedicated src/mcp/llms-guide.ts with buildMcpLlmsGuide() that produces full .MD at *runtime* (call-time, so never stale).
 // - Registered as MCP Prompt "mcp_llms_full_guide" (agents do prompts/get) and Resource "polymarket://mcp/llms.txt" (agents list/read_resource/subscribe).
@@ -40,7 +40,7 @@ This MCP is **lightweight and agent-first** for the CLOB prediction market platf
 **Core principle**: Tiny default tool surface (~10 core tools via CORE_TOOL_NAMES). Use categories + prompts to discover/load more. 
 **Agents must never guess**: Always start with the mandatory sequence below. All your logic/rules/filters/exits in strategy store (get_strategies first every loop). Use only native SDK paths via these explicit tools. Follow every agentDirective. Public: always provide your own keys (no defaults/hardcodes anywhere in this MCP or docs).
 
-**Base instructions:** For the underlying TS SDK (all APIs, clients, auth, examples, concepts), read the official README first: https://github.com/Polymarket/ts-sdk/blob/main/README.md (maintained up-to-date by the maintainers — this MCP uses the SDK 100% natively with no custom HTTP). 
+**Base instructions (PRIMARY SOURCE OF TRUTH):** For the underlying TS SDK (all APIs, clients, auth, examples, concepts, client creation with createPublicClient/createSecureClient, .extend(allActions) for decorators, method signatures like listMarkets/fetchMarket/placeLimitOrder, param shapes, pagination, errors, WS managers, wallet adapters, etc.), read the official README first and treat it as canonical: https://github.com/Polymarket/ts-sdk/blob/main/README.md (maintained up-to-date by the maintainers — this MCP uses the SDK 100% natively with no custom HTTP, only thin safe wrappers + formatters + categories + strategyStore). 
 
 Instead of duplicating SDK docs or using stale local MDs/llms.txt, this prompt + the MCP resource polymarket://mcp/llms.txt delivers MCP-specific overlays + exact native call mappings on top of the SDK README so consuming agents have zero ambiguity on "how do I do X natively in *this MCP* using the SDK". Load the SDK README first, then this MCP guide.
 
@@ -68,11 +68,11 @@ Full ~130+ capabilities via on-demand categories (prevents bloat, forces deliber
 
 **You are an expert Polymarket MCP developer using the official unified TypeScript SDK @polymarket/client@beta (follow the categorized list below exactly for any feature mapping).**
 
-**Core SDK Setup (always use this pattern):** 
+**Core SDK Setup (always use this pattern per official README):** 
 import { createPublicClient, createSecureClient } from '@polymarket/client';
-// Prefer createSecureClient for trading/gasless/wallet
+// Prefer createSecureClient for trading/gasless/wallet (see official for options: signer, wallet, environment, apiKey etc.)
 const client = await createSecureClient({ signer, wallet, apiKey?, builder creds?, ... });
-client = client.extend(allActions); // decorators for clean client.listMarkets, client.placeLimitOrder, client.getBBO etc.
+client = client.extend(allActions); // decorators for clean client.listMarkets, client.placeLimitOrder / postOrder, client.getBBO etc.
 
 **Base instructions (always load first):** the official TS SDK README at https://github.com/Polymarket/ts-sdk/blob/main/README.md. This MCP maps every item below to exact native MCP tool + args (or the direct client.xxx call when documenting SDK usage). Never guess. Explicit only.
 
@@ -83,7 +83,7 @@ createPublicClient(config?) — Read-only (Gamma/Data + public WS)
 createSecureClient(config) — Full (trading + CLOB + gasless + wallet + auth)
 BasePublicClient, BaseSecureClient, ServiceClient (low-level)
 
-MCP factories + extend (see client.ts). setup_gasless_wallet tool.
+MCP factories + extend (see client.ts). setup_gasless_wallet tool (deprecated no-op per latest SDK deposit default; gasless handled at createSecureClient).
 
 ### 2. Market Discovery & Gamma
 client.listMarkets(params), client.getMarket(idOrSlug), client.searchMarkets(query), client.listSeries, client.listTags, client.listTeams, client.listSports, client.listEvents, client.getEvent
@@ -100,7 +100,7 @@ See the exact lists in the user's expert instructions (client.getPositions, getP
 
 MCP maps them to corresponding tools in Account/Trading/Rewards/Advanced (or resources for WS managers). Full details + "use client.xxx directly in non-MCP code" are in the SDK README (primary) + this guide's mappings + mcp_tool_structure_and_categories prompt. Load prompts/get mcp_llms_full_guide first.
 
-**Best practices (MCP and agents must follow):** Prefer createSecureClient + gasless. Decorators pattern (client.listMarkets etc.). Pagination on lists. SDK errors (RateLimitError etc.). Real-time via the bridged WS managers (MCP resources). Map any feature request to the exact function in the 1-10 categories above + the MCP tool that wraps it.
+**Best practices (MCP and agents must follow):** Prefer createSecureClient (now defaults to Deposit Wallet per latest SDK). Gasless setup automatic for non-EOA at creation; setupGaslessWallet deprecated. Decorators pattern (client.listMarkets etc.). Pagination on lists. SDK errors (RateLimitError etc.). Real-time via the bridged WS managers (MCP resources). setupTradingApprovals idempotent. Map any feature request to the exact function in the 1-10 categories above + the MCP tool that wraps it.
 
 MCP tools: list_markets (with clobTokenIds + category/search passthrough + resolver for tokenId), fetch_market (id/slug/url/tokenId — internal listMarkets clob bridge), search, list_events, fetch_event, list_tags, list_sports, list_teams, list_series, fetch_tag, fetch_series (via Discovery category). Use pagination internally.
 
@@ -147,7 +147,9 @@ MCP: create_api_key / derive / create_or_derive / fetch_api_keys / delete_api_ke
 - client.waitForGaslessTransaction(txHash)
 - Gasless approval + transaction workflows
 
-MCP: approve_erc20, approve_erc1155_for_all, deploy_deposit_wallet, fetch_deposit_wallet, setup_gasless_wallet, is_gasless_ready (implicit), setup_trading_approvals, split/merge/redeem_positions, prepare_* family, send_transaction (very sensitive), update_balance_allowance, fetch_balance_allowance (standalone for reliability).
+Per latest SDK (Jun 2026 commits): createSecureClient defaults wallet to signer's Deposit (auto-deploy if DEPOSIT_WALLET); setupGaslessWallet @deprecated no-op (setup at creation); setupTradingApprovals idempotent.
+
+MCP: approve_erc20, approve_erc1155_for_all, deploy_deposit_wallet, fetch_deposit_wallet, setup_gasless_wallet (compat), is_gasless_ready (implicit), setup_trading_approvals (idempotent), split/merge/redeem_positions, prepare_* family, send_transaction (very sensitive), update_balance_allowance, fetch_balance_allowance (standalone for reliability).
 
 ### 7. Rewards & Subscriptions
 - client.getRewards()
@@ -181,7 +183,7 @@ MCP: Resources (subscribe/read) for polymarket://market/{tokenId}/book, polymark
 - All Types from @polymarket/types and bindings (Market with clobTokenIds/outcomes/tokens, OrderSide, OrderType, ActivityType incl. rebates, etc. — normalized in MCP cards)
 
 **MCP Best Practices (follow exactly):**
-- Always prefer createSecureClient + gasless (setup_gasless_wallet) for trading/wallet.
+- Always prefer createSecureClient (deposit wallet default per latest SDK; gasless auto for non-EOA at creation; setup_gasless_wallet deprecated no-op) for trading/wallet.
 - Use decorators pattern for clean calls (client.listMarkets, client.placeLimitOrder / postOrder etc.).
 - All list* : use pagination (for await or MCP wrappers).
 - Error handling: SDK classes + MCP structured {ok:false, retryAfter, agentDirective}.
@@ -217,7 +219,7 @@ CancelledSigningError, RateLimitError, RequestRejectedError, SigningError, Timeo
 - createOrDeriveApiKey, fetchApiKeys, deleteApiKey, getProfile, updateProfile, getLeaderboards (builder/trader), listComments, postComment, fetchPublicProfile, listBuilderLeaderboard, listBuilderTrades, listBuilderVolume. MCP: some via Advanced or Account category (list_builder_leaderboard exposed); get_profile etc via get_tools_by_category("Account") if thin-wrapped or use list_activity + resources for most agent needs.
 
 **Wallet / Onchain (Advanced or direct)**
-- approveToken, deployDepositWallet, getDepositWallet, isGaslessReady, waitForGaslessTransaction, setupTradingApprovals, split/merge/redeem (via prepare or onchain CTF tools). MCP: get_balance_allowance, approve_erc20, approve_erc1155_for_all, setup_trading_approvals, setup_gasless_wallet, split_position, merge_positions, redeem_positions, prepare_* (Advanced), send_transaction (very sensitive).
+- approveToken, deployDepositWallet, getDepositWallet, isGaslessReady, waitForGaslessTransaction, setupTradingApprovals (idempotent), split/merge/redeem (via prepare or onchain CTF tools). MCP: get_balance_allowance, approve_erc20, approve_erc1155_for_all, setup_trading_approvals, setup_gasless_wallet (compat), split_position, merge_positions, redeem_positions, prepare_* (Advanced), send_transaction (very sensitive). Latest SDK: deposit wallet default in createSecureClient.
 
 **Rewards & Subscriptions**
 - getRewards / listCurrentRewards / listMarketRewards / claimRewards, listSubscriptions, subscribe/unsubscribe. MCP: list_active_maker_reward_markets (enriched primary), list_current_rewards (raw), get_farmability, reward place tools; subscriptions bridged to resources.

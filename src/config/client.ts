@@ -10,13 +10,18 @@ import {
 import { privateKey } from '@polymarket/client/viem';
 import { logger } from '../utils/logger.js';
 
+// Per official ts-sdk README (primary source): use createPublicClient() for read-only,
+// createSecureClient({ signer: privateKey(pk) from /viem, wallet: DEPOSIT_WALLET_ADDRESS, ... })
+// then .extend(allActions) for the full decorated surface (listMarkets, placeLimitOrder, etc.).
+// See https://github.com/Polymarket/ts-sdk/blob/main/README.md and packages/client for canonical patterns.
+
 let publicClientInstance: PublicClient<PublicActions, SecureActions> | null = null;
 let secureClientInstance: SecureClient<PublicActions, SecureActions> | null = null;
 
 export function getPublicClient(): PublicClient<PublicActions, SecureActions> {
   if (!publicClientInstance) {
-    // Explicit extend(allActions) for full exhaustive coverage of the unified TS SDK surface (discovery, data, analytics, etc.)
-    // per the documented client factory + decorator pattern.
+    // Per official ts-sdk: createPublicClient() + .extend(allActions) for full surface (listMarkets etc.).
+    // See official README/packages/client for client creation and decorators.
     const raw = createPublicClient();
     publicClientInstance = raw.extend(allActions);
     logger.debug('Public client initialized (with allActions)');
@@ -25,12 +30,13 @@ export function getPublicClient(): PublicClient<PublicActions, SecureActions> {
 }
 
 /**
- * Creates the SecureClient using exactly the required pattern per SDK + MCP spec (full exhaustive):
- *   wallet = deposit wallet address (DEPOSIT_WALLET_ADDRESS or WALLET_ADDRESS)
- *   signer = privateKey(EOA_PRIVATE_KEY or PRIVATE_KEY) from @polymarket/client/viem
- *   + relayer/builder/apiKey when present in env (for gasless + builder attribution per SDK createSecureClient options).
+ * Creates the SecureClient using exactly the pattern in the official ts-sdk README (PRIMARY, with deposit wallet defaults):
+ *   createSecureClient({ signer: privateKey(...) from @polymarket/client/viem , wallet? (omitted => SDK derives current Deposit Wallet), apiKey? for relayer etc. })
+ *   then .extend(allActions).
+ * See https://github.com/Polymarket/ts-sdk/blob/main/README.md + packages/client/src/clients.ts (latest: default secure to deposit, setupGasless no-op).
  *
- * Gasless is enabled post-creation via setupGaslessWallet() which returns a replacement client.
+ * Per latest SDK: if no WALLET env, omit to let SDK default to signer's deterministic Deposit Wallet (auto-deploy if needed for DEPOSIT_WALLET).
+ * Gasless setup now happens inside createSecureClient for non-EOA; setupGaslessWallet is @deprecated no-op.
  */
 export async function getSecureClient(): Promise<SecureClient<PublicActions, SecureActions>> {
   if (secureClientInstance) return secureClientInstance;
@@ -38,15 +44,19 @@ export async function getSecureClient(): Promise<SecureClient<PublicActions, Sec
   const pk = process.env.EOA_PRIVATE_KEY || process.env.PRIVATE_KEY;
   const wallet = process.env.DEPOSIT_WALLET_ADDRESS || process.env.WALLET_ADDRESS;
 
-  if (!pk || !wallet) {
-    throw new Error('Missing EOA_PRIVATE_KEY/PRIVATE_KEY and DEPOSIT_WALLET_ADDRESS/WALLET_ADDRESS for secure client');
+  if (!pk) {
+    throw new Error('Missing EOA_PRIVATE_KEY/PRIVATE_KEY for secure client');
   }
 
   const signer = privateKey(pk);
 
-  // Full exhaustive auth support per SDK createSecureClient options + spec (relayer/builder/apiKey for gasless/attribution + EOA signer + deposit wallet).
+  // Full exhaustive auth support per SDK createSecureClient options + spec (relayer/builder/apiKey for gasless/attribution + EOA signer + optional deposit wallet).
   // Explicit extend(allActions) for full surface (trading, wallet, secure account, rewards, etc.).
-  const config: any = { wallet, signer };
+  // Align to new default: pass wallet only if provided; SDK will default to derived Deposit Wallet.
+  const config: any = { signer };
+  if (wallet) {
+    config.wallet = wallet;
+  }
   if (process.env.RELAYER_API_KEY && process.env.RELAYER_API_KEY_ADDRESS) {
     config.apiKey = { key: process.env.RELAYER_API_KEY, address: process.env.RELAYER_API_KEY_ADDRESS };
   } else if (process.env.BUILDER_API_KEY && process.env.BUILDER_SECRET && process.env.BUILDER_PASSPHRASE) {
@@ -55,7 +65,7 @@ export async function getSecureClient(): Promise<SecureClient<PublicActions, Sec
   }
   const raw = await createSecureClient(config);
   secureClientInstance = raw.extend(allActions);
-  logger.info('Secure client initialized (full auth support + EOA signer + deposit wallet, with allActions)');
+  logger.info('Secure client initialized (full auth support + EOA signer + deposit wallet default per latest SDK, with allActions)');
   return secureClientInstance;
 }
 
@@ -63,33 +73,36 @@ export async function getSecureClient(): Promise<SecureClient<PublicActions, Sec
  * Call setupGaslessWallet on the current secure client and replace the cached
  * instance with the returned client (per SDK contract and MCP requirement).
  * Returns the new client.
+ *
+ * Per latest SDK (feat: default secure client to deposit wallet): setupGaslessWallet is
+ * @deprecated and a no-op (returns client as-is). Gasless/deposit wallet setup is now
+ * performed inside createSecureClient for non-EOA wallets. Kept for compat + MCP tool.
  */
 export async function setupGaslessWallet(): Promise<SecureClient<PublicActions, SecureActions>> {
   const current = await getSecureClient();
   const updated = await current.setupGaslessWallet();
   secureClientInstance = updated;
-  logger.info('Gasless wallet setup complete; active secure client replaced');
+  logger.info('Gasless wallet setup (no-op per latest SDK deposit default; handled at createSecureClient)');
   return updated;
 }
 
 /**
  * Convenience for library consumers: ensure gasless + approvals on a client you hold.
  * For MCP, use the 'setup_gasless_wallet' tool + the trading approval tools directly.
+ *
+ * Per latest SDK: approvals are idempotent (safe to call repeatedly). Gasless setup
+ * is handled at create time for deposit wallets; setupGaslessWallet is no-op.
  */
 export async function ensureTradingSetup(secureClient: SecureClient<PublicActions, SecureActions>): Promise<void> {
+  // Gasless/deposit now defaulted in createSecureClient (per feat default to deposit wallet).
+  // isGaslessReady + setupGaslessWallet kept for compat but no longer required for standard flows.
   const isGasless = await secureClient.isGaslessReady().catch(() => false);
   if (!isGasless) {
-    logger.info('Setting up gasless wallet...');
-    try {
-      // The returned client should be used by caller for subsequent ops (MCP factory auto-replaces via its wrapper)
-      await secureClient.setupGaslessWallet();
-      logger.info('Gasless wallet setup complete');
-    } catch (err) {
-      logger.warn('Gasless setup skipped or failed (may not be required)', { error: (err as Error).message });
-    }
+    logger.info('Gasless not ready (setup now automatic for deposit wallets in createSecureClient)...');
   }
 
-  logger.info('Ensuring trading approvals (ERC20 + CTF setApprovalForAll)...');
+  // Approvals now idempotent per latest SDK.
+  logger.info('Ensuring trading approvals (ERC20 + CTF setApprovalForAll, idempotent)...');
   const handle = await secureClient.setupTradingApprovals();
   await handle.wait();
   logger.info('Trading approvals confirmed');
