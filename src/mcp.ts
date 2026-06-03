@@ -304,7 +304,7 @@ function sanitizePageSize(args: any, defaultSize = 30, maxSize = 100) {
 
 const TOOL_CATEGORIES: Record<string, string> = {
   // Will be populated with name -> category
-  // Core categories: Discovery, Rewards, Trading, Account, Strategy, Analytics, Utilities
+  // Core categories: Discovery, Rewards, Trading, Account, Strategy, Analytics, Utilities, Weather
 };
 
 // Helper to get tools filtered by category
@@ -320,7 +320,6 @@ function getToolsByCategory(category: string) {
     if (catLower === 'account' && /balance|allowance|portfolio|position/i.test(desc)) return true;
     if (catLower === 'trading' && /place|order|cancel|maker/i.test(desc)) return true;
     if (catLower === 'discovery' && /list_market|fetch_market|search|list_tag|list_sport|list_team|fetch_tag/i.test(desc)) return true;
-    if (catLower === 'weather' && /weather|uk weather|forecast|historical|precip|temp.*uk/i.test(desc)) return true;
     if (catLower === 'advanced' && /security-sensitive|sign_|send_transaction|prepare_|deploy_|end_authentication|get_secure_client_info|advanced/i.test(desc)) return true;
     if (catLower === 'meta' && /\[meta\]|meta|usage|track|discover/i.test(desc)) return true;
     return false;
@@ -339,18 +338,18 @@ const publicTools = [
   // === Category Discovery Tools (added to solve 100+ tool bloat) ===
   {
     name: 'list_tool_categories',
-    description: '[Meta] Lists the available tool categories. This MCP intentionally exposes only a small core set of tools by default (~8) to keep things fast and structured for the agent. Use this + get_tools_by_category to load additional tools when you need them. Includes Meta category for get_mcp_usage (tracks activities and usage). The MCP does NOT guide your strategy — it only provides structured access to capabilities.',
+    description: '[Meta] Lists the available tool categories. This MCP intentionally exposes only a small core set of tools by default (~8) to keep things fast and structured for the agent. Use this + get_tools_by_category to load additional tools when you need them. Includes Meta category for get_mcp_usage (tracks activities and usage). The MCP does NOT guide your strategy — it only provides structured access to capabilities. Categories: Rewards, Strategy, Account, Utilities, Discovery, Trading, Analytics, Weather, Meta, Advanced.',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'get_tools_by_category',
-    description: '[Meta] Returns tools for a specific category only. This is the main way to expand your available tools without being overwhelmed by 100+ at once. Categories include: Rewards, Strategy, Account, Trading, Discovery, Analytics, Utilities, Meta (discovery + get_mcp_usage for activities/usage tracking), Advanced (low-level/signing/prepare only when needed).',
+    description: '[Meta] Returns tools for a specific category only. This is the main way to expand your available tools without being overwhelmed by 100+ at once. Categories include: Rewards, Strategy, Account, Trading, Discovery, Analytics, Utilities, Weather (free UK weather APIs with fallbacks), Meta (discovery + get_mcp_usage for activities/usage tracking), Advanced (low-level/signing/prepare only when needed).',
     inputSchema: {
       type: 'object',
       properties: {
         category: { 
           type: 'string', 
-          description: 'Category name from list_tool_categories (e.g. "Rewards", "Strategy")' 
+          description: 'Category name from list_tool_categories (e.g. "Rewards", "Strategy", "Weather")' 
         }
       },
       required: ['category']
@@ -3776,7 +3775,7 @@ Exit or reduce size when:
 - Better farming opportunities appear (re-scan with list_active_maker_reward_markets or get_farmability — prioritize low-competition + decent rewards + distant resolution).
 
 Use (simple native tools for easy agent work, all SDK under the hood):
-- list_tool_categories + get_tools_by_category("Rewards") for discovery (keeps surface tiny).
+- list_tool_categories + get_tools_by_category("Rewards" | "Weather") for discovery (keeps surface tiny).
 - get_farmability(tokenId) as PRIMARY pre-farm check (SDK fetchOrderBook + listMarketRewards + fetchSpreads; now includes near-mid suggestions, spread vs allowed, depth, competitionSignal, score).
 - suggest_qualified_size for correct sizing per rules (no artificial caps for makers).
 - set_strategy / update_strategy / get_strategies (THE lightweight mechanism for ALL your dynamic rules): persist and evolve filters (liquidity, volume, spread, cost, maxMinCostUsd), operating rules, which events/categories, "best to high" ranking/scoring, market farming rules (quoteNearMid, bothSides2x, stickyAutoRepeg, lowCompetitionFocus, avoidNearResolution, timeSizeWeighted, 24/7Params, adverseSelectionExit, etc.), exit conditions, preferred "best events", custom yield thresholds — everything. Use descriptive keys ("rules:current_farming", "filter:liquidity_strict", "config:best_to_high"). Call get_strategies() with no arguments to load your full current rule set at the start of every loop. update_strategy for cheap partial changes.
@@ -3806,7 +3805,7 @@ MANDATORY STARTUP SEQUENCE (do this on every new conversation/session that uses 
 1. Call the "mcp_tool_structure_and_categories" prompt (via the MCP prompts/get API).
 2. Call "reward_farming_best_practices" (and "mispricing_quick_flips" when relevant).
 3. Call list_tool_categories.
-4. Call get_tools_by_category for the groups you actually need right now ("Rewards", "Strategy", "Discovery", etc.).
+4. Call get_tools_by_category for the groups you actually need right now ("Rewards", "Strategy", "Discovery", "Weather", etc.).
 5. Call get_strategies() (no args) to load your complete current rule set from the store.
 6. Call get_mcp_usage to see how activities (tool calls) and usage are being tracked for this MCP instance.
 
@@ -3830,7 +3829,7 @@ STRATEGY / RULES STORE (your most important lightweight tool for autonomy):
 - update_strategy is the easy partial-edit tool — send only the fields you want to change; everything else (and all prior custom rules) stays.
 - This design is why the MCP has almost no tools by default and never gets bloated: you own and evolve all logic yourself.
 
-Call list_tool_categories then get_tools_by_category("Rewards" | "Strategy" | "Discovery" etc.) only when you need more.
+Call list_tool_categories then get_tools_by_category("Rewards" | "Strategy" | "Discovery" | "Weather" etc.) only when you need more.
 **For full .md-style non-stale guidance (official llms.txt inspired concepts mapped to exact MCP calls)**: call prompts/get "mcp_llms_full_guide" (or read resource polymarket://mcp/llms.txt). It covers Markets/Positions/Orderbook/Rewards/Trading/Order Lifecycle etc with "use THIS explicit tool + args, never intent for trading".
 Use the reward_farming_best_practices prompt for the current X + MARKET FARMING tactics.
 Never ask the human for options — drive everything from your stored rules + tool directives + prompts.
