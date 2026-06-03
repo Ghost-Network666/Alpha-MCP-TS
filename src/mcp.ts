@@ -312,16 +312,19 @@ function getToolsByCategory(category: string) {
   const catLower = category.toLowerCase();
   return [...publicTools, ...secureTools].filter(t => {
     const desc = t.description || '';
-    // Match by prefix tag
+    // Match by prefix tag [Trading] etc in description
     if (desc.toLowerCase().startsWith(`[${catLower}]`)) return true;
     // Match by keywords for untagged tools (or use [Category] prefix in desc for exact; Advanced uses keywords too)
-    if (catLower === 'rewards' && /reward|maker reward|scoring/i.test(desc)) return true;
+    if (catLower === 'rewards' && /reward|maker reward|scoring|farmability|active_maker/i.test(desc)) return true;
     if (catLower === 'strategy' && /strategy|stop loss|take profit|sl\/tp/i.test(desc)) return true;
-    if (catLower === 'account' && /balance|allowance|portfolio|position/i.test(desc)) return true;
-    if (catLower === 'trading' && /place|order|cancel|maker/i.test(desc)) return true;
-    if (catLower === 'discovery' && /list_market|fetch_market|search|list_tag|list_sport|list_team|fetch_tag/i.test(desc)) return true;
+    if (catLower === 'account' && /balance|allowance|portfolio|position|profile|notification|comment/i.test(desc)) return true;
+    if (catLower === 'trading' && /place|order|cancel|maker|post_order|prepare.*order|watch_order/i.test(desc)) return true;
+    if (catLower === 'discovery' && /list_market|fetch_market|search|list_tag|list_sport|list_team|fetch_tag|list_event|list_series|list_.*leaderboard|public_profile/i.test(desc)) return true;
     if (catLower === 'advanced' && /security-sensitive|sign_|send_transaction|prepare_|deploy_|end_authentication|get_secure_client_info|advanced/i.test(desc)) return true;
-    if (catLower === 'meta' && /\[meta\]|meta|usage|track|discover/i.test(desc)) return true;
+    if (catLower === 'meta' && /\[meta\]|meta|usage|track|discover|list_tool_category|get_tools_by_category/i.test(desc)) return true;
+    if ((catLower === 'data' || catLower === 'analytics') && /(list_|fetch_|search|price|spread|midpoint|book|volume|interest|holder|tag|series|builder|trader|profile|neg_risk|tick|execute|market_info|traded|related|live_volume|prices|spreads|midpoints|order_books)/i.test(desc)) return true;
+    if (catLower === 'weather' && /weather|uk_weather/i.test(desc)) return true;
+    if (catLower === 'resources' && /resource|watch|heartbeat|scoring/i.test(desc)) return true;
     return false;
   });
 }
@@ -338,12 +341,12 @@ const publicTools = [
   // === Category Discovery Tools (added to solve 100+ tool bloat) ===
   {
     name: 'list_tool_categories',
-    description: '[Meta] Lists the available tool categories. This MCP intentionally exposes only a small core set of tools by default (~8) to keep things fast and structured for the agent. Use this + get_tools_by_category to load additional tools when you need them. Includes Meta category for get_mcp_usage (tracks activities and usage). The MCP does NOT guide your strategy — it only provides structured access to capabilities. Categories: Rewards, Strategy, Account, Utilities, Discovery, Trading, Analytics, Weather, Meta, Advanced.',
+    description: '[Meta] Lists the available tool categories. Default exposed set is ~50 core tools (Discovery, Search, Data, Order Book, Trading basics, Positions, Weather etc focused) to keep context reasonable while giving broad utility. Use this + get_tools_by_category("trading"|"weather"|"data"|"discovery"|"rewards"|"advanced"|...) to dynamically load/register additional tools for the session (they become visible in tools/list and callable). Includes Meta for get_mcp_usage (tracks activities/usage). The MCP does NOT guide your strategy — it only provides structured access + full SDK via categories. Categories: Rewards, Strategy, Account, Utilities, Discovery, Trading, Analytics/Data, Weather, Meta, Advanced.',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'get_tools_by_category',
-    description: '[Meta] Returns tools for a specific category only. This is the main way to expand your available tools without being overwhelmed by 100+ at once. Categories include: Rewards, Strategy, Account, Trading, Discovery, Analytics, Utilities, Weather (free UK weather APIs with fallbacks), Meta (discovery + get_mcp_usage for activities/usage tracking), Advanced (low-level/signing/prepare only when needed).',
+    description: '[Meta] Returns tools for a specific category only. This call *dynamically registers* the tools so they are added to the exposed surface (stay available for session, appear on next tools/list). Use to load full SDK capabilities on demand without initial bloat. Categories include: Rewards, Strategy, Account, Trading, Discovery, Data/Analytics, Utilities, Weather (free UK weather APIs with fallbacks), Meta (discovery + get_mcp_usage for activities/usage tracking), Advanced (low-level/signing/prepare only when needed).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -657,7 +660,7 @@ const publicTools = [
   // Batch data (public)
   {
     name: 'fetch_prices',
-    description: 'Fetch prices for multiple tokens',
+    description: '[Data] Fetch prices for multiple tokens',
     inputSchema: {
       type: 'object',
       properties: {
@@ -993,7 +996,7 @@ const publicTools = [
 const secureTools = [
   {
     name: 'place_limit_order',
-    description: 'Place a limit order (GTC maker by default for rewards). Requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS. Defaults to orderType=GTC and postOnly=true so the order rests on the book as a maker (earns rewards, no taker fees).',
+    description: '[Trading] Place a limit order (GTC maker by default for rewards). Requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS. Defaults to orderType=GTC and postOnly=true so the order rests on the book as a maker (earns rewards, no taker fees).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1011,7 +1014,7 @@ const secureTools = [
   },
   {
     name: 'place_market_order',
-    description: 'Place a market order (requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS)',
+    description: '[Trading] Place a market order (requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS)',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1028,7 +1031,7 @@ const secureTools = [
   },
   {
     name: 'create_and_post_order',
-    description: 'Recommended unified tool for placing GTC maker orders that earn platform rewards. Creates and posts a limit order using the SDK. Defaults to orderType=GTC and postOnly=true (rests on book as maker, no taker fees, eligible for rewards). Use this instead of raw place_limit_order for most maker workflows.',
+    description: '[Trading] Recommended unified tool for placing GTC maker orders that earn platform rewards. Creates and posts a limit order using the SDK. Defaults to orderType=GTC and postOnly=true (rests on book as maker, no taker fees, eligible for rewards). Use this instead of raw place_limit_order for most maker workflows.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1875,22 +1878,70 @@ const secureTools = [
 ];
 
 // === Minimal Core Tool Set (for agent efficiency) ===
-// The goal is to give the agent a small, structured surface by default.
-// The agent should use list_tool_categories + get_tools_by_category to load more when needed.
-// This prevents context bloat from 100+ tools while providing clear structure.
-const CORE_TOOL_NAMES = new Set([
+// ARCHITECTURE: All tools are available via categories.
+// Default: ~50 core tools (weather/trading focused).
+// On-demand: get_tools_by_category loads and registers full category tools dynamically.
+// This gives full SDK access without initial bloat.
+const DEFAULT_CORE_TOOL_NAMES = new Set([
   'list_tool_categories',
   'get_tools_by_category',
-  'get_mcp_usage',                    // Meta: how we track activities + usage of the MCP surface
+  'get_mcp_usage',
   'wait_seconds',
   'get_strategies',
   'set_strategy',
-  'update_strategy',                  // Preferred way to adapt TP/SL/filters dynamically
+  'update_strategy',
   'clear_strategy',
+  'suggest_qualified_size',
+  'compute_bayesian_update',
   'get_balance_allowance',
+  'list_positions',
+  'list_closed_positions',
+  'fetch_portfolio_value',
+  'list_activity',
+  'list_account_trades',
+  'list_markets',
+  'fetch_market',
+  'search',
+  'list_events',
+  'fetch_event',
+  'list_tags',
+  'fetch_tag',
+  'list_sports',
+  'list_teams',
+  'list_series',
+  'fetch_series',
+  'fetch_prices',
+  'fetch_spreads',
+  'fetch_midpoints',
+  'fetch_order_books',
+  'fetch_event_tags',
+  'fetch_market_tags',
+  'fetch_neg_risk',
+  'fetch_tick_size',
+  'fetch_public_profile',
+  'fetch_order_book',
+  'fetch_price',
+  'fetch_midpoint',
+  'fetch_spread',
+  'fetch_price_history',
+  'fetch_last_trade_price',
+  'list_trades',
+  'estimate_market_price',
+  'get_uk_weather_forecast',
+  'get_uk_weather_historical',
+  'get_uk_weather_current',
   'list_active_maker_reward_markets',
-  'suggest_qualified_size',           // Advisory sizing helper — very frequently useful
+  'get_farmability',
+  'place_limit_order',
+  'create_and_post_order',
+  'post_orders',
+  'cancel_order',
+  'cancel_orders',
+  'cancel_all',
+  'list_open_orders',
+  'fetch_order'
 ]);
+let currentlyExposedToolNames = new Set(DEFAULT_CORE_TOOL_NAMES);
 
 // === MCP Prompts for Agent Structure (lightweight guidance without tool bloat or enforcement) ===
 // These provide on-demand best practices so the agent has "more structure" with fewer tools to reason over.
@@ -1898,7 +1949,7 @@ const CORE_TOOL_NAMES = new Set([
 const PROMPTS = [
   {
     name: 'reward_farming_best_practices',
-    description: 'Best practices + current X Key Insights (daily USDC LP rewards, quote near midpoint, both-sides 2x, sticky auto-repegging post-only as major edge, low-competition focus, avoid near-resolution, time/size-weighted, 24/7 active, adverse selection risks) for autonomous maker reward farming. Includes exact mapping to simple native SDK tools (get_farmability for near-mid + signals, place_*_reward for postOnly sticky, etc.). Use with categories to stay tiny.',
+    description: 'Best practices + current X Key Insights (daily USDC LP rewards, quote near midpoint, both-sides 2x, sticky auto-repegging post-only as major edge, low-competition focus, avoid near-resolution, time/size-weighted, 24/7 active, adverse selection risks) for autonomous maker reward farming. Includes exact mapping to simple native SDK tools (get_farmability for near-mid + signals, place_*_reward for postOnly sticky, etc.). Use categories (e.g. get_tools_by_category("rewards")) to load/register additional tools dynamically while default stays ~50-57 focused core.',
     arguments: []
   },
   {
@@ -1918,19 +1969,12 @@ const PROMPTS = [
   }
 ];
 
-// Register tool list (MCP discovery) - returns minimal core by default for speed + structure
+// Register tool list (MCP discovery) - returns the current exposed set (~50 default).
+// Categories dynamically add to currentlyExposedToolNames so subsequent list calls see them.
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   const allTools = [...publicTools, ...secureTools];
-  const coreTools = allTools.filter(t => CORE_TOOL_NAMES.has(t.name));
-  
-  // Always ensure the category tools are present even if names change
-  const categoryTools = allTools.filter(t => 
-    t.name === 'list_tool_categories' || t.name === 'get_tools_by_category'
-  );
-  
-  const finalTools = [...new Map([...categoryTools, ...coreTools].map(t => [t.name, t])).values()];
-  
-  return { tools: finalTools };
+  const exposed = allTools.filter(t => currentlyExposedToolNames.has(t.name));
+  return { tools: exposed };
 });
 
 // Execute tools — every handler returns JSON. Errors never throw.
@@ -1963,16 +2007,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'get_tools_by_category': {
       const cat = args.category;
       const filtered = getToolsByCategory(cat);
+      // Dynamically register: add these tools to the exposed set so they appear
+      // in tools/list responses and are treated as first-class for the session.
+      // Hosts/agents should re-invoke tools/list after this call to see the expanded surface.
+      let newlyRegistered = 0;
+      for (const t of filtered) {
+        if (!currentlyExposedToolNames.has(t.name)) {
+          currentlyExposedToolNames.add(t.name);
+          newlyRegistered++;
+        }
+      }
       return {
         content: [{
           type: 'text' as const,
           text: JSON.stringify({
             category: cat,
             count: filtered.length,
+            newlyRegistered,
+            totalExposedNow: currentlyExposedToolNames.size,
             tools: filtered.map(t => ({
               name: t.name,
               description: t.description
-            }))
+            })),
+            note: newlyRegistered > 0
+              ? 'Category tools registered for this session and will be returned by subsequent tools/list. Re-call tools/list (or the host equivalent) to refresh the available tool surface. All tools remain callable by name via tools/call immediately.'
+              : 'All tools in this category were already registered/exposed.'
           }, null, 2)
         }]
       };
@@ -3811,11 +3870,11 @@ MANDATORY STARTUP SEQUENCE (do this on every new conversation/session that uses 
 
 After that, follow the directives in this prompt, the other prompts, and every tool response's agentDirective field.
 
-The MCP uses categories + a tiny core set to stay lightweight while giving YOU (the agent) full power over every rule and filter.
+The MCP uses categories + a ~50 core set (expanded on-demand) to stay manageable while giving YOU (the agent) full power over every rule and filter, with full SDK surface reachable.
 
-DEFAULT CORE (always available, no bloat): list_tool_categories, get_tools_by_category, get_mcp_usage (tracks MCP activities/tool usage stats — answers "how do you track the activities? the usage?"), wait_seconds, get_strategies, set_strategy, update_strategy, clear_strategy, get_balance_allowance, list_active_maker_reward_markets, suggest_qualified_size.
+DEFAULT CORE (~50 tools, always listed, weather/trading/discovery/data focused to prevent bloat): includes list_tool_categories, get_tools_by_category, get_mcp_usage (tracks MCP activities/tool usage stats — answers "how do you track the activities? the usage?"), wait_seconds, get_strategies/set/update/clear_strategy, get_balance_allowance + positions/activity/portfolio, list_markets/fetch_market/search/list_events + tags/sports/teams/series/data fetches (prices/spreads/midpoints/order_books etc), orderbook/price tools, basic place_limit/create_and_post/cancels/list_open/fetch_order/watch, all 3 UK weather tools, list_active_maker_reward_markets + get_farmability, basic CTF approvals/split/merge/redeem, etc.
 
-Load 'Advanced' category only for low-level/signing/prepare tools (e.g. sign_message, send_transaction, prepare_*, api key mgmt). This keeps default surface tiny and safe.
+Call get_tools_by_category("trading" | "weather" | "data" | "discovery" | "rewards" | "advanced" | ...) to *dynamically register* more tools for the session — they are added to the exposed set, become visible on next tools/list, and are immediately callable by name. Re-query tools/list after category loads to see the full current surface. Load 'Advanced' only when you need low-level/signing/prepare (e.g. sign_message, send_transaction, prepare_*, api key mgmt). This keeps default surface reasonable (~50) and safe while ensuring 100% of SDK tools are available and callable via categories.
 
 STRATEGY / RULES STORE (your most important lightweight tool for autonomy):
 - Use set_strategy + especially update_strategy as a general-purpose persistent store for *anything*.

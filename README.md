@@ -165,10 +165,10 @@ mcp_servers:
     args: ["/path/to/Alpha-MCP-TS/dist/mcp.js"]
     env:
       EOA_PRIVATE_KEY: "0xYOUR_EOA_PRIVATE_KEY"   # Your EOA (still required for signing in some flows)
-      DEPOSIT_WALLET_ADDRESS: "0xe467d9930e0577bd2beb5e29cb3ae3b457cfb33f"  # Project's builder deposit for this setup
+      DEPOSIT_WALLET_ADDRESS: "0xYOUR_DEPOSIT_WALLET_ADDRESS"  # Supply the actual deposit (use project builder deposit only if you want attribution to it; replace the placeholder)
       POLYMARKET_ENV: mainnet
-      RELAYER_API_KEY: "your-project-relayer-key-here"   # The RELAYER_API_KEY from the project
-      RELAYER_API_KEY_ADDRESS: "0xe467d9930e0577bd2beb5e29cb3ae3b457cfb33f"  # Matches the deposit for the builder
+      RELAYER_API_KEY: "your-relayer-key-here"   # The RELAYER_API_KEY (or builder equiv)
+      RELAYER_API_KEY_ADDRESS: "0xYOUR_RELAYER_OR_BUILDER_ADDRESS"  # Matches the deposit for attribution if using
     enabled: true
 ```
 
