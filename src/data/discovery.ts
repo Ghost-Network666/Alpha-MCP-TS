@@ -180,6 +180,8 @@ export function getAgentRecipes(): Record<string, unknown> {
     note: 'Tier-1 (~22 tools) is always in tools/list. Use load_agent_profile or get_tools_by_category for the rest (142 total). Trading: explicit price/size only.',
     startup: [
       'get_agent_recipes (this)',
+      'prompts/get agent_routing',
+      'prompts/get mcp_tool_structure_and_categories',
       'get_strategies',
       'discover_topic OR list_active_maker_reward_markets',
       'load_agent_profile({ profile: "weather" | "rewards" | "trading" }) when you need more than tier-1',

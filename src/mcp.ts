@@ -41,6 +41,7 @@ import {
 import { createResourceManager, RESOURCE_CAPABILITIES } from './mcp/resources.js';
 import { callWithRateLimitProtection, sleep } from './utils/errors.js';
 import { logger } from './utils/logger.js';
+import { buildAgentRoutingPrompt } from './mcp/agent-routing.js';
 import {
   AGENT_PROFILES,
   searchToolDefinitions,
@@ -1957,6 +1958,12 @@ let currentlyExposedToolNames = new Set(DEFAULT_CORE_TOOL_NAMES);
 // Loaded only when agent requests via prompts/list or get.
 const PROMPTS = [
   {
+    name: 'agent_routing',
+    description:
+      'PRIMARY routing contract: native SDK-only paths, mandatory startup, tier-1 vs full 142-tool surface, discover_topic, load_agent_profile, search_tools, strategy store, per-goal flows (weather/rewards/trading). Call via prompts/get FIRST every session before other tools.',
+    arguments: [],
+  },
+  {
     name: 'reward_farming_best_practices',
     description: 'Best practices + current X Key Insights (daily USDC LP rewards, quote near midpoint, both-sides 2x, sticky auto-repegging post-only as major edge, low-competition focus, avoid near-resolution, time/size-weighted, 24/7 active, adverse selection risks) for autonomous maker reward farming. Includes exact mapping to simple native SDK tools (get_farmability for near-mid + signals, place_*_reward for postOnly sticky, etc.). Use categories (e.g. get_tools_by_category("rewards")) to load/register additional tools dynamically while default stays ~50-57 focused core.',
     arguments: []
@@ -1968,7 +1975,7 @@ const PROMPTS = [
   },
   {
     name: 'mcp_tool_structure_and_categories',
-    description: 'MANDATORY "never guess" contract + full quickstart for this MCP. Exact startup sequence, core vs categories, strategy store as your brain, get_mcp_usage for tracking activities/usage of the MCP surface, specific native call patterns (including clobTokenIds for list_markets and tokenId for fetch_market via internal listMarkets because SDK fetchMarket only supports id/slug/url), public repo rules (always supply your own keys, use placeholders only), live resources, and how to use without guessing. Load this prompt first.',
+    description: 'Full "never guess" quickstart: startup sequence (after agent_routing prompt), tier-1 vs categories, strategy store, get_mcp_usage, clobTokenIds/tokenId patterns, public credential rules, live resources. Load after prompts/get agent_routing.',
     arguments: []
   },
   {
@@ -3895,7 +3902,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
   }
 
   let content = '';
-  if (name === 'reward_farming_best_practices') {
+  if (name === 'agent_routing') {
+    content = buildAgentRoutingPrompt();
+  } else if (name === 'reward_farming_best_practices') {
     content = `KEY INSIGHTS FROM X (current tactics for daily USDC LP maker rewards — incorporate directly):
 
 The platform runs daily USDC LP rewards for limit orders placed within a “max spread” (often shown as a blue zone in the order book).
@@ -4002,12 +4011,14 @@ Always cross with reward_farming_best_practices if the market also qualifies for
 You are using a deliberately lightweight MCP. The MCP will NEVER expose a giant flat list of 100+ tools by default, and it will NEVER make you guess the right way to use it.
 
 MANDATORY STARTUP SEQUENCE (do this on every new conversation/session that uses this MCP):
-1. Call the "mcp_tool_structure_and_categories" prompt (via the MCP prompts/get API).
-2. Call "reward_farming_best_practices" (and "mispricing_quick_flips" when relevant).
-3. Call list_tool_categories.
-4. Call get_tools_by_category for the groups you actually need right now ("Rewards", "Strategy", "Discovery", "Weather", etc.).
-5. Call get_strategies() (no args) to load your complete current rule set from the store.
-6. Call get_mcp_usage to see how activities (tool calls) and usage are being tracked for this MCP instance.
+1. tools/call get_agent_recipes — exact tool names + JSON argument shapes.
+2. prompts/get agent_routing — PRIMARY native routing contract (tier-1, profiles, per-goal flows).
+3. prompts/get mcp_tool_structure_and_categories (this prompt) + mcp_llms_full_guide.
+4. tools/call get_strategies() — load your complete rule set from the store.
+5. tools/call discover_topic OR list_active_maker_reward_markets depending on your goal.
+6. tools/call load_agent_profile({ profile }) OR get_tools_by_category only when tier-1 is insufficient; then tools/list again.
+7. tools/call get_mcp_usage — optional observability.
+8. prompts/get reward_farming_best_practices (and mispricing_quick_flips when relevant).
 
 After that, follow the directives in this prompt, the other prompts, and every tool response's agentDirective field.
 

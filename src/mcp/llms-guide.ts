@@ -45,12 +45,13 @@ This MCP is **lightweight and agent-first** for the CLOB prediction market platf
 Instead of duplicating SDK docs or using stale local MDs/llms.txt, this prompt + the MCP resource polymarket://mcp/llms.txt delivers MCP-specific overlays + exact native call mappings on top of the SDK README so consuming agents have zero ambiguity on "how do I do X natively in *this MCP* using the SDK". Load the SDK README first, then this MCP guide.
 
 ## Mandatory Startup Sequence (NEVER SKIP)
-1. Call get_agent_recipes (exact tool names + JSON args — no guessing).
-2. Call prompts/get for "mcp_llms_full_guide" **and** "mcp_tool_structure_and_categories".
-3. Call get_strategies() (no args).
-4. For topic discovery (weather, sports, crypto): discover_topic({ topic: "weather", closed: false }) — one call, events+markets+TokenIds.
-5. Call list_tool_categories + get_tools_by_category only when you need more than core (Trading, Rewards, Advanced).
-6. Obey agentDirectives. Persist rules via set/update_strategy. Use wait_seconds between risky calls.
+1. get_agent_recipes — exact tool names + JSON args.
+2. prompts/get **agent_routing** — primary native routing contract (tier-1, profiles, goal flows).
+3. prompts/get mcp_llms_full_guide + mcp_tool_structure_and_categories.
+4. get_strategies() (no args).
+5. discover_topic({ topic }) OR list_active_maker_reward_markets per goal.
+6. load_agent_profile / get_tools_by_category only when needed; re-call tools/list.
+7. Obey agentDirectives. set/update_strategy for all rules. wait_seconds for rate discipline.
 
 **Never use "intent" for pure trading** — call place tools directly with your sizes/params from strategy or calc. suggest_qualified_size / get_farmability are *advisory only* for reward qualification/sizing policy. For directional or any core trading: compute or load policy then pass concrete values to place_limit_order etc.
 
