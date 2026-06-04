@@ -253,6 +253,37 @@ export function formatMarket(market: any): object {
   return result;
 }
 
+export function formatDiscoverTopic(result: {
+  topic: string;
+  tagSlug: string;
+  tagId?: number;
+  events: Event[];
+  markets: Market[];
+  sdkParamsUsed: unknown;
+}): object {
+  const eventCards = result.events.map((e) => formatEvent(e));
+  const marketCards = result.markets.map((m) => formatMarket(m));
+  const firstYes =
+    (marketCards[0] as Record<string, unknown> | undefined)?.['Yes TokenId'] ??
+    (eventCards[0] as any)?.Markets?.[0]?.['Yes Token Id'];
+
+  return omitUndefined({
+    Topic: result.topic,
+    'Tag Slug': result.tagSlug,
+    'Tag Id': result.tagId,
+    'Events Count': eventCards.length,
+    'Markets Count': marketCards.length,
+    Events: eventCards.length ? eventCards : 'None',
+    Markets: marketCards.length ? marketCards : 'None',
+    'Sdk Params Used': result.sdkParamsUsed,
+    'Example Yes Token Id': firstYes,
+    'Next Step': firstYes
+      ? `fetch_market({ tokenId: "${firstYes}" }) then place_limit_order with explicit price/size/side`
+      : 'get_agent_recipes or try topic climate/sports',
+    agentDirective: `Use discover_topic({ topic: "${result.topic}" }) as the primary discovery path. Do not use bare category on list_events/list_markets. For UK weather data: get_uk_weather_forecast. For exact tool list: get_agent_recipes.`,
+  });
+}
+
 export function formatEvent(event: Event): object {
   // Include lightweight market summaries from the event when the SDK provides them (helps discovery)
   const markets = Array.isArray(event.markets) && event.markets.length > 0

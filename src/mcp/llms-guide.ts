@@ -45,13 +45,12 @@ This MCP is **lightweight and agent-first** for the CLOB prediction market platf
 Instead of duplicating SDK docs or using stale local MDs/llms.txt, this prompt + the MCP resource polymarket://mcp/llms.txt delivers MCP-specific overlays + exact native call mappings on top of the SDK README so consuming agents have zero ambiguity on "how do I do X natively in *this MCP* using the SDK". Load the SDK README first, then this MCP guide.
 
 ## Mandatory Startup Sequence (NEVER SKIP)
-1. Call prompts/get for "mcp_llms_full_guide" (this full .md) **and** "mcp_tool_structure_and_categories".
-2. Call "reward_farming_best_practices" (if rewards/maker) and/or "mispricing_quick_flips".
-3. Call list_tool_categories.
-4. Call get_tools_by_category for needed (Rewards, Discovery, Strategy, Trading, Account, Utilities, Analytics, Advanced).
-5. (Optional but recommended for operators/observability) Call get_mcp_usage to see tracked MCP surface activities and tool usage stats.
-5. Call get_strategies() (no args) to load your persisted rules/filters from the store.
-6. Use categories for more tools when needed. Persist **everything** (sizes, quotes, exits, prefs) via set/update_strategy. Use wait_seconds for discipline. Obey agentDirectives in every response.
+1. Call get_agent_recipes (exact tool names + JSON args — no guessing).
+2. Call prompts/get for "mcp_llms_full_guide" **and** "mcp_tool_structure_and_categories".
+3. Call get_strategies() (no args).
+4. For topic discovery (weather, sports, crypto): discover_topic({ topic: "weather", closed: false }) — one call, events+markets+TokenIds.
+5. Call list_tool_categories + get_tools_by_category only when you need more than core (Trading, Rewards, Advanced).
+6. Obey agentDirectives. Persist rules via set/update_strategy. Use wait_seconds between risky calls.
 
 **Never use "intent" for pure trading** — call place tools directly with your sizes/params from strategy or calc. suggest_qualified_size / get_farmability are *advisory only* for reward qualification/sizing policy. For directional or any core trading: compute or load policy then pass concrete values to place_limit_order etc.
 
@@ -278,7 +277,7 @@ Use completely free/no-key (Open-Meteo primary, pulls UK Met Office UKV 2km high
 - Heartbeat enhancement: X signals + live weather data for real leads (e.g. X rain hype but forecast dry → signal).
 - Cache 15min, rate protected, attribution in cards.
 - If one rate limited: auto fallback to next provider.
-- Example: get_uk_weather_forecast({city: "London", days: 7}) → card with data. Discover markets: list_events({category: "WEATHER", closed: false}) or list_markets({category: "WEATHER", closed: false}) — MCP maps category→tagSlug/tagId (not a raw API field). Explicit: list_events({tagSlug: "weather"}), fetch_tag({slug: "weather"}) then list_markets({tagId: <id>}).
+- Easiest: discover_topic({ topic: "weather", closed: false }) then get_uk_weather_forecast({ city: "London", days: 7 }). Power-user: list_events/list_markets with topic or tagSlug/tagId. Copy shapes from get_agent_recipes.
 
 MCP tools added (native, public, Weather category):
 - get_uk_weather_forecast({city: "London" | "51.5,-0.12", days?, variables?})
