@@ -10,9 +10,9 @@ This repo implements a **lightweight, agent-controlled MCP server for the CLOB p
 This MCP wires the official TypeScript SDK (https://github.com/Polymarket/ts-sdk — kept up-to-date by the maintainers). All tool behavior, parameters, and responses follow the official SDK documentation.
 
 The MCP achieves this with:
-- Tiny default `tools/list` surface (see CORE_TOOL_NAMES).
-- Explicit category discovery (`list_tool_categories` + `get_tools_by_category`).
-- On-demand guidance via the MCP `prompts` API (`mcp_tool_structure_and_categories`, `reward_farming_best_practices`, `mispricing_quick_flips`, `mcp_llms_full_guide` — the full guide linking the official SDK README first (https://github.com/Polymarket/ts-sdk/blob/main/README.md as primary agent instructions) + MCP mappings, non-stale/dynamic).
+- Tier-1 default `tools/list` surface (see `TIER1_CORE_TOOL_NAMES` in `src/mcp/agent-meta.ts`, ~23 tools).
+- Progressive disclosure: `load_agent_profile`, `get_tools_by_category`, `search_tools`, `get_agent_recipes` (142 handlers total).
+- On-demand guidance via MCP `prompts` (`agent_routing` first, then `mcp_tool_structure_and_categories`, `mcp_llms_full_guide`, `reward_farming_best_practices`, `mispricing_quick_flips` — SDK README https://github.com/Polymarket/ts-sdk/blob/main/README.md + live MCP mappings, not stale repo-only docs).
 - The in-MCP **strategy store** (`get_strategies` / `set_strategy` / `update_strategy` / `clear_strategy`) as the *single source of truth* for all agent rules, filters, prefs, exit conditions, etc. The agent evolves its own "brain" here instead of bloating its system prompt or guessing.
 - Built-in **MCP usage/activity tracking** via `get_mcp_usage` (in core) + file logs + platform activity resources (`list_activity`, live `polymarket://user/activity`). This is how activities (tool calls) and usage (stats, patterns) are tracked.
 
@@ -29,9 +29,9 @@ You **MUST** execute these steps in order using your tools:
    - Start with lines 1-100 (imports, strategyStore, client setup).
    - Read the category system: `listAllCategories`, `getToolsByCategory`, `list_tool_categories`, `get_tools_by_category` (search for these).
    - **Critical sections** (read with context):
-     - `CORE_TOOL_NAMES` Set definition (around line 1743). Note get_mcp_usage for activity/usage tracking.
-     - `PROMPTS` array definition (around 1759).
-     - `ListToolsRequestSchema` handler that *filters* to core only (around 1778).
+     - `TIER1_CORE_TOOL_NAMES` / `DEFAULT_CORE_TOOL_NAMES` / `currentlyExposedToolNames` (see `src/mcp/agent-meta.ts` + ~1950 in mcp.ts). Note get_mcp_usage for activity/usage tracking.
+     - `PROMPTS` array (includes `agent_routing`).
+     - `ListToolsRequestSchema` handler filters to `currentlyExposedToolNames` (tier-1 at startup).
      - The full `GetPromptRequestSchema` handler + the **entire string content** of the prompts (especially `mcp_tool_structure_and_categories`, `reward_farming_best_practices`, and the full `mcp_llms_full_guide` which links the SDK README first + MCP mappings) (around 3445+).
      - Strategy store usage in handlers (search `set_strategy`, `update_strategy`, `get_strategies`).
      - How `agentDirective` fields are injected in many responses (this is how we stop the LLM from guessing or asking the human).
@@ -51,23 +51,22 @@ If you are asked to implement a feature, fix a bug, or review, you must re-read 
 
 This is the most important design principle in the repo.
 
-### 1. Surface Control (tiny by default)
-- `tools/list` (ListToolsRequestSchema) **only ever returns the CORE set** (~10 tools) + the two category meta-tools.
-- The full 100+ tool surface lives in the code but is **never advertised** by default. This keeps context small and forces deliberate loading.
-- Consuming agent **must** call:
-  - `list_tool_categories`
-  - `get_tools_by_category("Rewards")` / `"Strategy"` / `"Discovery"` etc. when it needs more.
+### 1. Surface Control (tier-1 by default)
+- `tools/list` returns **tier-1 only** (~23 tools in `TIER1_CORE_TOOL_NAMES`) until the agent calls `load_agent_profile` or `get_tools_by_category`, which add names to `currentlyExposedToolNames` for the session.
+- **142** tool handlers exist in code; none are removed — only progressive disclosure.
+- Consuming agent **should** call: `get_agent_recipes` → `prompts/get agent_routing` → `get_strategies()` → goal tool (`discover_topic` or `list_active_maker_reward_markets`) → `load_agent_profile` / categories when tier-1 is insufficient → `tools/list` again.
 
-See the comment at the top of the CORE_TOOL_NAMES block and the ListTools handler.
+See `src/mcp/agent-meta.ts` and the ListTools handler in `src/mcp.ts`.
 
 ### 2. Guidance via MCP Prompts (the "how do I use you?" contract)
 The MCP registers prompts (see `PROMPTS` and `GetPromptRequestSchema`):
-- `mcp_tool_structure_and_categories` — the primary "how this MCP is meant to be used" document. It tells the agent the core surface, the category loading pattern, and that the strategy store is where *all* its custom logic lives.
+- `agent_routing` — **call first every session** (tier-1 vs 142 tools, `discover_topic`, profiles, per-goal flows; content in `src/mcp/agent-routing.ts`).
+- `mcp_tool_structure_and_categories` — quickstart, tier-1 list, category loading, strategy store as agent brain.
 - `reward_farming_best_practices` — detailed, X-sourced tactics + exact mapping to the tiny set of native tools + the autonomous loop the agent must follow.
 - `mispricing_quick_flips` — similar for the other common pattern.
 - `mcp_llms_full_guide` — **full guide: FIRST the official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers; link this as primary agent instructions for all SDK coverage, APIs, concepts, clients, examples) + MCP-specific mappings (dynamically generated from live code, no stale .MDs). Explicitly maps SDK concepts (see README) → exact native MCP tools + JSON call shapes + "never use intent for trading; always explicit place_limit_order etc with your numbers from strategy/calc". Documents enhanced formatter output cards (PNL in positions/activity, sentiment/liquidity health in markets/farmability via spreads/depth/skew/competitionSignal, new RewardMarketCard + FarmabilityCard + PnlSummary). Also covers resources (polymarket://mcp/llms.txt serves the same), startup, public rules. **Call the SDK README first, then this (and structure prompt) first for complete non-guessing experience. The MCP uses the SDK README link for all base instructions.**
 
-**Consuming agents are expected to call `prompts/get` for these** (especially `mcp_tool_structure_and_categories` + `mcp_llms_full_guide`) early, instead of guessing from tool names/descriptions alone.
+**Consuming agents are expected to call `prompts/get` for these** (especially `agent_routing` + `mcp_llms_full_guide` + `mcp_tool_structure_and_categories`) early, instead of guessing from tool names/descriptions alone.
 
 The prompt contents are the **authoritative usage guide**. If the usage pattern changes, you **must** update the prompt text inside the GetPrompt handler. Also update this AGENTS.md.
 
@@ -170,15 +169,15 @@ This section (plus the reload note above) is now part of the mandatory memory. U
 **This section is the primary reference for LLMs/agents using the MCP at runtime.** Load or include this (or the equivalent `mcp_tool_structure_and_categories` prompt) in your context. The goal is **zero guessing**.
 
 ### Mandatory Startup for Every Session (Never Skip)
-1. Call the MCP `prompts/get` for the SDK README first (https://github.com/Polymarket/ts-sdk/blob/main/README.md as primary agent instructions for SDK), then `"mcp_llms_full_guide"` (MCP mappings on top of SDK README, no guessing, no intent) **and** `"mcp_tool_structure_and_categories"`.
-2. Call `"reward_farming_best_practices"` (and `"mispricing_quick_flips"` if relevant).
-3. Call `list_tool_categories`.
-4. Call `get_tools_by_category` for needed groups (e.g., "Rewards", "Discovery", "Strategy"). Use "Meta" for get_mcp_usage (activities/usage tracking).
-5. Call `get_strategies()` with no arguments to load your full current rules/filters from the store.
-6. For full event discovery (beyond the limited/skewed `polymarket://markets` snapshot): after categories, call `list_markets({active:true, pageSize:30})` / with `category` or `search` keyword, or the `search` tool. See Live Data section.
-6. (For observability) Call `get_mcp_usage` to inspect tracked MCP activities and tool usage.
-7. For full event discovery (beyond limited `polymarket://markets`): use `list_markets` (active/pageSize/category/keyword) + `search` tool once Discovery category loaded.
-8. From then on: always start loops with `get_strategies()`, use categories for discovery, follow every `agentDirective` in tool responses exactly, use `wait_seconds` for discipline. Use the live resource `polymarket://mcp/llms.txt` (which links the SDK README first + MCP guide) for the same guide as markdown if preferred. Load SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md) as base instructions for all.
+1. SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md) — base SDK instructions.
+2. `tools/call get_agent_recipes` — exact tool names + JSON argument shapes.
+3. `prompts/get agent_routing` — primary routing contract (tier-1, profiles, goal flows).
+4. `prompts/get mcp_llms_full_guide` + `mcp_tool_structure_and_categories`; add `reward_farming_best_practices` / `mispricing_quick_flips` if relevant.
+5. `get_strategies()` — load persisted rules from the strategy store (agent brain).
+6. Goal discovery: `discover_topic({ topic: "weather"|"sports"|... })` **or** `list_active_maker_reward_markets` for rewards farming. Prefer `discover_topic` over bare `list_events`/`list_markets` with only `category` (mapped to SDK `tagSlug`/`tagId` in `src/data/discovery.ts`).
+7. `load_agent_profile({ profile: "weather"|"rewards"|"trading"|"full" })` or `get_tools_by_category` only when tier-1 is insufficient; **re-call `tools/list`** so the host sees new tools.
+8. `get_mcp_usage` for observability. Do not use `polymarket://markets` as a full catalog (first-page snapshot only).
+9. Every loop: `get_strategies()` first; obey `agentDirective`; use `wait_seconds`; explicit `place_limit_order` with your numbers (no intent). Optional: `polymarket://mcp/llms.txt` mirrors the live guide.
 
 **Exact call example (JSON-RPC style for the protocol):**
 ```json
@@ -189,17 +188,10 @@ This section (plus the reload note above) is now part of the mandatory memory. U
 ```
 Response will contain your persisted rules (e.g., liquidity filters, event prefs, farming params like `quoteNearMid`, `maxSpreadRatio`).
 
-### Core Surface (Always Available, No Bloat)
-From `tools/list` you will only see these ~11 by default:
-- `list_tool_categories`, `get_tools_by_category`
-- `get_mcp_usage` (tracks MCP activities/tool usage stats — see "how do you track the activities? the usage?")
-- `wait_seconds`
-- `get_strategies`, `set_strategy`, `update_strategy`, `clear_strategy`
-- `get_balance_allowance`
-- `list_active_maker_reward_markets`
-- `suggest_qualified_size`
+### Core Surface (Tier-1 — Always in tools/list)
+**23 tools** (see `TIER1_CORE_TOOL_NAMES` in `src/mcp/agent-meta.ts`): meta (`get_agent_recipes`, `search_tools`, `load_agent_profile`, `list_tool_categories`, `get_tools_by_category`, `get_mcp_usage`), `discover_topic`, `fetch_market`, strategy store quartet + `wait_seconds` + `suggest_qualified_size`, rewards (`list_active_maker_reward_markets`, `get_farmability`), trading (`place_limit_order`, `cancel_order`, `list_open_orders`, `post_orders`), `get_balance_allowance`, `list_positions`, `get_uk_weather_forecast`.
 
-Use the category tools to load more when needed (e.g., full trading, on-chain CTF, builder analytics).
+**142 total** via `load_agent_profile` or categories. **Not registered:** `run_autonomous_trading_cycle` — use strategy store + explicit tools in a loop.
 
 ### Token / Market Lookup (Critical for Rewards & Orders)
 SDK note (for your knowledge): The official SDK `fetchMarket()` only accepts `{id}`, `{slug}`, or `{url}`. There is **no direct `tokenId`** parameter.
@@ -268,7 +260,7 @@ Similar: use `list_markets` or `list_active...` for candidates, `get_farmability
 - **External free UK weather (new):** Use get_uk_weather_* tools (Weather category; multi free API fallbacks incl. Open-Meteo with UK Met Office data) for forecasts/historical/current on weather markets. Native tools, fallback on rate limit. Combine with market tools for mispricing. See llms_guide for details + heartbeat use. Natively verified (full stdio load + calls for London/Edinburgh/Glasgow returned real data, count=3 tools, category present, usage tracked). Aiming for UK/England/Scotland weather markets.
 - The server notifies on updates via the protocol. Read the resource for latest formatted snapshot.
 - This is the native, efficient way (bridged from platform WS).
-- **Note on `polymarket://markets`**: This is a convenience snapshot only (internally `listMarkets({closed:false, pageSize:20})` first page, default API ordering). It can be heavily skewed toward high-visibility/trending meme markets (e.g. GTA VI variants) and does **not** enumerate the full active set. For "many more events" use the **tools** after loading categories: `list_markets({active:true, pageSize:50})`, `list_markets({category:"WEATHER"|"SPORTS"|"POLITICS"|"CRYPTO", pageSize:20})`, `search({q:"politics OR crypto OR sports", pageSize:30})`, or `list_events`. The `search` tool (official SDK full-text over markets+events) and `list_markets` (with filters/keyword/clobTokenIds) are the primary discovery surface. TokenIds in the resource *are* correct for immediate CLOB use (`fetch_market({tokenId})`, `place_*` etc.).
+- **Note on `polymarket://markets`**: Convenience snapshot only (`listMarkets({closed:false, pageSize:20})` first page). Skewed toward trending markets; not a full catalog. Primary discovery: **`discover_topic({ topic })`** (events + markets + token IDs), then `search`, `list_markets`/`list_events` with explicit `tagSlug`/`tagId` or topic alias (see `src/data/discovery.ts`). Token IDs from any card are valid for `fetch_market({tokenId})` and trading tools.
 
 ### Strategy Store as Your Persistent Brain (Use for *Everything*)
 - Keys are free-form (e.g. `"filter:liquidity_strict"`, `"rules:current_farming"`, `"prefs:events"`).
@@ -294,7 +286,7 @@ Similar: use `list_markets` or `list_active...` for candidates, `get_farmability
 ```
 
 ### Other Key Patterns
-- **Public discovery first**: `list_markets({clobTokenIds: [...], rewardsMinSize: X, volumeNumMin: Y})`, `search`, `list_events({category})`, `fetch_event`, `fetch_market` (by id/slug/url/tokenId as above).
+- **Public discovery first**: `discover_topic({ topic })`, then `list_markets`/`list_events`/`search`, `fetch_market` (id/slug/url/tokenId).
 - **On-chain CTF**: `split_position`, `merge_positions`, `redeem_positions` (require approvals via `setup_trading_approvals` or specific approve tools first).
 - **Account**: `get_balance_allowance`, `list_positions`, `list_activity`, `fetch_portfolio_value`.
 - **Rate discipline**: Use `wait_seconds({seconds: 5, reason: "after placement to respect limits"})` instead of tight loops.
@@ -342,7 +334,7 @@ If you are asked to "add a test", implement it as a temporary script outside the
   5. Update the `mcp_tool_structure_and_categories` prompt content if the "how to use" story changes.
   6. If it is reward-related, consider updating `reward_farming_best_practices`.
   7. Verify by building + running a full stdio MCP test that calls categories + the structure prompt + the new tool.
-  8. Update README / OVERVIEW only if the high-level story changes (they currently overstate the "90+/100+" count because the lightweight design is the truth).
+  8. Update README / OVERVIEW / AGENTS when the high-level story changes (tier-1 = 23, full = 142, `agent_routing` + `discover_topic` startup).
 
 - **Strategy store is sacred**. Do not introduce parallel state or new "config" tools.
 
@@ -432,7 +424,7 @@ The MCP exists **only for agents** (LLMs/consuming systems). Agents must **never
 **Commits**: Never include hardcodes, tests, or non-native code. History must stay clean (as per previous cleanup).
 
 ## Source Code Structure for Maintainers (Prevent Bloating Files)
-- Runtime lightness comes from small CORE_TOOL_NAMES + category filtering in ListTools + on-demand prompts + strategy store (agent logic not in MCP code).
+- Runtime lightness comes from `TIER1_CORE_TOOL_NAMES` + `currentlyExposedToolNames` + on-demand prompts + strategy store (agent logic not in MCP code).
 - `src/mcp.ts` (~3600 lines) contains tool defs + handlers + prompts for simplicity/single file; this can bloat the source file.
 - **Lightweight improvement**: Tool arrays (publicTools/secureTools) and category handlers can be split into `src/mcp/tools/discovery.ts`, `src/mcp/tools/rewards.ts` etc. (export arrays, import and concat in mcp.ts). Handlers can be in `src/mcp/handlers.ts` with sub-functions. This keeps individual files small (<500 lines) without affecting the MCP protocol surface or agent experience.
 - Formatters in `src/formatters.ts` (~1100 lines) follow "never raw"; group similar if possible.

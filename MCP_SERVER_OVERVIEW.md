@@ -83,13 +83,28 @@ When subscribed data changes, the server notifies the agent, which can then read
 
 ## Tool Surface
 
-The server is deliberately **lightweight** (tiny core set of ~10 tools advertised by default via tools/list, plus `list_tool_categories` + `get_tools_by_category` for on-demand discovery of the full surface) plus a full set of Resources and Resource Templates.
+The server is deliberately **lightweight** for agents:
 
-Tools are split into:
-- Public discovery / data tools (no auth)
-- Authenticated trading, account, and on-chain action tools
+| Layer | Mechanism | Size |
+|-------|-----------|------|
+| Tier-1 | Default `tools/list` on connect | **23** daily-driver tools (`src/mcp/agent-meta.ts` → `TIER1_CORE_TOOL_NAMES`) |
+| Full | `load_agent_profile({ profile })` or `get_tools_by_category({ category })`, then `tools/list` again | **142** handlers implemented; zero removed |
 
-All tools follow the standard MCP `tools/list` + `tools/call` pattern and include rich JSON Schema descriptions.
+Meta tools: `get_agent_recipes`, `search_tools`, `load_agent_profile`, `list_tool_categories`, `get_tools_by_category`, `get_mcp_usage`.
+
+Primary discovery: `discover_topic({ topic })` (maps topic → SDK `tagSlug`/`tagId`). Power-user: `list_events` / `list_markets` with explicit tag fields.
+
+**What consuming agents change (runtime, in-memory per MCP process):**
+- **Strategy store** — `get_strategies` / `set_strategy` / `update_strategy` / `clear_strategy` holds all evolved rules (filters, farming, requote caps). The MCP does not hardcode agent strategy in source.
+- **Session tool exposure** — profiles/categories add tool names to `currentlyExposedToolNames`; hosts should re-call `tools/list` after loading more.
+
+**Prompts (5):** `agent_routing` (call first), `mcp_tool_structure_and_categories`, `mcp_llms_full_guide`, `reward_farming_best_practices`, `mispricing_quick_flips`. Live text also at `polymarket://mcp/llms.txt`.
+
+**Not registered:** `run_autonomous_trading_cycle` and similar stub names from old branches — use explicit tools + strategy store loops.
+
+Tools are split into public discovery/data (no auth) and authenticated trading/account/on-chain. All follow MCP `tools/list` + `tools/call` with JSON Schema descriptions. Responses are formatted cards only (never raw SDK payloads).
+
+**Resource note:** `polymarket://markets` is a first-page snapshot (~20 markets), not a full enumerator.
 
 ---
 
@@ -108,7 +123,7 @@ This MCP is intended to be registered with agent runtimes (e.g. via `hermes mcp 
 
 - This server is a **tooling and integration layer**, not a trading bot or strategy engine (although it contains some example strategy code for reference).
 - It does **not** implement its own order matching, risk engine, or custody.
-- It deliberately does **not** expose every low-level method of the underlying SDK. The surface is intentionally curated for agent usability and safety.
+- Default `tools/list` is tier-1 only; the full SDK-aligned surface (~142 tools) is available on demand via profiles/categories. Low-level [Advanced] tools load separately.
 - It is not a general-purpose platform REST or WebSocket client.
 
 ---

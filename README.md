@@ -4,7 +4,7 @@
 
 This is an MCP server for the CLOB prediction market platform, designed to work natively with **Hermes** (https://hermes-agent.nousresearch.com/), OpenClaw, and other agent harnesses.
 
-It is designed as a **lightweight MCP** (tiny core set of ~10 tools by default + on-demand category loading for the full surface of 100+ capabilities) with a complete **Resources + Subscriptions** system covering:
+It is designed as a **lightweight MCP** (tier-1 default of **23** daily-driver tools in `tools/list`, plus `load_agent_profile` / `get_tools_by_category` to register more of the **142** implemented handlers — nothing removed) with a complete **Resources + Subscriptions** system covering:
 
 - Market + event discovery, tags, series, sports, teams
 - Full order lifecycle (limit/market + every cancel variant)
@@ -65,7 +65,7 @@ Auth note: API keys must be derived from the EOA private key. Every order payloa
 
 **Important for Agents & Safety**: This MCP is deliberately lightweight (tiny default core + categories/prompts for the full surface). Hermes allows you to register it with a safe default subset of tools so agents are not overwhelmed and sensitive actions are not exposed by default.
 
-For LLMs/agents using this MCP: see `AGENTS.md` (especially the "Consuming Agent Quickstart and Exact Native Tool Call Patterns" section) + FIRST read the official TS SDK README as primary agent instructions (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers for all SDK coverage/APIs/examples; the MCP uses the SDK exclusively) **then** request the built-in `mcp_llms_full_guide` (SDK README + MCP mappings, no stale files, strong "explicit tools only, no intent for trading") **and** `mcp_tool_structure_and_categories` prompt first. This + categories + strategy store + enhanced output cards (PNL, sentiment/health) ensures agents know how to use the MCP without ever guessing. The resource `polymarket://mcp/llms.txt` also serves the full guide (SDK README link + MCP).
+For LLMs/agents using this MCP: see `AGENTS.md` (especially "Consuming Agent Quickstart") + the official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md) **then** MCP prompts in this order: `agent_routing` (primary routing contract), `mcp_llms_full_guide`, `mcp_tool_structure_and_categories`. On connect, call `get_agent_recipes`, then `get_strategies()`. Prefer `discover_topic({ topic: "weather" })` over bare `list_events`/`list_markets` with `category` (SDK uses `tagSlug`/`tagId`; the MCP maps topic aliases). Use `load_agent_profile({ profile: "weather"|"rewards"|"trading"|"full" })` when tier-1 is not enough, then re-call `tools/list`. All rules/filters live in the strategy store (`update_strategy`) — not in repo markdown. Resource `polymarket://mcp/llms.txt` mirrors the live guide.
 
 ### Recommended Registration (with safe defaults)
 
@@ -87,10 +87,10 @@ hermes mcp add polymarket \
   --env EOA_PRIVATE_KEY=0xYOUR_EOA_PRIVATE_KEY \
   --env DEPOSIT_WALLET_ADDRESS=0xYOUR_DEPOSIT_WALLET_ADDRESS \
   --env POLYMARKET_ENV=mainnet \
-  --tools-include "list_markets,fetch_market,search,list_events,fetch_event,fetch_order_book,fetch_price,fetch_midpoint,fetch_spread,fetch_event_tags,fetch_market_tags,fetch_portfolio_value,list_positions,list_activity"
+  --tools-include "get_agent_recipes,discover_topic,fetch_market,get_strategies,list_positions,get_balance_allowance"
 ```
 
-This registers the MCP with a curated, safe default set of tools (mostly read-only discovery + portfolio/positions). Trading tools are intentionally left out by default.
+Hermes `--tools-include` is optional: the MCP already exposes a **tier-1** subset (~23 tools) via `tools/list`. Omit the flag to use that default, or pass a smaller read-only list as above. For trading/rewards, either widen `--tools-include` or let the agent call `load_agent_profile({ profile: "trading"|"rewards" })` inside the session (then re-call `tools/list`).
 
 After registration:
 
@@ -323,7 +323,7 @@ When a subscribed resource changes (new book tick, your order filled, etc.), the
 | `polymarket://user/positions`           | On change | Current positions                        | Yes           |
 | `polymarket://user/portfolio`           | On change | Total portfolio value                    | Yes           |
 | `polymarket://user/activity`            | On change | Recent account activity                  | Yes           |
-| `polymarket://markets`                  | Snapshot  | Active markets list                      | No            |
+| `polymarket://markets`                  | Snapshot  | First page only (not full catalog)       | No            |
 
 ### Example agent flow (pseudo)
 ```
@@ -338,39 +338,21 @@ User-channel resources (`polymarket://user/*`) automatically start the authentic
 
 This is the correct, future-proof "subscribe" implementation.
 
-## Available tools
+## Tool surface (agents)
 
-| Name                      | Description                                      |
-|---------------------------|--------------------------------------------------|
-| list_markets              | List markets (supports closed + pageSize)        |
-| fetch_market              | Fetch market by id, slug or url                  |
-| list_events               | List events                                      |
-| fetch_event               | Fetch event by id or slug                        |
-| search                    | Search markets and events                        |
-| fetch_order_book          | Fetch order book for a tokenId                   |
-| fetch_price               | Fetch price for tokenId + side                   |
-| fetch_midpoint            | Fetch midpoint price for a tokenId               |
-| fetch_spread              | Fetch spread for a tokenId                       |
-| fetch_price_history       | Fetch price history (tokenId + interval)         |
-| fetch_last_trade_price    | Fetch last trade price for a tokenId             |
-| list_trades               | List trades (optional user filter)               |
-| estimate_market_price     | Estimate market order price impact               |
-| place_limit_order         | Place a limit order                              |
-| place_market_order        | Place a market order                             |
-| cancel_order              | Cancel a single order by orderId                 |
-| cancel_orders             | Cancel multiple orders by orderIds               |
-| cancel_all                | Cancel all open orders                           |
-| cancel_market_orders      | Cancel orders for a specific market              |
-| list_open_orders          | List open orders (optional market filter)        |
-| fetch_order               | Fetch order details by orderId                   |
-| list_positions            | List current positions                           |
-| list_closed_positions     | List closed/resolved positions                   |
-| fetch_portfolio_value     | Fetch current portfolio value                    |
-| list_activity             | List recent account activity                     |
-| list_account_trades       | List historical account trades (optional market) |
-| setup_trading_approvals   | Set up trading approvals (ERC20 + CTF)           |
-| split_position            | Split collateral into outcome tokens (CTF)       |
-| merge_positions           | Merge outcome tokens back into collateral (CTF)  |
-| redeem_positions          | Redeem resolved positions (conditionId or marketId) |
+| Layer | How to see it | Count |
+|-------|----------------|-------|
+| Tier-1 (default `tools/list`) | Connect — no extra calls | 23 daily drivers (discovery, strategy, rewards scan, minimal trading, meta) |
+| Full SDK surface | `load_agent_profile({ profile })` or `get_tools_by_category({ category })`, then `tools/list` again | 142 handlers (Advanced loaded separately) |
 
-All 30 tools return pre-formatted, agent-ready cards (never raw SDK data). Public tools require no auth. Secure tools require the two wallet environment variables shown above. The agent can safely display any tool response directly.
+**Tier-1 includes:** `get_agent_recipes`, `discover_topic`, `search_tools`, `load_agent_profile`, strategy store tools, `fetch_market`, `list_active_maker_reward_markets`, `get_farmability`, `place_limit_order`, `cancel_order`, `list_open_orders`, `post_orders`, `get_balance_allowance`, `list_positions`, `get_uk_weather_forecast`, meta/category tools, `get_mcp_usage`, `wait_seconds`, `suggest_qualified_size`.
+
+**What agents change at runtime (not in git):**
+- **Strategy store** — `update_strategy` / `get_strategies` for filters, farming rules, requote policy, exits.
+- **Tool exposure** — `load_agent_profile` or categories add names to the session; handlers always exist.
+
+**Discovery:** `discover_topic({ topic: "weather"|"sports"|"crypto", closed: false })` returns events + markets with Yes/No token IDs. Do not rely on `polymarket://markets` for full catalogs.
+
+**Exact names and JSON shapes:** `get_agent_recipes` or `search_tools({ query: "..." })`. Prompt `agent_routing` documents goal-based flows. There is no registered `run_autonomous_trading_cycle` tool — use strategy store + tier-1 tools in a loop.
+
+All tools return pre-formatted cards (never raw SDK data). Secure tools need `EOA_PRIVATE_KEY` and `DEPOSIT_WALLET_ADDRESS` from the host.

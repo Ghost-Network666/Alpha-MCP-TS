@@ -37,7 +37,7 @@ export function buildMcpLlmsGuide(): string {
   let md = `# MCP Server - Full Agent Guide (SDK README + MCP mappings)
 
 This MCP is **lightweight and agent-first** for the CLOB prediction market platform (prediction markets on Polygon via CLOB + CTF).
-**Core principle**: Tiny default tool surface (~10 core tools via CORE_TOOL_NAMES). Use categories + prompts to discover/load more. 
+**Core principle**: Tier-1 default (~23 tools via TIER1_CORE_TOOL_NAMES). Full 142 via load_agent_profile / get_tools_by_category. Use prompts + get_agent_recipes — never guess. 
 **Agents must never guess**: Always start with the mandatory sequence below. All your logic/rules/filters/exits in strategy store (get_strategies first every loop). Use only native SDK paths via these explicit tools. Follow every agentDirective. Public: always provide your own keys (no defaults/hardcodes anywhere in this MCP or docs).
 
 **Base instructions (PRIMARY SOURCE OF TRUTH):** For the underlying TS SDK (all APIs, clients, auth, examples, concepts, client creation with createPublicClient/createSecureClient, .extend(allActions) for decorators, method signatures like listMarkets/fetchMarket/placeLimitOrder, param shapes, pagination, errors, WS managers, wallet adapters, etc.), read the official README first and treat it as canonical: https://github.com/Polymarket/ts-sdk/blob/main/README.md (maintained up-to-date by the maintainers — this MCP uses the SDK 100% natively with no custom HTTP, only thin safe wrappers + formatters + categories + strategyStore). 
