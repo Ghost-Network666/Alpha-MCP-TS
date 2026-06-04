@@ -278,7 +278,7 @@ Use completely free/no-key (Open-Meteo primary, pulls UK Met Office UKV 2km high
 - Heartbeat enhancement: X signals + live weather data for real leads (e.g. X rain hype but forecast dry → signal).
 - Cache 15min, rate protected, attribution in cards.
 - If one rate limited: auto fallback to next provider.
-- Example: get_uk_weather_forecast({city: "London", days: 7}) → card with data. Then cross with list_markets({category: "WEATHER"}).
+- Example: get_uk_weather_forecast({city: "London", days: 7}) → card with data. Discover markets: list_events({category: "WEATHER", closed: false}) or list_markets({category: "WEATHER", closed: false}) — MCP maps category→tagSlug/tagId (not a raw API field). Explicit: list_events({tagSlug: "weather"}), fetch_tag({slug: "weather"}) then list_markets({tagId: <id>}).
 
 MCP tools added (native, public, Weather category):
 - get_uk_weather_forecast({city: "London" | "51.5,-0.12", days?, variables?})

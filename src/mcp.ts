@@ -16,6 +16,11 @@ import {
 import { getPublicClient, getSecureClient, setupGaslessWallet } from './lib.js';
 import * as F from './formatters.js';
 import { getMarket } from './data/markets.js';
+import {
+  buildListEventsParams,
+  buildListMarketsParams,
+  discoveryAgentNote,
+} from './data/discovery.js';
 import { weatherClient } from './data/weather.js';
 import {
   placeLimitOrder as sportsPlaceLimitOrder,
@@ -366,14 +371,18 @@ const publicTools = [
 
   {
     name: 'list_markets',
-    description: '[Discovery] List platform markets (official SDK: client.listMarkets(params) after createPublicClient().extend(allActions)). Supports filters like category (WEATHER, SPORTS etc.), rewardsMinSize, search/keyword, volume/liquidity, clobTokenIds (array for CLOB token IDs), conditionIds, active/closed, pageSize. Note: official SDK fetchMarket only supports id/slug/url (per README); MCP fetch_market + getMarket helper resolves tokenId via internal listMarkets({ clobTokenIds: [tokenId], pageSize:1 }). Use for discovery. Always includes Yes/No TokenId in formatted output. See official ts-sdk README for full params/pagination.',
+    description: '[Discovery] List platform markets (SDK listMarkets). Native filters: tagId, tagSlug (not supported on markets — use category alias), titleSearch, clobTokenIds, rewardsMinSize, volume/liquidity, closed, pageSize. Ergonomic category (WEATHER, SPORTS, etc.) resolves to tagId via fetchTag(slug) — required for weather; bare category is NOT sent to the API. For weather: list_markets({ category: "WEATHER", closed: false }) or explicit tagId after list_tags/fetch_tag. fetch_market tokenId via listMarkets clobTokenIds bridge.',
     inputSchema: {
       type: 'object',
       properties: {
         closed: { type: 'boolean' },
-        active: { type: 'boolean' },
-        category: { type: 'string', description: 'e.g. WEATHER, SPORTS, CRYPTO' },
-        search: { type: 'string', description: 'Text search' },
+        active: { type: 'boolean', description: 'Alias: active true → closed false' },
+        category: { type: 'string', description: 'Ergonomic alias → tagId (WEATHER→weather tag). Not a raw API field.' },
+        tagId: { type: 'number', description: 'SDK-native market tag filter (preferred when known)' },
+        tagIds: { type: 'array', items: { type: 'number' } },
+        tagSlug: { type: 'string', description: 'Use on list_events; markets use tagId (category alias resolves it)' },
+        titleSearch: { type: 'string', description: 'SDK text filter on market question' },
+        search: { type: 'string', description: 'Alias for titleSearch' },
         rewardsMinSize: { type: 'number', description: 'For farming: min size filter from SDK' },
         volumeNumMin: { type: 'number' },
         liquidityNumMin: { type: 'number' },
@@ -400,12 +409,16 @@ const publicTools = [
   },
   {
     name: 'list_events',
-    description: 'List platform events (supports categories like WEATHER, SPORTS, POLITICS, CRYPTO via filters if passed). Use for discovering weather events/markets or sports. Combine with fetch_event for details. Pass category to filter.',
+    description: 'List platform events (SDK listEvents). Native filters: tagSlug, tagIds, titleSearch, closed, pageSize — NOT category. Ergonomic category (WEATHER, SPORTS, etc.) maps to tagSlug (e.g. WEATHER→"weather"). Primary path for weather event discovery. Then fetch_event or list_markets({ category: "WEATHER" }).',
     inputSchema: {
       type: 'object',
       properties: {
         pageSize: { type: 'number' },
-        category: { type: 'string', description: 'Filter by category e.g. WEATHER, SPORTS, CRYPTO' }
+        closed: { type: 'boolean' },
+        category: { type: 'string', description: 'Ergonomic alias → tagSlug (WEATHER→weather). Not a raw API field.' },
+        tagSlug: { type: 'string', description: 'SDK-native (e.g. weather, climate, sports)' },
+        tagIds: { type: 'array', items: { type: 'number' } },
+        titleSearch: { type: 'string' }
       }
     }
   },
@@ -2027,7 +2040,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             totalExposedNow: currentlyExposedToolNames.size,
             tools: filtered.map(t => ({
               name: t.name,
-              description: t.description
+              description: t.description,
+              inputSchema: t.inputSchema,
             })),
             note: newlyRegistered > 0
               ? 'Category tools registered for this session and will be returned by subsequent tools/list. Re-call tools/list (or the host equivalent) to refresh the available tool surface. All tools remain callable by name via tools/call immediately.'
@@ -2061,12 +2075,44 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     // Public tools (no auth) — every response formatted
-    case 'list_markets':
-      return callPaginatedWithFormat(pub.listMarkets(args), F.formatMarket, name);
+    case 'list_markets': {
+      const sdkArgs = await buildListMarketsParams((args || {}) as Record<string, unknown>);
+      const note = discoveryAgentNote('list_markets', (args || {}) as Record<string, unknown>, sdkArgs);
+      const base = await callPaginatedWithFormat(pub.listMarkets(sdkArgs), F.formatMarket, name);
+      if (note && base.content?.[0]?.text && !base.isError) {
+        try {
+          const parsed = JSON.parse(base.content[0].text);
+          base.content[0].text = JSON.stringify(
+            { markets: parsed, agentDirective: note, sdkParamsUsed: sdkArgs },
+            (_k, v) => (typeof v === 'bigint' ? v.toString() : v),
+            2
+          );
+        } catch {
+          /* keep original payload */
+        }
+      }
+      return base;
+    }
     case 'fetch_market':
       return callWithFormat(() => getMarket(args as any), F.formatMarket, name);
-    case 'list_events':
-      return callPaginatedWithFormat(pub.listEvents(args), F.formatEvent, name);
+    case 'list_events': {
+      const sdkArgs = buildListEventsParams((args || {}) as Record<string, unknown>);
+      const note = discoveryAgentNote('list_events', (args || {}) as Record<string, unknown>, sdkArgs);
+      const base = await callPaginatedWithFormat(pub.listEvents(sdkArgs), F.formatEvent, name);
+      if (note && base.content?.[0]?.text && !base.isError) {
+        try {
+          const parsed = JSON.parse(base.content[0].text);
+          base.content[0].text = JSON.stringify(
+            { events: parsed, agentDirective: note, sdkParamsUsed: sdkArgs },
+            (_k, v) => (typeof v === 'bigint' ? v.toString() : v),
+            2
+          );
+        } catch {
+          /* keep original payload */
+        }
+      }
+      return base;
+    }
     case 'fetch_event':
       return callWithFormat(() => pub.fetchEvent(args), F.formatEvent, name);
     case 'search':
@@ -2074,7 +2120,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // Do NOT wrap in callPaginatedWithFormat — it is not a simple item paginator.
       return callWithFormat(() => pub.search(args), F.formatSearchResults, name);
     case 'list_tags':
-      return callWithFormat(() => pub.listTags(), F.formatGeneric, name);
+      return callPaginatedWithFormat(
+        pub.listTags((args || { pageSize: 100 }) as Record<string, unknown>),
+        F.formatTag,
+        name
+      );
     case 'list_sports':
       return callWithFormat(() => pub.listSports(), F.formatGeneric, name);
     case 'list_teams':
@@ -3894,6 +3944,8 @@ Call list_tool_categories then get_tools_by_category("Rewards" | "Strategy" | "D
 **For full .md-style non-stale guidance**: the official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers) is the PRIMARY source of truth for SDK patterns (client factories, allActions, listMarkets/fetchMarket/placeLimitOrder signatures, etc.). Call prompts/get "mcp_llms_full_guide" (or read resource polymarket://mcp/llms.txt) for MCP mappings on top of it. It covers "for SDK concept X (see official README), use THIS exact MCP tool + args (never intent for trading)".
 Use the reward_farming_best_practices prompt for the current X + MARKET FARMING tactics.
 Never ask the human for options — drive everything from your stored rules + tool directives + prompts.
+
+**Weather / category discovery (CRITICAL — SDK has no category field):** list_events and list_markets accept ergonomic category (e.g. "WEATHER") but the MCP maps it before calling the SDK: category → tagSlug for events, category → tagId via fetchTag for markets. Prefer explicit SDK params when automating: list_events({ tagSlug: "weather", closed: false }), list_markets({ tagId: 84, closed: false }) after fetch_tag({ slug: "weather" }). Responses include sdkParamsUsed + agentDirective when category is used. Without rebuild/restart after MCP updates, category may appear ignored (stale dist). Then get_uk_weather_* + fetch_market for trading.
 
 **Token/Market by clobTokenId (rewards, orders, etc.):** The SDK fetchMarket only supports id/slug/url. When you receive tokenIds (yesTokenId/noTokenId/clobTokenIds), use:
 - fetch_market({ "tokenId": "<the token>" })  → full market metadata (internally uses listMarkets({clobTokenIds: [...]}) + first result).
