@@ -1,16 +1,17 @@
 /** Tier-1 default surface: daily-driver tools only. Full handlers via categories (see TOOL_COUNT). */
 
+/** Minimal daily surface — full handlers via route_agent_intent + load_agent_profile / categories. */
 export const TIER1_CORE_TOOL_NAMES: readonly string[] = [
   'get_agent_recipes',
   'fetch_sdk_readme',
-  'run_agent_cycle',
+  'route_agent_intent',
   'list_tool_categories',
   'get_tools_by_category',
   'get_mcp_usage',
   'search_tools',
   'load_agent_profile',
   'discover_topic',
-  'generate_alpha_report',
+  'fetch_market',
   'get_strategies',
   'set_strategy',
   'update_strategy',
@@ -18,16 +19,17 @@ export const TIER1_CORE_TOOL_NAMES: readonly string[] = [
   'wait_seconds',
   'get_balance_allowance',
   'list_positions',
-  'fetch_market',
   'list_active_maker_reward_markets',
   'get_farmability',
   'suggest_qualified_size',
+  'get_spread',
+  'get_order_book',
   'place_limit_order',
+  'place_optimized_reward_order',
   'cancel_order',
   'list_open_orders',
   'post_orders',
   'get_uk_weather_forecast',
-  'get_crypto_spot',
 ];
 
 /** One-call bundles: registers category tools for the session (no capability removed). */

@@ -1,4 +1,5 @@
 import { TIER1_CORE_TOOL_NAMES } from './agent-meta.js';
+import { buildKnownGotchasMarkdown } from './agent-gotchas.js';
 import { MCP_CATEGORIES } from './llms-guide.js';
 
 /** Authoritative never-guess contract (prompts/get). */
@@ -9,48 +10,33 @@ export function buildNeverGuessPrompt(): string {
   return `NEVER GUESS CONTRACT — MANDATORY FOR EVERY SESSION
 
 ## 0. Absolute rules
-- DO NOT ask the human for "next steps" or option menus.
-- DO NOT invent tool names or JSON argument shapes.
-- DO NOT use natural-language "intent" for trading — always explicit price/size/side.
-- Obey every agentDirective in tool responses.
+- DO NOT ask the human for menus or "next steps".
+- DO NOT invent tool names or JSON shapes.
+- route_agent_intent routes WHICH tools — NOT trade size/price (use explicit numbers on place_*).
+- Obey every agentDirective.
 
 ## 1. First calls (in order)
-1. tools/call get_agent_recipes
-2. tools/call fetch_sdk_readme OR read_resource polymarket://sdk/readme (live upstream SDK docs)
-3. prompts/get agent_routing
-4. prompts/get mcp_tool_structure_and_categories
-5. prompts/get mcp_llms_full_guide
-6. tools/call get_strategies
-7. tools/call run_agent_cycle({ goal: "<rewards|weather|mispricing|trading>" }) — deterministic step plan; YOU execute each step
+1. tools/call route_agent_intent({ intent: "session_startup" }) — includes fetch_sdk_readme + get_agent_recipes
+2. tools/call fetch_sdk_readme — confirm SDK method names match routed MCP tools (see sdkAlignment.mcpToSdk)
+3. prompts/get agent_routing + never_guess_contract + mcp_tool_structure_and_categories
+4. tools/call route_agent_intent({ intent: "<your goal>" }) — execute EVERY returned step; load_agent_profile when plan says so
+5. Re-call tools/list after load_agent_profile (hosts that whitelist tools/list)
 
-## 2. Tier-1 tools (always in tools/list — compact descriptions)
+## 2. Tier-1 tools
 ${tier1}
 
-Full native surface: load via get_tools_by_category or load_agent_profile. Categories: ${cats}.
+Full surface: get_tools_by_category or load_agent_profile. Categories: ${cats}.
 
-## 3. Live docs (not stale committed .md)
-- polymarket://sdk/readme — upstream TS SDK README (HTTP fetch, cached)
-- polymarket://mcp/llms.txt — MCP mappings overlay + optional live SDK attach
-- tools/call fetch_sdk_readme — same SDK text as JSON for hosts without resources
+## 3. Live docs
+- polymarket://sdk/readme
+- polymarket://mcp/llms.txt
 
-## 4. Live WebSocket resources (prefer over polling)
-- polymarket://market/{tokenId}/book — subscribe for book updates
-- polymarket://user/orders | positions | activity | portfolio
-- polymarket://order/{orderId}/fill-status — fill watch after place
+## 4. Strategy brain
+- get_strategies auto-seeds defaults if empty; update_strategy for changes
 
-## 5. External reference data (native, no LLM in MCP)
-- get_uk_weather_forecast / get_crypto_spot — host compares vs market prices
-- generate_alpha_report — deterministic scan+rank+directive
+${buildKnownGotchasMarkdown()}
 
-## 6. Automation
-- run_agent_cycle — returns ordered tools/call steps (stdio-safe; MCP does not block in a server loop)
-- run_autonomous_trading_cycle — NOT registered (by design); use run_agent_cycle + strategy store
-
-## 7. Strategy brain
-- get_strategies first every loop; update_strategy for partial changes
-- Persisted to logs/agent-strategy.json when MCP_STRATEGY_PATH or default logs/ path is writable
-
-## 8. On failure (rewards)
-IMMEDIATELY: generate_alpha_report or list_active_maker_reward_markets → pick DIFFERENT tokenId → place again. Never retry same token blindly.
+## 5. On reward failure
+route_agent_intent({ intent: "rotate_after_failure" }) → pick DIFFERENT tokenId — never retry same.
 `;
 }

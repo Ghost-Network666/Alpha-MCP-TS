@@ -2,9 +2,9 @@
 
 ## What this MCP does
 
-This is an MCP server for the CLOB prediction market platform, designed to work natively with **Hermes** (https://hermes-agent.nousresearch.com/), OpenClaw, and other agent harnesses.
+This is an MCP server for the CLOB prediction market platform, designed for **Grok Build**, **Hermes**, and **OpenClaw** (stdio MCP — same `dist/mcp.js` entrypoint).
 
-It is designed as a **lightweight MCP** (tier-1 default of **23** daily-driver tools in `tools/list`, plus `load_agent_profile` / `get_tools_by_category` to register more of the **142** implemented handlers — nothing removed) with a complete **Resources + Subscriptions** system covering:
+It is a **lightweight MCP**: tier-1 default **28** tools in `tools/list`, **`route_agent_intent`** for goal→native-tool routing (never trade-by-intent), plus `load_agent_profile` / `get_tools_by_category` for the full **~145** handlers — nothing removed. Complete **Resources + Subscriptions**:
 
 - Market + event discovery, tags, series, sports, teams
 - Full order lifecycle (limit/market + every cancel variant)
@@ -44,7 +44,7 @@ POLYMARKET_ENV=mainnet    # mainnet or amoy
 
 When you run the server directly (`node dist/mcp.js` or the `mcp` script), `dotenv` loads this file.
 
-### Using with Agent Hosts (Hermes, OpenClaw, Cursor, Claude Desktop, etc.) — READ THIS
+### Using with Agent Hosts (Grok Build, Hermes, OpenClaw, etc.) — READ THIS
 
 When an agent runtime launches this MCP server, **the agent host controls the environment**, not a local `.env` file.
 
@@ -65,7 +65,15 @@ Auth note: API keys must be derived from the EOA private key. Every order payloa
 
 **Important for Agents & Safety**: This MCP is deliberately lightweight (tiny default core + categories/prompts for the full surface). Hermes allows you to register it with a safe default subset of tools so agents are not overwhelmed and sensitive actions are not exposed by default.
 
-For LLMs/agents using this MCP: see `AGENTS.md` (especially "Consuming Agent Quickstart") + the official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md) **then** MCP prompts in this order: `agent_routing` (primary routing contract), `mcp_llms_full_guide`, `mcp_tool_structure_and_categories`. On connect, call `get_agent_recipes`, then `get_strategies()`. Prefer `discover_topic({ topic: "weather" })` over bare `list_events`/`list_markets` with `category` (SDK uses `tagSlug`/`tagId`; the MCP maps topic aliases). Use `load_agent_profile({ profile: "weather"|"rewards"|"trading"|"full" })` when tier-1 is not enough, then re-call `tools/list`. All rules/filters live in the strategy store (`update_strategy`) — not in repo markdown. Resource `polymarket://mcp/llms.txt` mirrors the live guide.
+**SDK source of truth (fetch, do not guess):** https://github.com/Polymarket/ts-sdk/blob/main/README.md  
+Native MCP tool: `fetch_sdk_readme` (cached HTTP) or resource `polymarket://sdk/readme`. Confirm routed tools against `sdkAlignment.mcpToSdk` from `route_agent_intent` before `place_*`.
+
+**Agent startup (every session):**
+1. `route_agent_intent({ intent: "session_startup" })` — runs `fetch_sdk_readme` + `get_agent_recipes` + `get_strategies`
+2. `route_agent_intent({ intent: "rewards_farm"|"weather_alpha"|... })` — execute every returned step in order
+3. Prompts: `agent_routing`, `never_guess_contract`, `mcp_tool_structure_and_categories`, `mcp_llms_full_guide`
+
+See `AGENTS.md` and `docs/HERMES_AGENT_BOOTSTRAP.md` (paste into `~/.hermes/AGENTS.md` / `SOUL.md`). Prefer `discover_topic({ topic })` over bare category filters. `load_agent_profile` when the route plan says so, then re-call `tools/list`. Rules live in the strategy store (`update_strategy`).
 
 ### Recommended Registration (with safe defaults)
 
@@ -90,7 +98,7 @@ hermes mcp add polymarket \
   --tools-include "get_agent_recipes,discover_topic,fetch_market,get_strategies,list_positions,get_balance_allowance"
 ```
 
-Hermes `--tools-include` is optional: the MCP already exposes a **tier-1** subset (~23 tools) via `tools/list`. Omit the flag to use that default, or pass a smaller read-only list as above. For trading/rewards, either widen `--tools-include` or let the agent call `load_agent_profile({ profile: "trading"|"rewards" })` inside the session (then re-call `tools/list`).
+Hermes `--tools-include` is optional: the MCP exposes **tier-1** (~28 tools) including `route_agent_intent` and `fetch_sdk_readme`. Omit the flag to use that default. For full flows, let the agent call `route_agent_intent` (it includes `load_agent_profile` when needed) then re-call `tools/list`.
 
 After registration:
 
@@ -198,6 +206,21 @@ This is the correct and safe way for agents to keep the MCP updated:
 
 **Note**: Requires Node.js ≥ 22.
 
+## Grok Build
+
+Project config: `.grok/config.toml` (copy and fix the `cd` path to your clone).
+
+```bash
+npm run build
+grok mcp doctor alphamcp   # expect handshake OK + ~28 tools
+```
+
+Start a **new Grok Build session** after every rebuild so the host reloads `dist/mcp.js`.
+
+User-level config can mirror the same server in `~/.grok/config.toml`. WSL users may need `bash -lc` and an explicit `node` path (see your local `.grok/config.toml`).
+
+**Agent contract:** `route_agent_intent` → `fetch_sdk_readme` (https://github.com/Polymarket/ts-sdk/blob/main/README.md) → execute routed native tools with explicit trade numbers.
+
 ## OpenClaw
 
 Add the server with explicit environment variables in `~/.openclaw/openclaw.json` (or your OpenClaw config):
@@ -220,11 +243,11 @@ Add the server with explicit environment variables in `~/.openclaw/openclaw.json
 }
 ```
 
-Restart the OpenClaw gateway after changes.
+Restart the OpenClaw gateway after changes. Agents should call `route_agent_intent({ intent: "session_startup" })` then `fetch_sdk_readme` (same SDK URL as above) before trading.
 
-## Other Agent Hosts
+## Other stdio hosts
 
-Any host that supports stdio MCP servers can use this. Always pass the three variables above directly in the host's server definition. Never assume a local `.env` will be picked up.
+Any host that supports stdio MCP can use `node /path/to/dist/mcp.js` with env vars in the server definition. Never assume a local `.env` will be picked up.
 
 ## After Code Changes (Important)
 
@@ -342,17 +365,17 @@ This is the correct, future-proof "subscribe" implementation.
 
 | Layer | How to see it | Count |
 |-------|----------------|-------|
-| Tier-1 (default `tools/list`) | Connect — no extra calls | 23 daily drivers (discovery, strategy, rewards scan, minimal trading, meta) |
-| Full SDK surface | `load_agent_profile({ profile })` or `get_tools_by_category({ category })`, then `tools/list` again | 142 handlers (Advanced loaded separately) |
+| Tier-1 (default `tools/list`) | Connect — no extra calls | **28** daily drivers + **`route_agent_intent`** + **`fetch_sdk_readme`** |
+| Full surface | `route_agent_intent` (may call `load_agent_profile`) or categories | **~145** handlers (Advanced separate) |
 
-**Tier-1 includes:** `get_agent_recipes`, `discover_topic`, `search_tools`, `load_agent_profile`, strategy store tools, `fetch_market`, `list_active_maker_reward_markets`, `get_farmability`, `place_limit_order`, `cancel_order`, `list_open_orders`, `post_orders`, `get_balance_allowance`, `list_positions`, `get_uk_weather_forecast`, meta/category tools, `get_mcp_usage`, `wait_seconds`, `suggest_qualified_size`.
+**Tier-1 includes:** `route_agent_intent`, `fetch_sdk_readme`, `get_agent_recipes`, `discover_topic`, `search_tools`, `load_agent_profile`, strategy store, `fetch_market`, `list_active_maker_reward_markets`, `get_farmability`, `get_order_book`, `get_spread`, `place_limit_order`, `place_optimized_reward_order`, trading/account meta tools, `get_uk_weather_forecast`.
 
-**What agents change at runtime (not in git):**
-- **Strategy store** — `update_strategy` / `get_strategies` for filters, farming rules, requote policy, exits.
-- **Tool exposure** — `load_agent_profile` or categories add names to the session; handlers always exist.
+**Routing:** `route_agent_intent({ intent })` returns ordered `steps[]` + `sdkAlignment` (MCP↔SDK README). Intent does **not** place orders — explicit `price`/`size`/`side` required.
 
-**Discovery:** `discover_topic({ topic: "weather"|"sports"|"crypto", closed: false })` returns events + markets with Yes/No token IDs. Do not rely on `polymarket://markets` for full catalogs.
+**SDK README:** https://github.com/Polymarket/ts-sdk/blob/main/README.md via `fetch_sdk_readme` or `polymarket://sdk/readme`.
 
-**Exact names and JSON shapes:** `get_agent_recipes` or `search_tools({ query: "..." })`. Prompt `agent_routing` documents goal-based flows. There is no registered `run_autonomous_trading_cycle` tool — use strategy store + tier-1 tools in a loop.
+**Discovery:** `discover_topic({ topic })` — not `polymarket://markets` as a catalog.
+
+**Shapes:** `get_agent_recipes` (`intentRouting` registry). No `run_autonomous_trading_cycle` — use `route_agent_intent` + strategy store loop.
 
 All tools return pre-formatted cards (never raw SDK data). Secure tools need `EOA_PRIVATE_KEY` and `DEPOSIT_WALLET_ADDRESS` from the host.

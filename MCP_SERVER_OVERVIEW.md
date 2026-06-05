@@ -87,7 +87,7 @@ The server is deliberately **lightweight** for agents:
 
 | Layer | Mechanism | Size |
 |-------|-----------|------|
-| Tier-1 | Default `tools/list` on connect | **23** daily-driver tools (`src/mcp/agent-meta.ts` → `TIER1_CORE_TOOL_NAMES`) |
+| Tier-1 | Default `tools/list` on connect | **31** daily-driver tools (`src/mcp/agent-meta.ts` → `TIER1_CORE_TOOL_NAMES`) |
 | Full | `load_agent_profile({ profile })` or `get_tools_by_category({ category })`, then `tools/list` again | **142** handlers implemented; zero removed |
 
 Meta tools: `get_agent_recipes`, `search_tools`, `load_agent_profile`, `list_tool_categories`, `get_tools_by_category`, `get_mcp_usage`.
@@ -125,6 +125,52 @@ This MCP is intended to be registered with agent runtimes (e.g. via `hermes mcp 
 - It does **not** implement its own order matching, risk engine, or custody.
 - Default `tools/list` is tier-1 only; the full SDK-aligned surface (~142 tools) is available on demand via profiles/categories. Low-level [Advanced] tools load separately.
 - It is not a general-purpose platform REST or WebSocket client.
+
+---
+
+## Recent agent-surface fixes (Jun 2026)
+
+Shipped in source (`src/mcp.ts`, `src/mcp/agent-meta.ts`, `src/trading/place-limit-args.ts`, `src/utils/clob-token.ts`, `src/intelligence/*`). Verify after `npm run build` with `grok mcp doctor alphamcp` (Grok Build / CLI).
+
+```
+┌──────────────────────────┬────────┬───────────────────────────────────────────────────────────────────────────────────────┐
+│ Request                  │ Status │ What shipped                                                                          │
+├──────────────────────────┼────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+│ place_limit_order schema │ Fixed  │ Schema includes orderType (GTC/GTD/FOK/FAK) and postOnly; handler uses                │
+│ + orderType / postOnly   │        │ buildPlaceLimitOrderArgs() (GTC omitted on wire, postOnly defaults true, GTD gets     │
+│                          │        │ expiration).                                                                          │
+├──────────────────────────┼────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+│ get_farmability slug /   │ Fixed  │ MARKET_TOKEN_REF_PROPERTIES + resolveClobTokenId() in src/utils/clob-token.ts;        │
+│ decimal ID               │        │ handler calls resolveTokenIdFromToolArgs(). listMarketRewards uses real conditionId ( │
+│                          │        │ not tokenId).                                                                         │
+├──────────────────────────┼────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+│ get_order_book / get_    │ Fixed  │ Dedicated tier-1 tools; handlers share cases with fetch_* and resolve slug/decimal    │
+│ spread                   │        │ before CLOB calls.                                                                    │
+├──────────────────────────┼────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+│ Better alpha_report      │ Fixed  │ Default 45–55¢ band, liquidity/volume filters, mid-band ranking bonus,                │
+│                          │        │ confidenceScore + actionability; tier-1 alpha_report alias → same handler as generate │
+│                          │        │ _alpha_report.                                                                        │
+├──────────────────────────┼────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+│ place_optimized_reward   │ Fixed  │ Tier-1 in agent-meta.ts; schema uses MARKET_TOKEN_REF_PROPERTIES; handler resolves    │
+│ _order exposed           │        │ slug/decimal then suggest → validate → postOnly place.                                │
+└──────────────────────────┴────────┴───────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Known pitfalls (agents — `get_agent_recipes.knownGotchas` + prompts)
+
+| Symptom | SDK-correct fix |
+|--------|------------------|
+| `get_farmability` Unavailable on non-reward markets | Pass hex, slug, or decimal id; non-reward → book-only (`fetchOrderBook` + `fetchMidpoint`). Rewards → `list_active_maker_reward_markets` first. |
+| `orderType` rejected on `place_limit_order` | SDK `placeLimitOrder` has no `orderType`; GTC default, GTD = `expiration`. FOK/FAK → `place_market_order`. |
+| `alpha_report` Unavailable / score 0 | Scores are 0–100 only; low = weak/skip. Relax filters or use `goal:"rewards"`. |
+| `get_strategies` count 0 | Auto-seeds on first `get_strategies` or `load_agent_profile`; then `update_strategy`. |
+| No order book tool | Tier-1 `get_order_book` / `get_spread` → SDK `fetchOrderBook` / `fetchSpread`. |
+
+**Notes**
+
+- `place_limit_order` still requires a hex `tokenId`; slug/decimal resolution applies to `get_farmability`, `get_order_book`, `get_spread`, and `place_optimized_reward_order` (use `fetch_market` first for raw limit places).
+- Some tokens return “No orderbook exists” from the CLOB; handlers return structured JSON + `agentDirective` instead of crashing.
+- MCP host config for this repo: `.grok/config.toml` only (see `.gitignore` for excluded Cursor/generic JSON).
 
 ---
 

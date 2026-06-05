@@ -248,7 +248,7 @@ export function formatMarket(market: any): object {
     'Yes/No Bias (sentiment proxy)': bias,
     'Liquidity Health': liqHealth,
     'Volume Health': vol > 500000 ? 'High activity' : (vol > 50000 ? 'Moderate' : 'Low (verify live)'),
-    'Card Note': 'For precise spreads/competition use fetch_spread or get_farmability(tokenId). Positions in this market via list_positions show Cash/Realized PnL + est unrealized.',
+    'Card Note': 'For precise spreads/competition use get_spread or get_farmability(tokenId). Positions in this market via list_positions show Cash/Realized PnL + est unrealized.',
   };
   return result;
 }
@@ -1254,7 +1254,9 @@ export function formatAlphaReport(report: {
     tokenId: string;
     label: string;
     compositeScore: number;
+    confidenceScore?: number;
     confidence: string;
+    actionability?: string;
     recommendation: string;
     nextTools: string[];
   }>;
@@ -1269,8 +1271,10 @@ export function formatAlphaReport(report: {
       Rank: o.rank,
       Label: o.label,
       'Token Id': o.tokenId,
-      Score: o.compositeScore,
+      Score: Math.max(0, o.compositeScore),
+      'Confidence Score': Math.max(0, o.confidenceScore ?? o.compositeScore),
       Confidence: o.confidence,
+      Actionability: o.actionability,
       Recommendation: o.recommendation,
     })),
     'Agent Directive': report.agentDirective,
@@ -1284,6 +1288,7 @@ export function formatFarmability(data: any): object {
   if (!data || data.success === false) return { 'Farmability': data?.error || 'Unavailable' };
   return omitUndefined({
     'Token Id': data.tokenId,
+    'Active Rewards Program': data.hasActiveRewards === false ? 'No (book-only snapshot)' : data.hasActiveRewards ? 'Yes' : 'Unknown',
     'Rewards Min Size': formatDecimal(data.rewardsMinSize),
     'Rewards Max Spread': data.rewardsMaxSpread,
     'Current Mid': data.currentMid,

@@ -22,6 +22,11 @@ yarn-error.log*
 Thumbs.db
 .idea/
 .vscode/
+.cursor/
+.mcp.json
+
+# Optional: uncomment to keep machine-local Grok path private
+# .grok/config.toml
 *.swp
 *.swo
 

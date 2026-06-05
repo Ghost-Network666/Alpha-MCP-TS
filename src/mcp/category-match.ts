@@ -2,12 +2,12 @@
 
 import type { ToolDef } from './agent-meta.js';
 
-export const TOOL_COUNT = 153;
+export const TOOL_COUNT = 145;
 
 /** Tools missing [Category] prefix — applied at load time in mcp.ts */
 export const CATEGORY_PREFIX_BY_TOOL: Record<string, string> = {
   setup_trading_approvals: 'Account',
-  setup_gasless_wallet: 'Account',
+
   is_gasless_ready: 'Account',
   fetch_closed_only_mode: 'Account',
   list_account_trades: 'Account',
@@ -52,15 +52,15 @@ export function getToolsByCategory(
     }
 
     const n = t.name;
-    if (catLower === 'intelligence' && /alpha_report|market_signals|rank_market/.test(n)) return true;
+    if (catLower === 'intelligence' && /alpha_report|generate_alpha|market_signals|route_agent_intent/.test(n)) return true;
     if (catLower === 'external' && /crypto_spot|uk_weather|get_weather/.test(n)) return true;
     if (catLower === 'rewards' && /list_active_maker|farmability|maker_reward|optimized_reward/.test(n)) return true;
-    if (catLower === 'trading' && /place_limit|place_market|cancel_|post_order|split_position|merge_position|redeem_position/.test(n)) return true;
+    if (catLower === 'trading' && /place_limit|place_market|cancel_|post_order|split_position|merge_position|redeem_position|get_order_book|get_spread/.test(n)) return true;
     if (catLower === 'discovery' && /discover_topic|fetch_market|list_market|list_event|fetch_event|search|list_tag|list_sport/.test(n)) return true;
     if (catLower === 'account' && /balance|allowance|portfolio|position|notification|setup_trading|gasless_ready|closed_only/.test(n)) return true;
     if (catLower === 'advanced' && /approve_|transfer_erc|prepare_|sign_|send_transaction|deploy_|api_key|heartbeat/.test(n)) return true;
-    if (catLower === 'utilities' && /wait_seconds|suggest_qualified|compute_bayesian/.test(n)) return true;
-    if (catLower === 'meta' && /list_tool_categories|get_tools_by_category|get_mcp_usage|get_agent_recipes|search_tools|load_agent_profile|fetch_sdk_readme|run_agent_cycle|run_autonomous/.test(n)) return true;
+    if (catLower === 'utilities' && /wait_seconds|suggest_qualified/.test(n)) return true;
+    if (catLower === 'meta' && /list_tool_categories|get_tools_by_category|get_mcp_usage|get_agent_recipes|search_tools|load_agent_profile|fetch_sdk_readme|run_agent_cycle|route_agent_intent/.test(n)) return true;
     if (catLower === 'resources' && /watch_order|send_heartbeat/.test(n)) return true;
     return false;
   });

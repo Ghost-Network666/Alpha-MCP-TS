@@ -13,7 +13,7 @@ import {
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { getPublicClient, getSecureClient, setupGaslessWallet } from './lib.js';
+import { getPublicClient, getSecureClient } from './lib.js';
 import * as F from './formatters.js';
 import { getMarket } from './data/markets.js';
 import {
@@ -25,8 +25,6 @@ import {
 } from './data/discovery.js';
 import { weatherClient } from './data/weather.js';
 import {
-  placeLimitOrder as sportsPlaceLimitOrder,
-  placeMarketOrder as sportsPlaceMarketOrder,
   createApiKey,
   deriveApiKey,
   createOrDeriveApiKey,
@@ -61,6 +59,23 @@ import { buildNeverGuessPrompt } from './mcp/never-guess.js';
 import { buildAgentCyclePlan } from './automation/agent-cycle.js';
 import { fetchCryptoSpotUsd } from './data/crypto.js';
 import { loadStrategyFile, saveStrategyFile } from './strategy/persist.js';
+import { resolveConditionIdForToken, resolveTokenIdFromToolArgs } from './utils/clob-token.js';
+import { normalizePlaceLimitOrderArgs } from './trading/place-limit-args.js';
+import { buildKnownGotchasMarkdown } from './mcp/agent-gotchas.js';
+import { buildIntentRoute, INTENT_REGISTRY } from './mcp/intent-routing.js';
+import { seedSessionStrategyDefaults } from './mcp/strategy-seed.js';
+
+/** Shared schema: hex tokenId OR slug OR decimal market id. */
+const MARKET_TOKEN_REF_PROPERTIES = {
+  tokenId: { type: 'string', description: '0x clob tokenId from Yes/No on market cards' },
+  market: { type: 'string', description: 'Market slug (auto-resolves to outcome tokenId)' },
+  slug: { type: 'string', description: 'Alias for market slug' },
+  outcome: {
+    type: 'string',
+    enum: ['yes', 'no', 'YES', 'NO'],
+    description: 'Outcome when using market/slug/decimal id (default yes)',
+  },
+};
 
 // Mark as MCP server early so logger, env, and other modules can adapt (no stdout pollution, no process.exit on auth errors).
 process.env.MCP_MODE = '1';
@@ -334,7 +349,7 @@ const publicTools = [
   // === Category Discovery Tools (added to solve 100+ tool bloat) ===
   {
     name: 'list_tool_categories',
-    description: '[Meta] Lists tool categories. Default tools/list is tier-1 only (~22 daily-driver tools). Use load_agent_profile({ profile }) or get_tools_by_category to register more (142 total, zero removed). START: get_agent_recipes. Categories: Rewards, Strategy, Account, Utilities, Discovery, Trading, Analytics, Weather, Meta, Advanced.',
+    description: '[Meta] Lists tool categories. Default tools/list is tier-1 only (~28 daily-driver tools). Use route_agent_intent or load_agent_profile / get_tools_by_category for more (~145 handlers, zero removed). START: route_agent_intent({ intent: "session_startup" }).',
     inputSchema: { type: 'object', properties: {} }
   },
   {
@@ -363,7 +378,7 @@ const publicTools = [
   },
   {
     name: 'search_tools',
-    description: '[Meta] Find tools by keyword without loading full tools/list. detail: "name" (smallest), "summary" (default), "schema" (full inputSchema). Example: search_tools({ query: "order book", detail: "summary" }). Then tools/call by name. All 142 tools exist — use load_agent_profile or get_tools_by_category to register more.',
+    description: '[Meta] Find tools by keyword. Prefer route_agent_intent for goal→tool plan. detail: name|summary|schema. All handlers exist — load_agent_profile or get_tools_by_category registers more for tools/list.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -410,16 +425,24 @@ const publicTools = [
     },
   },
   {
-    name: 'run_autonomous_trading_cycle',
-    description: '[Meta] Alias of run_agent_cycle — same deterministic step plan; host executes each tools/call.',
+    name: 'route_agent_intent',
+    description:
+      '[Meta] PRIMARY intent router: intent → ordered native tools/call steps + sdkAlignment (MCP↔SDK README) + load_agent_profile when needed. Routes WHICH tools — never price/size/side. START: session_startup (fetch_sdk_readme first). Intents: session_startup, rewards_farm, weather_alpha, mispricing_flip, trading_monitor, discovery_scan, check_orderbook, check_spread, check_farmability, alpha_scan, place_reward_maker, place_limit_explicit, rotate_after_failure.',
     inputSchema: {
       type: 'object',
       properties: {
-        goal: { type: 'string', enum: ['rewards', 'weather', 'mispricing', 'trading', 'discovery'] },
+        intent: {
+          type: 'string',
+          enum: Object.keys(INTENT_REGISTRY),
+        },
         topic: { type: 'string' },
+        tokenId: { type: 'string' },
+        market: { type: 'string' },
+        slug: { type: 'string' },
         maxMinCostUsd: { type: 'number' },
+        goal: { type: 'string', enum: ['rewards', 'weather', 'mispricing', 'trading', 'discovery'] },
       },
-      required: ['goal'],
+      required: ['intent'],
     },
   },
   {
@@ -578,17 +601,6 @@ const publicTools = [
     }
   },
   {
-    name: 'fetch_order_book',
-    description: 'Fetch current order book for a token',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        tokenId: { type: 'string' }
-      },
-      required: ['tokenId']
-    }
-  },
-  {
     name: 'fetch_price',
     description: 'Fetch last trade price for a side',
     inputSchema: {
@@ -612,15 +624,20 @@ const publicTools = [
     }
   },
   {
-    name: 'fetch_spread',
-    description: 'Fetch current spread for a token',
+    name: 'get_spread',
+    description: '[Trading] Current bid-ask spread. Accepts tokenId (0x hex), market slug, or decimal Gamma market id.',
     inputSchema: {
       type: 'object',
-      properties: {
-        tokenId: { type: 'string' }
-      },
-      required: ['tokenId']
-    }
+      properties: { ...MARKET_TOKEN_REF_PROPERTIES },
+    },
+  },
+  {
+    name: 'get_order_book',
+    description: '[Trading] Full order book depth + levels. Accepts tokenId, slug, or decimal market id. Prefer over fetch_market alone for placement.',
+    inputSchema: {
+      type: 'object',
+      properties: { ...MARKET_TOKEN_REF_PROPERTIES },
+    },
   },
   {
     name: 'fetch_price_history',
@@ -1096,7 +1113,7 @@ const publicTools = [
 const secureTools = [
   {
     name: 'place_limit_order',
-    description: '[Trading] Place a limit order (official SDK: createSecureClient({signer, wallet}).extend(allActions).placeLimitOrder(params) or postOrder after createLimitOrder). Requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS (per SDK secure client). Defaults to GTC + postOnly for maker (rewards). See official ts-sdk README + client for param shapes (tokenId, price, size, side, orderType, postOnly).',
+    description: '[Trading] SDK placeLimitOrder only: tokenId, price, size, side, postOnly?, expiration? (NO orderType on wire). GTC=default; GTD=set expiration unix sec. FOK/FAK→place_market_order. Requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1104,8 +1121,15 @@ const secureTools = [
         price: { type: 'number' },
         size: { type: 'number' },
         side: { type: 'string', enum: ['BUY', 'SELL'] },
-        orderType: { type: 'string', enum: ['GTC', 'GTD', 'FOK', 'FAK'] },
-        postOnly: { type: 'boolean' },
+        orderType: {
+          type: 'string',
+          enum: ['GTC', 'GTD', 'FOK', 'FAK'],
+          description: 'Agent hint only: GTC/GTD map to SDK limit (expiration for GTD). FOK/FAK rejected here — use place_market_order.',
+        },
+        postOnly: {
+          type: 'boolean',
+          description: 'Default true — maker-only; required for reward farming',
+        },
         builderCode: { type: 'string' },
         expiration: { type: 'number', description: 'Unix timestamp (seconds) after which the order expires (GTD)' }
       },
@@ -1127,51 +1151,6 @@ const secureTools = [
         builderCode: { type: 'string' }
       },
       required: ['tokenId', 'side']
-    }
-  },
-  {
-    name: 'create_and_post_order',
-    description: '[Trading] Recommended unified tool for placing GTC maker orders that earn platform rewards. Creates and posts a limit order using the SDK. Defaults to orderType=GTC and postOnly=true (rests on book as maker, no taker fees, eligible for rewards). Use this instead of raw place_limit_order for most maker workflows.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        tokenId: { type: 'string' },
-        price: { type: 'number' },
-        size: { type: 'number' },
-        side: { type: 'string', enum: ['BUY', 'SELL'] },
-        orderType: { type: 'string', enum: ['GTC', 'GTD', 'FOK', 'FAK'] },
-        postOnly: { type: 'boolean' }
-      },
-      required: ['tokenId', 'price', 'size', 'side']
-    }
-  },
-  {
-    name: 'sports_place_limit_order',
-    description: 'Place a limit order on sports markets via sports action (GTC maker by default for rewards). Requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS. Defaults to orderType=GTC and postOnly=true.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        tokenId: { type: 'string' },
-        price: { type: 'number' },
-        size: { type: 'number' },
-        side: { type: 'string', enum: ['BUY', 'SELL'] },
-        orderType: { type: 'string', enum: ['GTC', 'GTD', 'FOK', 'FAK'] },
-        postOnly: { type: 'boolean' }
-      },
-      required: ['tokenId', 'price', 'size', 'side']
-    }
-  },
-  {
-    name: 'sports_place_market_order',
-    description: 'Place a market order on sports markets via sports action (requires EOA_PRIVATE_KEY + DEPOSIT_WALLET_ADDRESS)',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        tokenId: { type: 'string' },
-        amount: { type: 'number' },
-        side: { type: 'string', enum: ['BUY', 'SELL'] }
-      },
-      required: ['tokenId', 'amount', 'side']
     }
   },
   {
@@ -1459,11 +1438,6 @@ const secureTools = [
     inputSchema: { type: 'object', properties: {} }
   },
   {
-    name: 'setup_gasless_wallet',
-    description: 'Setup gasless wallet (per latest SDK: @deprecated no-op after createSecureClient deposit default; gasless handled at creation for non-EOA. Kept for compat).',
-    inputSchema: { type: 'object', properties: {} }
-  },
-  {
     name: 'fetch_transaction',
     description: 'Fetch gasless transaction details',
     inputSchema: { type: 'object', properties: {} }
@@ -1710,46 +1684,19 @@ const secureTools = [
     }
   },
   {
-    name: 'validate_for_maker_rewards',
-    description: 'Lightweight pre-check for a specific token + size/price. Returns tiny response by design. If you see huge output, restart your MCP server (old dist/ is loaded). Use list_active_maker_reward_markets first for discovery — this is only for fine-tuning one market.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        tokenId: { type: 'string' },
-        size: { type: 'number' },
-        price: { type: 'number' },
-        side: { type: 'string', enum: ['BUY', 'SELL'] }
-      },
-      required: ['tokenId']
-    }
-  },
-  {
-    name: 'suggest_reward_order_parameters',
-    description: 'Given a tokenId, suggests good price and size parameters to maximize the chance of scoring maker rewards on the current active programs. Uses current order book + reward rules.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        tokenId: { type: 'string' },
-        side: { type: 'string', enum: ['BUY', 'SELL'] },
-        capitalUsd: { type: 'number', description: 'Optional capital in USD you want to deploy' }
-      },
-      required: ['tokenId', 'side']
-    }
-  },
-  {
     name: 'place_optimized_reward_order',
-    description: 'High-level automation helper. Suggests optimal parameters for a market, validates them against current reward rules, places the order as a pure maker (postOnly GTC), confirms it is scoring, and can optionally monitor fills. Reduces steps for reward farming. For volume/requoting: combine with batch post_orders. Respect CLOB V2 place latency realities (see reward_farming_best_practices — avoid 200+/sec individual requotes).',
+    description: '[Rewards] RECOMMENDED tier-1 flow: suggest → validate reward rules → postOnly GTC place → confirm scoring. tokenId required (0x hex from list_active). Optional monitorFills. Batch via post_orders when requoting.',
     inputSchema: {
       type: 'object',
       properties: {
-        tokenId: { type: 'string' },
+        ...MARKET_TOKEN_REF_PROPERTIES,
         side: { type: 'string', enum: ['BUY', 'SELL'] },
         capitalUsd: { type: 'number' },
         monitorFills: { type: 'boolean' },
-        fillMonitoringTimeoutMinutes: { type: 'number' }
+        fillMonitoringTimeoutMinutes: { type: 'number' },
       },
-      required: ['tokenId', 'side']
-    }
+      required: ['side'],
+    },
   },
   {
     name: 'watch_order_scoring',
@@ -1819,28 +1766,12 @@ const secureTools = [
     }
   },
   {
-    name: 'compute_bayesian_update',
-    description: '[Utilities] Performs a precision-weighted Bayesian update (posterior = (1-w)*prior + w*signal). Useful for combining platform price (prior) with external signals (Kalshi, Claude, your own research) when hunting mispriced markets for quick flips.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prior: { type: 'number', description: 'Current platform price (0-1)' },
-        signal: { type: 'number', description: 'External probability estimate (0-1)' },
-        weight: { type: 'number', description: 'How much to trust the signal (0-1). Typical: 0.3-0.6' }
-      },
-      required: ['prior', 'signal', 'weight']
-    }
-  },
-  {
     name: 'get_farmability',
-    description: '[Rewards] PRIMARY pre-farm tool (SDK-native: fetchOrderBook + listMarketRewards + fetchSpreads). Snapshot: reward rules (minSize/maxSpread), live mid/spread vs allowed, book depth, cost to qualify, competitionSignal (low-comp proxy), suggestedNearMidBuy/Sell (for higher weighting per X insights), farmabilityScore, recommendation. Call first for every reward or flip decision. Also surfaces exact prices for sticky near-mid quoting + both-sides signals.',
+    description: '[Rewards] SDK fetchOrderBook + listMarketRewards + fetchSpreads + fetchMidpoint. Accepts 0x tokenId, market slug, or decimal id (auto-resolve). Non-reward markets return book-only snapshot (hasActiveRewards:false). For maker rewards pick tokens from list_active_maker_reward_markets.',
     inputSchema: {
       type: 'object',
-      properties: {
-        tokenId: { type: 'string' }
-      },
-      required: ['tokenId']
-    }
+      properties: { ...MARKET_TOKEN_REF_PROPERTIES },
+    },
   },
   {
     name: 'compute_market_signals',
@@ -1857,43 +1788,13 @@ const secureTools = [
     },
   },
   {
-    name: 'rank_market_opportunities',
-    description: '[Intelligence] Rank opportunities by composite score (rewards scan and/or tokenIds + optional external signals). Returns structured ranks — host LLM decides trades. goals: rewards uses internal reward scan; pass tokenIds for mispricing.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        goal: { type: 'string', enum: ['rewards', 'weather', 'mispricing', 'discovery'] },
-        topic: { type: 'string', description: 'For weather/discovery goal' },
-        tokenIds: { type: 'array', items: { type: 'string' } },
-        maxMinCostUsd: { type: 'number' },
-        externalSignals: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              tokenId: { type: 'string' },
-              prior: { type: 'number' },
-              signal: { type: 'number' },
-              weight: { type: 'number' },
-              label: { type: 'string' },
-            },
-            required: ['tokenId', 'signal'],
-          },
-        },
-        maxResults: { type: 'number', description: 'Default 5, max 10' },
-        enrichFarmability: { type: 'boolean', description: 'Fetch live book signals (default true, capped at 5 tokens)' },
-      },
-      required: ['goal'],
-    },
-  },
-  {
     name: 'generate_alpha_report',
-    description: '[Intelligence] PRIMARY structured alpha report (deterministic, no LLM). One call: scan + rank + agentDirective + nextTools for rewards/weather/discovery/mispricing. Host LLM reads JSON then update_strategy + explicit place_* . Example: generate_alpha_report({ goal: "rewards", maxMinCostUsd: 4.5 }).',
+    description: '[Intelligence] PRIMARY alpha report: liquid mid-price markets, confidence/actionability scores, agentDirective. Alias: alpha_report.',
     inputSchema: {
       type: 'object',
       properties: {
         goal: { type: 'string', enum: ['rewards', 'weather', 'mispricing', 'discovery'] },
-        topic: { type: 'string', description: 'weather, sports, crypto, etc. for discovery/weather goals' },
+        topic: { type: 'string', description: 'weather, sports, crypto, politics, etc.' },
         maxMinCostUsd: { type: 'number' },
         maxMinSize: { type: 'number' },
         tokenIds: { type: 'array', items: { type: 'string' } },
@@ -1913,6 +1814,31 @@ const secureTools = [
         },
         maxCandidates: { type: 'number', description: 'Default 6, max 10' },
         enrichFarmability: { type: 'boolean' },
+        midPriceMin: { type: 'number', description: 'Discovery: Yes price band min (default 0.45)' },
+        midPriceMax: { type: 'number', description: 'Discovery: Yes price band max (default 0.55)' },
+        liquidityNumMin: { type: 'number', description: 'Discovery: min liquidity filter (default 5000)' },
+        volumeNumMin: { type: 'number', description: 'Discovery: min 24h volume filter (default 1000)' },
+      },
+      required: ['goal'],
+    },
+  },
+  {
+    name: 'alpha_report',
+    description: '[Intelligence] Alias of generate_alpha_report — same args and response.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        goal: { type: 'string', enum: ['rewards', 'weather', 'mispricing', 'discovery'] },
+        topic: { type: 'string' },
+        maxMinCostUsd: { type: 'number' },
+        maxMinSize: { type: 'number' },
+        tokenIds: { type: 'array', items: { type: 'string' } },
+        maxCandidates: { type: 'number' },
+        enrichFarmability: { type: 'boolean' },
+        midPriceMin: { type: 'number' },
+        midPriceMax: { type: 'number' },
+        liquidityNumMin: { type: 'number' },
+        volumeNumMin: { type: 'number' },
       },
       required: ['goal'],
     },
@@ -1946,7 +1872,7 @@ const secureTools = [
   },
   {
     name: 'get_strategies',
-    description: '[Strategy] Retrieve ALL your stored strategies, rules, filters, and operating configs. Call with no args to get your complete current rule set (farming rules, liquidity filters, event prefs, everything). Core tool — this is how the agent loads its own evolved logic at the start of loops without any MCP bloat.',
+    description: '[Strategy] Retrieve ALL stored rules. Empty on first call auto-seeds rules:session_defaults + filter:liquidity_discovery (same as load_agent_profile). Call with no args every loop start; evolve via update_strategy.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -2042,14 +1968,6 @@ const secureTools = [
       properties: {}
     }
   },
-  {
-    name: 'get_secure_client_info',
-    description: '[Advanced] SECURITY-SENSITIVE: Returns raw authentication internals (account identity and API credentials). Do not expose these publicly.',
-    inputSchema: {
-      type: 'object',
-      properties: {}
-    }
-  }
 ];
 
 for (let i = 0; i < publicTools.length; i++) {
@@ -2080,7 +1998,7 @@ const PROMPTS = [
   },
   {
     name: 'mispricing_quick_flips',
-    description: 'Guide for using the MCP for quick flips on mispriced markets. Includes using compute_bayesian_update with external signals, get_farmability for liquidity checks, suggest_qualified_size for sizing, list_active for reward-eligible opportunities, and respecting maker vs taker rules.',
+    description: 'Guide for quick flips: compute_market_signals + get_farmability + explicit place_limit_order. Use route_agent_intent({ intent: "mispricing_flip" }) for the tool plan.',
     arguments: []
   },
   {
@@ -2163,14 +2081,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
     }
 
-    case 'run_autonomous_trading_cycle':
+    case 'route_agent_intent': {
+      const strategies: Record<string, unknown> = {};
+      for (const [k, v] of strategyStore.entries()) strategies[k] = v;
+      const plan = buildIntentRoute({
+        intent: args.intent,
+        topic: args.topic,
+        tokenId: args.tokenId,
+        market: args.market,
+        slug: args.slug,
+        maxMinCostUsd: args.maxMinCostUsd,
+        goal: args.goal,
+        strategies,
+      });
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(plan, null, 2) }],
+      };
+    }
+
     case 'run_agent_cycle': {
       const strategies: Record<string, unknown> = {};
-      for (const s of strategyStore.values()) {
-        if (s && typeof s === 'object' && (s as any).tokenId) {
-          strategies[String((s as any).tokenId)] = s;
-        }
-      }
       for (const [k, v] of strategyStore.entries()) strategies[k] = v;
       const plan = buildAgentCyclePlan({
         goal: args.goal,
@@ -2178,9 +2108,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         maxMinCostUsd: args.maxMinCostUsd,
         strategies,
       });
-      if (name === 'run_autonomous_trading_cycle') {
-        (plan as any).aliasNote = 'run_autonomous_trading_cycle delegates to run_agent_cycle (deterministic plan; host executes steps).';
-      }
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(plan, null, 2) }],
       };
@@ -2269,7 +2196,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               ...getAgentRecipes(),
               tier1Core: [...TIER1_CORE_TOOL_NAMES],
               profiles: AGENT_PROFILES,
-              loadMore: 'load_agent_profile({ profile }) or get_tools_by_category({ category }) — all 142 tools remain callable',
+              intentRouting: 'route_agent_intent({ intent }) — see intentRouting in this payload',
+              loadMore: 'load_agent_profile({ profile }) or get_tools_by_category({ category }) — all handlers remain callable',
             },
             null,
             2
@@ -2326,6 +2254,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }
         }
       }
+      const strategySeeded = seedSessionStrategyDefaults(strategyStore, profileKey);
+      if (strategySeeded) await persistStrategiesToDisk();
       return {
         content: [{
           type: 'text' as const,
@@ -2337,7 +2267,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               toolsPerCategory: perCategory,
               newlyRegistered,
               totalExposedNow: currentlyExposedToolNames.size,
-              agentDirective: 'Re-call tools/list to refresh the host tool surface. All handlers unchanged — only exposure grew.',
+              strategySeeded,
+              agentDirective: strategySeeded
+                ? 'Re-call tools/list. get_strategies() now has session defaults — refine with update_strategy before trading.'
+                : 'Re-call tools/list to refresh the host tool surface. All handlers unchanged — only exposure grew.',
             },
             null,
             2
@@ -2425,14 +2358,95 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const res = await weatherClient.getCurrent(args.city, args.variables);
         return F.formatWeather(res, args.city, 'current');
       }, F.formatGeneric, name);
-    case 'fetch_order_book':
-      return callWithFormat(() => pub.fetchOrderBook(args), F.formatOrderBook, name);
+    case 'get_order_book': {
+      try {
+        const { tokenId, resolvedFrom, marketQuestion } = await resolveTokenIdFromToolArgs(args);
+        try {
+          const bookRaw = await pub.fetchOrderBook({ tokenId });
+          const book = F.formatOrderBook(bookRaw);
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({ success: true, resolvedFrom, marketQuestion, tokenId, book }, null, 2),
+            }],
+          };
+        } catch (sdkErr: any) {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                success: false,
+                tokenId,
+                resolvedFrom,
+                error: sdkErr?.message || String(sdkErr),
+                agentDirective:
+                  'No CLOB book for this token right now. Use list_active_maker_reward_markets or discover_topic and try another yesTokenId/noTokenId.',
+              }, null, 2),
+            }],
+          };
+        }
+      } catch (e: any) {
+        return {
+          isError: true,
+          content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: e?.message || String(e) }, null, 2) }],
+        };
+      }
+    }
     case 'fetch_price':
       return callWithFormat(() => pub.fetchPrice(args), F.formatGeneric, name);
     case 'fetch_midpoint':
       return callWithFormat(() => pub.fetchMidpoint(args), F.formatGeneric, name);
-    case 'fetch_spread':
-      return callWithFormat(() => pub.fetchSpread(args), F.formatGeneric, name);
+    case 'get_spread': {
+      try {
+        const { tokenId, resolvedFrom, marketQuestion } = await resolveTokenIdFromToolArgs(args);
+        try {
+          const spreadVal = await pub.fetchSpread({ tokenId });
+          const spread =
+            typeof spreadVal === 'string' ? { value: spreadVal } : F.formatGeneric(spreadVal);
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({ success: true, resolvedFrom, marketQuestion, tokenId, spread }, null, 2),
+            }],
+          };
+        } catch (sdkErr: any) {
+          const spreadsMap = await pub.fetchSpreads({ tokenIds: [tokenId] }).catch(() => null);
+          if (spreadsMap && spreadsMap[tokenId] != null) {
+            return {
+              content: [{
+                type: 'text' as const,
+                text: JSON.stringify({
+                  success: true,
+                  resolvedFrom,
+                  marketQuestion,
+                  tokenId,
+                  spread: { value: spreadsMap[tokenId] },
+                  note: 'Recovered via fetchSpreads batch',
+                }, null, 2),
+              }],
+            };
+          }
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                success: false,
+                tokenId,
+                resolvedFrom,
+                error: sdkErr?.message || String(sdkErr),
+                agentDirective:
+                  'No CLOB spread for this token. Rotate market via list_active_maker_reward_markets.',
+              }, null, 2),
+            }],
+          };
+        }
+      } catch (e: any) {
+        return {
+          isError: true,
+          content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: e?.message || String(e) }, null, 2) }],
+        };
+      }
+    }
     case 'fetch_price_history':
       return callWithFormat(() => pub.fetchPriceHistory(args), (d: any) => F.formatPriceHistory(d?.history ?? d ?? []), name);
     case 'fetch_last_trade_price':
@@ -2446,34 +2460,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return callWithFormat(() => pub.estimateMarketPrice(args), F.formatGeneric, name);
 
     // Secure tools — every response formatted. CTF actions use resolved tx card.
-    case 'place_limit_order':
+    case 'place_limit_order': {
+      const normalized = normalizePlaceLimitOrderArgs(args);
+      if (!normalized.ok) {
+        return {
+          isError: true,
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: false,
+              error: normalized.error,
+              agentDirective: normalized.agentDirective,
+            }, null, 2),
+          }],
+        };
+      }
+      const placeArgs = normalized.args;
       return callWithFormat(async () => {
-        const posted = await (await getSec()).placeLimitOrder(args);
+        const posted = await (await getSec()).placeLimitOrder(placeArgs);
         const orderId = (posted as any)?.orderId;
         if (orderId) resourceManager.ensureUserSubscriptionForWatch(orderId).catch(() => {});
         return posted;
       }, F.formatOrderResponse, name);
-
-    case 'create_and_post_order':
-      // The recommended tool for GTC maker orders with rewards eligibility.
-      // Explicitly uses SDK createLimitOrder + postOrder for full control.
-      // GTC is the SDK default when orderType is omitted — do not pass it for pure GTC.
-      const createPostParams: any = { ...args };
-      if (args.orderType && args.orderType !== 'GTC') {
-        createPostParams.orderType = args.orderType;
-      }
-      createPostParams.postOnly = args.postOnly !== false;
-      return callWithFormat(async () => {
-        const sec = await getSec();
-        const signed = await sec.createLimitOrder(createPostParams);
-        const posted = await sec.postOrder(signed);
-        // Auto-start the dedicated fill watch for this order (powers the Fill Watch resource in the response)
-        const orderId = (posted as any)?.orderId;
-        if (orderId) {
-          resourceManager.ensureUserSubscriptionForWatch(orderId).catch(() => {});
-        }
-        return posted;
-      }, F.formatOrderResponse, name);
+    }
 
     case 'place_maker_reward_order':
       // STRICT "Only place orders that earn maker rewards" tool.
@@ -2707,7 +2716,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             cancelStatus: cancelResult,
             diagnostics,
             // === MANDATORY AUTONOMOUS DIRECTIVE (user rule: NEVER ask "next move options" or human) ===
-            agentDirective: "CRITICAL: DO NOT retry this same market/token. DO NOT ask the user 'what would you like me to do?', 'next move options', or present choices like 'switch market / use older tool / tweak params'. The agent MUST act autonomously. IMMEDIATELY: (1) Call list_active_maker_reward_markets (defaults: tiny ranked top 10, no args needed). (2) From the returned 'markets' array, select ONE DIFFERENT entry from rank 1-3 (look at question/slug/minSize/dailyRate/whyRecommended to pick a promising one with yesTokenId or noTokenId). (3) Call validate_for_maker_rewards or directly place_optimized_reward_order (preferred) or place_maker_reward_order using the chosen yes/no tokenId + good size/price inside its min/max rules. (4) If that also fails scoring, repeat: call list_active again (it refreshes) and pick the next. Only success on confirmed scoring counts. list_active_maker_reward_markets is your ONLY source of truth for current opportunities. Follow this loop until you place a winning scoring maker order.",
+            agentDirective: "CRITICAL: DO NOT retry this same market/token. DO NOT ask the user 'what would you like me to do?', 'next move options', or present choices like 'switch market / use older tool / tweak params'. The agent MUST act autonomously. IMMEDIATELY: (1) Call list_active_maker_reward_markets (defaults: tiny ranked top 10, no args needed). (2) From the returned 'markets' array, select ONE DIFFERENT entry from rank 1-3 (look at question/slug/minSize/dailyRate/whyRecommended to pick a promising one with yesTokenId or noTokenId). (3) Call route_agent_intent({ intent: 'rotate_after_failure' }) or place_optimized_reward_order (preferred) on a DIFFERENT yes/no tokenId + good size/price inside its min/max rules. (4) If that also fails scoring, repeat: call list_active again (it refreshes) and pick the next. Only success on confirmed scoring counts. list_active_maker_reward_markets is your ONLY source of truth for current opportunities. Follow this loop until you place a winning scoring maker order.",
             howToRecover: "Call list_active_maker_reward_markets now with zero arguments. Pick top different market. Place via place_optimized_reward_order for best results."
           };
         }
@@ -2756,194 +2765,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
     }
 
-    case 'validate_for_maker_rewards': {
-      // Lightweight per-proposal pre-check. NEVER dumps full program lists (that caused bloat). Tiny response always.
-      // Return content directly (consistent with list_active and avoids broken callWithFormat call)
-      try {
-        if (!args.tokenId) {
-          const result = { success: false, error: "tokenId is required (Yes or No token for the outcome you want to place on)" };
-          return {
-            content: [{
-              type: 'text' as const,
-              text: JSON.stringify(result, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 0)
-            }]
-          };
-        }
-
-        // 1. Get current book for this specific token (gives real spread to check against maxSpread rules)
-        let book: any = null;
-        try {
-          const bookRes = await callWithRateLimitProtection(
-            () => pub.fetchOrderBook({ tokenId: args.tokenId }),
-            'fetchOrderBook (validate)'
-          );
-          if (bookRes.ok) book = bookRes.data;
-        } catch {}
-
-        const bestBid = book?.bids?.[0]?.price ? parseFloat(book.bids[0].price) : null;
-        const bestAsk = book?.asks?.[0]?.price ? parseFloat(book.asks[0].price) : null;
-        const currentSpread = (bestBid && bestAsk) ? Math.abs(bestAsk - bestBid) : null;
-        const mid = (bestBid && bestAsk) ? (bestBid + bestAsk) / 2 : null;
-
-        // 2. Small active programs snapshot (capped hard, no full dump)
-        let activeCount = 0;
-        let programsHint: any[] = [];
-        try {
-          const protectedRewards = await callWithRateLimitProtection(
-            () => pub.listCurrentRewards({ pageSize: 10 }),
-            'listCurrentRewards (validate)'
-          );
-          if (protectedRewards.ok) {
-            const page = await protectedRewards.data.firstPage();
-            const items = page?.items || [];
-            activeCount = items.length;
-            programsHint = items.slice(0, 2).map((r: any) => ({
-              minSize: r.rewardsMinSize,
-              maxSpread: r.rewardsMaxSpread,
-              dailyRate: r.totalDailyRate || r.sponsoredDailyRate
-            }));
-          }
-        } catch {}
-
-        const proposedSize = args.size != null ? parseFloat(String(args.size)) : null;
-        const proposedPrice = args.price != null ? parseFloat(String(args.price)) : null;
-
-        let sizeOk = null;
-        let spreadLikelyOk = null;
-        let overallEligible = false;
-        let reason = "Insufficient data for precise check (provide size + price + side for full validation).";
-
-        if (proposedSize != null && programsHint.length) {
-          const exampleMin = parseFloat(programsHint[0]?.minSize || '5');
-          sizeOk = proposedSize >= exampleMin;
-        }
-        if (proposedPrice != null && mid != null && currentSpread != null && programsHint.length) {
-          const exampleMaxSp = parseFloat(programsHint[0]?.maxSpread || '0.005');
-          const distanceFromOpp = args.side?.toUpperCase() === 'BUY' ? (mid - proposedPrice) : (proposedPrice - mid);
-          spreadLikelyOk = distanceFromOpp >= 0 && (currentSpread / 2 + distanceFromOpp) / mid <= exampleMaxSp; // rough inside max spread
-        }
-        if (sizeOk !== null || spreadLikelyOk !== null) {
-          overallEligible = (sizeOk !== false) && (spreadLikelyOk !== false);
-          reason = overallEligible 
-            ? "Proposal looks compatible with typical active program rules (size + spread). Final scoring decided by the platform after order is live."
-            : "Proposal likely violates at least one rule (size too small or price too aggressive vs current book + max spread).";
-        }
-
-        const result = {
-          success: true,
-          eligible: overallEligible,
-          reason,
-          proposed: { tokenId: args.tokenId, size: args.size, price: args.price, side: args.side },
-          tokenBook: {
-            bestBid: bestBid ? bestBid.toFixed(4) : null,
-            bestAsk: bestAsk ? bestAsk.toFixed(4) : null,
-            currentSpreadPct: currentSpread ? (currentSpread * 100).toFixed(3) + '%' : 'unknown'
-          },
-          activeProgramsSnapshot: {
-            count: activeCount,
-            exampleRules: programsHint.length ? programsHint : undefined,
-            note: "Use list_active_maker_reward_markets (the ranked 5) for real markets + tokens + rules."
-          },
-          directive: overallEligible 
-            ? "Looks good — proceed with place_optimized_reward_order or place_maker_reward_order."
-            : "Bad proposal for current rules. Call list_active_maker_reward_markets now and pick a different top market."
-        };
-
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify(result, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 0)
-          }]
-        };
-      } catch (e: any) {
-        const result = { success: false, error: `Validation failed: ${e?.message || e}` };
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify(result, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 0)
-          }]
-        };
-      }
-    }
-
-    case 'suggest_reward_order_parameters': {
-      return callWithFormat(async () => {
-        if (!args.tokenId || !args.side) {
-          return { error: "tokenId and side are required" };
-        }
-
-        const mode = (args.mode || 'reward').toLowerCase(); // 'reward' | 'spread_capture'
-
-        const [book, rewards] = await Promise.all([
-          pub.fetchOrderBook({ tokenId: args.tokenId }).catch(() => null),
-          pub.listMarketRewards({ conditionId: args.tokenId }).catch(() => null),
-        ]);
-
-        if (!book || !rewards?.items?.length) {
-          return {
-            success: false,
-            suggestion: null,
-            reason: "No active reward program found specifically for this token's market (listMarketRewards returned none).",
-            directive: "Call list_active_maker_reward_markets (the ranked list) instead — it surfaces markets that DO have active programs with resolved tokens. Pick one from there and use its yes/no tokenId here or with place_optimized_reward_order."
-          };
-        }
-
-        const program = rewards.items[0];
-        const minSize = parseFloat(program.rewardsMinSize || '5');
-        const maxSpread = parseFloat(program.rewardsMaxSpread || '0.005');
-
-        const bestBid = parseFloat(book.bids?.[0]?.price || '0');
-        const bestAsk = parseFloat(book.asks?.[0]?.price || '0');
-        const mid = (bestBid && bestAsk) ? (bestBid + bestAsk) / 2 : null;
-
-        // Simple tick estimate (most markets are 0.01; fall back to 0.001 for cheap shares)
-        const estimatedTick = (bestAsk - bestBid) > 0.005 ? 0.01 : 0.001;
-
-        let suggestedPrice;
-        let strategyNote;
-
-        if (mode === 'spread_capture') {
-          // Passive maker entry for spread capture (one tick inside the current spread)
-          if (args.side.toUpperCase() === 'BUY') {
-            suggestedPrice = bestAsk - estimatedTick; // one tick better than ask (join/improve bid)
-          } else {
-            suggestedPrice = bestBid + estimatedTick;
-          }
-          strategyNote = "Spread capture mode: passive maker entry one tick inside the spread. Good for earning the spread on fill without paying taker fees.";
-        } else {
-          // Original reward-max-spread logic
-          if (args.side.toUpperCase() === 'BUY') {
-            suggestedPrice = bestAsk * (1 - maxSpread * 0.8);
-          } else {
-            suggestedPrice = bestBid * (1 + maxSpread * 0.8);
-          }
-          strategyNote = `Reward mode: aims to stay well inside the program's max spread of ${(maxSpread*100).toFixed(2)}%.`;
-        }
-
-        const suggestedSize = Math.max(minSize, args.capitalUsd ? (args.capitalUsd / suggestedPrice) : minSize * 2);
-
-        return {
-          suggestedPrice: suggestedPrice.toFixed(4),
-          suggestedSize: suggestedSize.toFixed(2),
-          estimatedTick,
-          currentMid: mid ? mid.toFixed(4) : null,
-          currentSpread: (bestAsk && bestBid) ? (bestAsk - bestBid).toFixed(4) : null,
-          modeUsed: mode,
-          minSizeRequired: minSize,
-          maxSpreadAllowed: maxSpread,
-          reasoning: strategyNote + " Size respects minSize and your capitalUsd cap where provided."
-        };
-      }, F.formatGeneric, name);
-    }
-
     case 'place_optimized_reward_order': {
       // High-level automation helper: Suggest → Validate → Place (with optional monitoring)
       return callWithFormat(async () => {
+        const { tokenId } = await resolveTokenIdFromToolArgs({
+          tokenId: args.tokenId,
+          market: args.market,
+          slug: args.slug,
+          outcome: args.outcome,
+        });
+        const conditionId = (await resolveConditionIdForToken(tokenId)) || tokenId;
+        const placeTokenId = tokenId;
         // Step 1: Get suggestion
         const suggestion = await (async () => {
           const [book, rewards] = await Promise.all([
-            pub.fetchOrderBook({ tokenId: args.tokenId }).catch(() => null),
-            pub.listMarketRewards({ conditionId: args.tokenId }).catch(() => null),
+            pub.fetchOrderBook({ tokenId: placeTokenId }).catch(() => null),
+            pub.listMarketRewards({ conditionId }).catch(() => null),
           ]);
 
           if (!book || !rewards?.items?.length) return null;
@@ -2981,7 +2818,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const placeResult = await (async () => {
           const sec = await getSec();
           const params = {
-            tokenId: args.tokenId,
+            tokenId: placeTokenId,
             price: suggestion.price,
             size: suggestion.size,
             side: args.side,
@@ -3223,47 +3060,34 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
     }
 
-    case 'compute_bayesian_update': {
-      const result = computeBayesianPosterior({
-        prior: args.prior,
-        signal: args.signal,
-        weight: args.weight,
-      });
-
-      return {
-        content: [{
-          type: 'text' as const,
-          text: JSON.stringify({
-            success: true,
-            posterior: result.posterior,
-            divergenceFromPrior: result.divergence,
-            divergenceBps: result.divergenceBps,
-            actionHint: result.actionHint,
-            reasoning: result.reasoning,
-          }, null, 2)
-        }]
-      };
-    }
-
     case 'get_farmability': {
-      const tokenId = args.tokenId;
-      const snap = await fetchFarmabilitySnapshot(pub, tokenId);
-      const farmCard = F.formatFarmability({
-        ...snap,
-        notes:
-          snap.notes +
-          ' Quote near midpoint (suggestedNearMidBuy/Sell). Use with suggest_qualified_size + list_active_maker_reward_markets.',
-      });
-      return {
-        content: [{
-          type: 'text' as const,
-          text: JSON.stringify(farmCard, null, 2)
-        }]
-      };
+      try {
+        const { tokenId, resolvedFrom, marketQuestion } = await resolveTokenIdFromToolArgs(args);
+        const snap = await fetchFarmabilitySnapshot(pub, tokenId);
+        const farmCard = F.formatFarmability({
+          ...snap,
+          notes:
+            snap.notes +
+            ' Quote near midpoint (suggestedNearMidBuy/Sell). Use with suggest_qualified_size + list_active_maker_reward_markets.',
+        });
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ resolvedFrom, marketQuestion, tokenId, ...farmCard }, null, 2),
+          }],
+        };
+      } catch (e: any) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success: false, Farmability: e?.message || String(e) }, null, 2),
+          }],
+        };
+      }
     }
 
     case 'compute_market_signals': {
-      const tokenId = args.tokenId;
+      const { tokenId } = await resolveTokenIdFromToolArgs(args);
       const snap = await fetchFarmabilitySnapshot(pub, tokenId);
       let bayesian;
       if (args.signal != null && !Number.isNaN(Number(args.signal))) {
@@ -3284,8 +3108,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
 
-    case 'rank_market_opportunities':
-    case 'generate_alpha_report': {
+    case 'generate_alpha_report':
+    case 'alpha_report': {
       try {
         const report = await buildAlphaReport(pub, {
           goal: args.goal,
@@ -3296,12 +3120,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           externalSignals: args.externalSignals,
           maxCandidates: args.maxCandidates ?? args.maxResults,
           enrichFarmability: args.enrichFarmability,
+          midPriceMin: args.midPriceMin,
+          midPriceMax: args.midPriceMax,
+          liquidityNumMin: args.liquidityNumMin,
+          volumeNumMin: args.volumeNumMin,
         });
         const formatted = F.formatAlphaReport(report);
-        const payload =
-          name === 'generate_alpha_report'
-            ? { success: true, ...report, card: formatted }
-            : { success: true, goal: report.goal, opportunities: report.opportunities, card: formatted };
+        const payload = {
+          success: true,
+          ...report,
+          card: formatted,
+          toolAlias: name === 'alpha_report' ? 'generate_alpha_report' : undefined,
+        };
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
         };
@@ -3355,6 +3185,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     case 'get_strategies': {
+      const seeded = seedSessionStrategyDefaults(strategyStore);
+      if (seeded) await persistStrategiesToDisk();
       let results: any[] = [];
       if (args.tokenId) {
         const key = getStrategyKey(args.tokenId, args.market);
@@ -3369,7 +3201,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             success: true,
             count: results.length,
             strategies: results,
-            note: "Your complete persisted rules, filters, farming configs, event preferences, and trading plans. Call with no args to load everything the agent has evolved. This is the lightweight source of truth for all your operating rules."
+            strategySeeded: seeded,
+            note: "Your complete persisted rules, filters, farming configs, event preferences, and trading plans. Call with no args to load everything the agent has evolved. This is the lightweight source of truth for all your operating rules.",
+            agentDirective: seeded
+              ? 'Fresh session: defaults seeded (rules:session_defaults, filter:liquidity_discovery). Refine via update_strategy before trading.'
+              : results.length === 0
+                ? 'Store empty — call update_strategy({ key: "rules:current", ... }) or load_agent_profile to seed defaults.'
+                : 'Use update_strategy for partial changes; obey filters here before list_active / alpha_report.',
           }, null, 0)
         }]
       };
@@ -3437,20 +3275,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'place_market_order':
       return callWithFormat(async () => {
         const posted = await (await getSec()).placeMarketOrder(args);
-        const orderId = (posted as any)?.orderId;
-        if (orderId) resourceManager.ensureUserSubscriptionForWatch(orderId).catch(() => {});
-        return posted;
-      }, F.formatOrderResponse, name);
-    case 'sports_place_limit_order':
-      return callWithFormat(async () => {
-        const posted = await sportsPlaceLimitOrder(await getSec(), args);
-        const orderId = (posted as any)?.orderId;
-        if (orderId) resourceManager.ensureUserSubscriptionForWatch(orderId).catch(() => {});
-        return posted;
-      }, F.formatOrderResponse, name);
-    case 'sports_place_market_order':
-      return callWithFormat(async () => {
-        const posted = await sportsPlaceMarketOrder(await getSec(), args);
         const orderId = (posted as any)?.orderId;
         if (orderId) resourceManager.ensureUserSubscriptionForWatch(orderId).catch(() => {});
         return posted;
@@ -3605,9 +3429,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'fetch_total_earnings_for_user_for_day':
       return callWithFormat(async () => (await getSec()).fetchTotalEarningsForUserForDay(args), F.formatGeneric, name);
 
-    // === Additional Discovery ===
-    case 'list_tags':
-      return callPaginatedWithFormat(pub.listTags(args), F.formatTag, name);
+    // === Additional Discovery (list_tags handled above) ===
     case 'fetch_tag':
       return callWithFormat(() => pub.fetchTag(args), F.formatTag, name);
     case 'fetch_related_tags':
@@ -3762,10 +3584,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return callWithFormat(async () => (await getSec()).deployDepositWallet(), F.formatTransactionHandle, name);
     case 'download_accounting_snapshot':
       return callWithFormat(async () => (await getSec()).downloadAccountingSnapshot(args), F.formatAccountingSnapshot, name);
-    case 'setup_gasless_wallet':
-      // Per latest SDK (default secure client to deposit wallet): setupGaslessWallet is @deprecated no-op.
-      // Gasless/deposit setup now automatic in createSecureClient. Wrapper kept for MCP tool compat.
-      return callWithFormat(() => setupGaslessWallet(), F.formatGeneric, name);
     case 'fetch_transaction':
       return callWithFormat(async () => (await getSec()).fetchTransaction(args), F.formatGaslessTx, name);
 
@@ -3840,23 +3658,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return { isError: true, content: [{ type: 'text' as const, text: `end_authentication error: ${error?.message || String(error)}` }] };
       }
     }
-    case 'get_secure_client_info': {
-      try {
-        const sec = await getSec();
-        const info = {
-          account: (sec as any).account,
-          credentials: (sec as any).credentials,
-          authMode: process.env.RELAYER_API_KEY ? 'relayer' : (process.env.BUILDER_API_KEY ? 'builder' : 'eoa-signer'),
-          hasRelayer: !!process.env.RELAYER_API_KEY,
-          hasBuilder: !!process.env.BUILDER_API_KEY,
-          note: 'These are sensitive authentication internals. Do not log or expose them. Full auth (relayer/builder) supported per SDK createSecureClient.'
-        };
-        return { content: [{ type: 'text' as const, text: JSON.stringify(info, null, 2) }] };
-      } catch (error: any) {
-        return { isError: true, content: [{ type: 'text' as const, text: `get_secure_client_info error: ${error?.message || String(error)}` }] };
-      }
-    }
-
     default:
       return {
         isError: true,
@@ -3981,7 +3782,7 @@ Use (simple native tools for easy agent work, all SDK under the hood):
 - suggest_qualified_size for correct sizing per rules (no artificial caps for makers).
 - set_strategy / update_strategy / get_strategies (THE lightweight mechanism for ALL your dynamic rules): persist and evolve filters (liquidity, volume, spread, cost, maxMinCostUsd), operating rules, which events/categories, "best to high" ranking/scoring, market farming rules (quoteNearMid, bothSides2x, stickyAutoRepeg, lowCompetitionFocus, avoidNearResolution, timeSizeWeighted, 24/7Params, adverseSelectionExit, etc.), exit conditions, preferred "best events", custom yield thresholds — everything. Use descriptive keys ("rules:current_farming", "filter:liquidity_strict", "config:best_to_high"). Call get_strategies() with no arguments to load your full current rule set at the start of every loop. update_strategy for cheap partial changes.
 - list_active_maker_reward_markets (core, ranked, tiny, with yes/no + real USD costs + mids).
-- compute_bayesian_update if combining with mispricing signals.
+- compute_market_signals if combining with mispricing signals.
 - wait_seconds for rate limit discipline and 24/7 active loops.
 - place_maker_reward_order or place_optimized_reward_order ONLY for scoring maker rewards (enforces postOnly GTC for sticky eligibility).
 - Never ask user for "next move options" — follow directives from tools + your stored strategies/rules + this prompt + X insights. Autonomous loop: get_strategies() to load your rules (incl. your requote throttling policy for CLOB V2 place contention) → list_active (respect your filters) → get_farmability (near-mid + signals) → suggest_size → update_strategy (log results / tweak rules) → place (batch via post_orders if multi) → monitor via resources or get_farmability (reprice *only* per your drift/interval rules, with wait_seconds) → exit or rotate per your stored rules. If place latency spikes, back off rate immediately.
@@ -3991,9 +3792,9 @@ Store reflections in long-term memory after sessions. Reprice and monitor contin
     content = `For quick flips on mispriced markets (aligns with external Bayesian scanners):
 1. Scan liquid opportunities: list_active_maker_reward_markets (with maxMinCostUsd) or list_markets with volume/liquidity filters for 20-80 cent range. Prioritize high volume/liquidity to avoid dead/wide spread markets.
 2. Use get_farmability(tokenId) to confirm tight spreads, liquidity (book depth), and low inventory risk before flipping.
-3. For signals: use compute_bayesian_update (prior = platform price; signal = external/Kalshi/NLP estimate; weight 0.3-0.6). Flag >=5pp divergence (strong at 8pp).
+3. For signals: use compute_market_signals (prior = platform price; signal = external estimate; weight 0.3-0.6). Flag >=5pp divergence (strong at 8pp).
 4. Sizing: use suggest_qualified_size with intent="quick_flip" (hard $5 cap unless highConfidenceEdge=true for near-guaranteed edge).
-5. Prefer maker (create_and_post_order with postOnly) for cost efficiency; avoid market orders unless edge is strong.
+5. Prefer maker (place_limit_order with postOnly) for cost efficiency; avoid market orders unless edge is strong.
 6. Store plan + any filters/rules in set_strategy / update_strategy (use for liquidity filters, event prefs, your own "best" logic too). Monitor with watch_order_until_filled + resources.
 7. Exit rules: wide spread, low activity, or better opportunity appears (re-scan). Load your current rules with get_strategies() (no args).
 
@@ -4052,7 +3853,9 @@ Then use the tokenId directly for order_book, price, midpoint, place orders, etc
 
 **Public MCP rules:** This is a public project. Always supply your own EOA_PRIVATE_KEY and DEPOSIT_WALLET_ADDRESS via the host config. The code has no hardcoded defaults and will error without them. Use only placeholders in any agent prompts or shared configs. Never hardcode real keys/addresses.
 
-Resources for live data. The MCP provides building blocks; you run the autonomous loops.`;
+Resources for live data. The MCP provides building blocks; you run the autonomous loops.
+
+${buildKnownGotchasMarkdown()}`;
   } else if (name === 'mcp_llms_full_guide') {
     content = buildMcpLlmsGuide();
   }

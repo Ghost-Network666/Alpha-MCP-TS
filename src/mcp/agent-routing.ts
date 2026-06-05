@@ -1,8 +1,9 @@
 /**
  * Call-time agent routing prompt — native SDK paths + complete exposure ladder.
- * Linked from prompts/get "agent_routing" and structure prompt startup.
  */
 
+import { buildKnownGotchasMarkdown } from './agent-gotchas.js';
+import { INTENT_REGISTRY } from './intent-routing.js';
 import { AGENT_PROFILES, TIER1_CORE_TOOL_NAMES } from './agent-meta.js';
 
 export function buildAgentRoutingPrompt(): string {
@@ -11,93 +12,62 @@ export function buildAgentRoutingPrompt(): string {
     .join('\n');
 
   const tier1 = TIER1_CORE_TOOL_NAMES.map((t) => `  - ${t}`).join('\n');
+  const intents = Object.entries(INTENT_REGISTRY)
+    .map(([k, v]) => `  - ${k}: ${v.summary}`)
+    .join('\n');
 
   return `AGENT ROUTING — NATIVE MCP (READ FIRST, NEVER GUESS)
 
 ## Native contract
-- Every tool uses official @polymarket/client only (createPublicClient / createSecureClient + .extend(allActions)).
-- No direct HTTP to Gamma/CLOB. Responses are formatted cards, not raw SDK dumps.
-- Trading: ALWAYS explicit place_limit_order({ tokenId, price, size, side }) — NEVER "intent" or vague trade requests.
-- Obey every agentDirective in tool responses. Do NOT ask the human for options.
+- SDK only (@polymarket/client). No direct HTTP. Formatted cards only.
+- **route_agent_intent** maps host LLM *goals* → tool steps. It does NOT place trades by intent — you still pass explicit price/size/side.
+- Obey every agentDirective. Do NOT ask the human for option menus.
 
 ## Mandatory startup (every session)
-1. tools/call get_agent_recipes
-2. tools/call fetch_sdk_readme OR read_resource polymarket://sdk/readme (live SDK docs)
-3. prompts/get never_guess_contract (binding rules)
-4. prompts/get agent_routing (this document)
-5. prompts/get mcp_tool_structure_and_categories + mcp_llms_full_guide
-6. tools/call get_strategies
-7. tools/call run_agent_cycle({ goal }) — execute returned steps in order
+1. tools/call route_agent_intent({ intent: "session_startup" }) — fetch_sdk_readme → recipes → strategies
+2. Confirm SDK README methods match routed tools (sdkAlignment in route response; never invent args)
+3. prompts/get never_guess_contract + agent_routing + mcp_tool_structure_and_categories
+4. tools/call route_agent_intent({ intent: "<goal>" }) — native tools only, in step order
+5. Re-call tools/list after any load_agent_profile step
 
-## Exposure ladder (~152 handlers, compact tools/list)
-| Step | Tool | Purpose |
-|------|------|---------|
-| Default | tools/list | Tier-1 only (~${TIER1_CORE_TOOL_NAMES.length} daily drivers) |
-| Find | search_tools({ query, detail: "summary" }) | Locate any tool by keyword |
-| Bundle | load_agent_profile({ profile }) | Register a workflow bundle in one call |
-| Category | get_tools_by_category({ category }) | Register one category |
-| Refresh | tools/list again | Host must see newly registered tools |
+## Intent routing (PRIMARY)
+Call route_agent_intent({ intent: "<name>", topic?, tokenId?, maxMinCostUsd? }) then execute each step in order.
+${intents}
+
+Trading rule: intent picks tools only. place_limit_order / place_optimized_reward_order need YOUR numeric price, size, side.
+
+## Exposure ladder (~145 handlers)
+| Step | Tool |
+|------|------|
+| Default | tools/list — tier-1 (~${TIER1_CORE_TOOL_NAMES.length} tools) |
+| Route | route_agent_intent({ intent }) |
+| Find | search_tools({ query }) |
+| Bundle | load_agent_profile({ profile }) |
+| Category | get_tools_by_category({ category }) |
+| Refresh | tools/list again |
 
 Profiles:
 ${profiles}
 
-## Tier-1 tools (always callable)
+## Tier-1 tools
 ${tier1}
 
-## Routing by goal
+## Legacy goal → intent
+- rewards → route_agent_intent({ intent: "rewards_farm" })
+- weather → route_agent_intent({ intent: "weather_alpha", topic: "weather" })
+- mispricing → route_agent_intent({ intent: "mispricing_flip" })
+- trading → route_agent_intent({ intent: "trading_monitor" })
+- discovery → route_agent_intent({ intent: "discovery_scan", topic: "..." })
+run_agent_cycle({ goal }) still works — prefer route_agent_intent.
 
-### Weather / topic markets
-discover_topic({ topic: "weather", closed: false, pageSize: 15 })
-→ optional load_agent_profile({ profile: "weather" }) if you need list_events, fetch_order_book, etc.
-→ get_uk_weather_forecast({ city: "London", days: 7 })
-→ fetch_market({ tokenId: "<Yes Token Id from discover_topic card>" })
-→ place_limit_order({ tokenId, price, size, side }) with YOUR numbers from strategy/analysis
+## Token lookup
+fetch_market({ tokenId }) — listMarkets clob filter internally.
 
-SDK mapping: topic/category "WEATHER" → tagSlug "weather" (events), tagId via fetchTag (markets). Prefer discover_topic over bare list_events/list_markets.
+## Live data
+polymarket://market/{tokenId}/book, polymarket://user/orders
 
-### Structured alpha (deterministic — host LLM reasons, no model in MCP)
-get_strategies() first
-→ generate_alpha_report({ goal: "rewards"|"weather"|"mispricing"|"discovery", maxMinCostUsd?, topic? })
-→ obey agentDirective + nextTools in the report card
-→ update_strategy with your thesis, then explicit place_* with your numbers
+${buildKnownGotchasMarkdown()}
 
-Optional drill-down: compute_market_signals({ tokenId, prior?, signal?, weight? }) or rank_market_opportunities({ goal, tokenIds? })
-
-### Maker rewards
-get_strategies() first
-→ list_active_maker_reward_markets({ maxMinCostUsd: <from strategy> }) OR generate_alpha_report({ goal: "rewards", maxMinCostUsd })
-→ get_farmability({ tokenId: "<yesTokenId or noTokenId from list>" })
-→ suggest_qualified_size({ tokenId, intent: "reward_farming" }) — advisory only
-→ load_agent_profile({ profile: "rewards" }) if place_optimized_reward_order not in tools/list
-→ place_optimized_reward_order or place_maker_reward_order (postOnly GTC)
-→ on failure: obey agentDirective — rotate to DIFFERENT market from list_active, never retry same token blindly
-
-### Need a tool not in tools/list
-search_tools({ query: "<keyword>", detail: "schema" })
-OR load_agent_profile({ profile: "full" })
-OR get_tools_by_category({ category: "Trading" | "Advanced" | ... })
-
-### Token / market lookup
-fetch_market({ tokenId }) — MCP resolves via listMarkets({ clobTokenIds }) because SDK fetchMarket only accepts id/slug/url.
-list_markets({ clobTokenIds: ["<token>"] }) for batch metadata.
-
-### Live data (prefer over polling)
-Subscribe MCP resources: polymarket://market/{tokenId}/book, polymarket://user/orders, polymarket://user/activity
-
-### Rate discipline
-wait_seconds between placements. Store requote policy in strategy store (maxRequoteRatePerSidePerSec, minRequoteIntervalMs) per reward_farming_best_practices.
-
-## Automation (registered)
-- run_agent_cycle — deterministic step plan (host executes; no server-side LLM loop)
-- generate_alpha_report — scan + rank + agentDirective
-
-## Aliases
-- run_autonomous_trading_cycle — same handler as run_agent_cycle (deterministic plan)
-- Trading by natural-language "intent" — use explicit numeric params
-
-## Host reminder
-After load_agent_profile or get_tools_by_category, re-call tools/list so the client surface updates. Rebuild + restart MCP host after server updates (stale dist breaks category/discovery).
-
-Base SDK reference: https://github.com/Polymarket/ts-sdk/blob/main/README.md
+Base SDK: https://github.com/Polymarket/ts-sdk/blob/main/README.md
 `;
 }

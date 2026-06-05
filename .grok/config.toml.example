@@ -1,0 +1,7 @@
+# Copy to .grok/config.toml and set your repo path + node binary.
+[mcp_servers.alphamcp]
+command = "bash"
+args = ["-lc", "cd '/absolute/path/to/AlphaMCP TS' && exec node dist/mcp.js"]
+enabled = true
+startup_timeout_sec = 30
+tool_timeout_sec = 120

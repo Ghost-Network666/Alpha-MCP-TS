@@ -1,5 +1,7 @@
 import type { Event, Market } from '@polymarket/client';
 import { getPublicClient } from '../config/client.js';
+import { KNOWN_AGENT_GOTCHAS } from '../mcp/agent-gotchas.js';
+import { INTENT_REGISTRY } from '../mcp/intent-routing.js';
 import { firstPage } from '../utils/pagination.js';
 
 /** Ergonomic category labels agents use → platform tag slugs (SDK listEvents tagSlug / fetchTag for listMarkets tagId). */
@@ -177,19 +179,26 @@ export async function discoverTopic(req: DiscoverTopicRequest): Promise<Discover
 /** Static recipes so agents never guess tool names/args for common flows. */
 export function getAgentRecipes(): Record<string, unknown> {
   return {
-    note: 'Tier-1 (~26 tools) compact in tools/list. Full ~152 handlers via categories. Never guess — use recipes + prompts.',
+    note: 'Tier-1 (~32 tools) compact in tools/list. Full ~145 handlers via categories. Start with route_agent_intent.',
+    knownGotchas: KNOWN_AGENT_GOTCHAS,
+    intentRouting: {
+      tool: 'route_agent_intent',
+      tradingRule:
+        'Intent picks WHICH tools to call — never substitutes numeric price/size/side on place_*.',
+      intents: Object.fromEntries(
+        Object.entries(INTENT_REGISTRY).map(([k, v]) => [k, { summary: v.summary, profile: v.profile, primaryTools: v.primaryTools }])
+      ),
+    },
     startup: [
-      'get_agent_recipes (this)',
-      'fetch_sdk_readme OR read_resource polymarket://sdk/readme',
-      'prompts/get never_guess_contract',
-      'prompts/get agent_routing',
-      'get_strategies',
-      'run_agent_cycle({ goal }) — execute returned steps',
-      'generate_alpha_report OR discover_topic per goal',
+      'route_agent_intent({ intent: "session_startup" }) — includes fetch_sdk_readme + get_agent_recipes',
+      'Confirm sdkAlignment.mcpToSdk vs SDK readme before place_* / book tools',
+      'prompts/get never_guess_contract + agent_routing',
+      'route_agent_intent({ intent: "<goal>" }) — execute steps; load_agent_profile when routed',
+      'tools/list again after load_agent_profile (strict hosts)',
     ],
     automation: {
       cycle: { tool: 'run_agent_cycle', arguments: { goal: 'rewards', maxMinCostUsd: 10 } },
-      note: 'run_autonomous_trading_cycle is NOT registered — use run_agent_cycle',
+      intents: { tool: 'route_agent_intent', arguments: { intent: 'rewards_farm', maxMinCostUsd: 10 } },
     },
     liveDocs: {
       sdkReadme: { tool: 'fetch_sdk_readme', arguments: {} },
@@ -208,16 +217,23 @@ export function getAgentRecipes(): Record<string, unknown> {
       crypto: {
         discover: { tool: 'discover_topic', arguments: { topic: 'crypto', closed: false } },
       },
+      politics: {
+        alpha: {
+          tool: 'alpha_report',
+          arguments: { goal: 'discovery', topic: 'politics', midPriceMin: 0.45, midPriceMax: 0.55 },
+        },
+        book: { tool: 'get_order_book', arguments: { tokenId: '<yesTokenId>' } },
+        spread: { tool: 'get_spread', arguments: { tokenId: '<yesTokenId>' } },
+      },
       rewards: {
         alpha: { tool: 'generate_alpha_report', arguments: { goal: 'rewards', maxMinCostUsd: 10 } },
         scan: { tool: 'list_active_maker_reward_markets', arguments: { maxMinCostUsd: 10 } },
-        check: { tool: 'get_farmability', arguments: { tokenId: '<from scan yesTokenId or noTokenId>' } },
-        place: { tool: 'place_optimized_reward_order', arguments: { tokenId: '<id>', price: 0.5, size: 10, side: 'BUY' } },
+        check: { tool: 'get_farmability', arguments: { tokenId: '<yesTokenId>' } },
+        place: { tool: 'place_optimized_reward_order', arguments: { tokenId: '<yesTokenId>', side: 'BUY' } },
       },
       intelligence: {
-        report: { tool: 'generate_alpha_report', arguments: { goal: 'rewards', maxMinCostUsd: 4.5 } },
+        report: { tool: 'alpha_report', arguments: { goal: 'discovery', topic: 'politics', midPriceMin: 0.45, midPriceMax: 0.55 } },
         signals: { tool: 'compute_market_signals', arguments: { tokenId: '<tokenId>', signal: 0.55, weight: 0.4 } },
-        rank: { tool: 'rank_market_opportunities', arguments: { goal: 'rewards', maxMinCostUsd: 5 } },
       },
     },
     profiles: {
@@ -228,5 +244,17 @@ export function getAgentRecipes(): Record<string, unknown> {
     },
     findTool: { tool: 'search_tools', arguments: { query: '<keyword>', detail: 'summary' } },
     supportedTopics: Object.keys(CATEGORY_TAG_SLUG),
+    placeLimitOrder: {
+      tool: 'place_limit_order',
+      note: 'SDK PrepareLimitOrderRequest: tokenId, price, size, side, postOnly?, expiration? only — do NOT pass orderType',
+      gtc: { tokenId: '<0x>', price: 0.5, size: 5, side: 'BUY' },
+      gtd: { tokenId: '<0x>', price: 0.5, size: 5, side: 'BUY', orderType: 'GTD', expiration: 1735689600 },
+    },
+    orderBook: { tool: 'get_order_book', arguments: { tokenId: '<0x or slug or decimal id>' } },
+    strategies: {
+      tool: 'get_strategies',
+      note: 'Auto-seeds session defaults when store empty',
+      arguments: {},
+    },
   };
 }

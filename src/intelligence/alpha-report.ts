@@ -21,6 +21,11 @@ export type AlphaReportRequest = {
   }>;
   maxCandidates?: number;
   enrichFarmability?: boolean;
+  /** Prefer markets whose Yes price is in this band (discovery/mispricing). Default 0.45–0.55 when unset for discovery. */
+  midPriceMin?: number;
+  midPriceMax?: number;
+  liquidityNumMin?: number;
+  volumeNumMin?: number;
 };
 
 export type AlphaReport = {
@@ -35,9 +40,55 @@ export type AlphaReport = {
   hostNote: string;
 };
 
-function tokenIdsFromDiscovery(markets: Array<Record<string, unknown>>, limit: number): string[] {
+function marketLiquidityScore(m: Record<string, unknown>): number {
+  const metrics = m.metrics as { liquidity?: string | number; volume24hr?: string | number } | undefined;
+  const liq = parseFloat(String(metrics?.liquidity ?? (m as { liquidityNum?: number }).liquidityNum ?? 0)) || 0;
+  const vol = parseFloat(String(metrics?.volume24hr ?? (m as { volumeNum?: number }).volumeNum ?? 0)) || 0;
+  return liq + vol * 0.15;
+}
+
+function marketYesPrice(m: Record<string, unknown>): number | null {
+  const yes = (m.outcomes as { yes?: { price?: string | number } })?.yes?.price;
+  if (yes != null) {
+    const p = parseFloat(String(yes));
+    return Number.isFinite(p) ? p : null;
+  }
+  const last = (m as { prices?: { lastTradePrice?: string } }).prices?.lastTradePrice;
+  if (last != null) {
+    const p = parseFloat(String(last));
+    return Number.isFinite(p) ? p : null;
+  }
+  return null;
+}
+
+function tokenIdsFromDiscovery(
+  markets: Array<Record<string, unknown>>,
+  limit: number,
+  opts?: { midBand?: { min: number; max: number }; liquidityNumMin?: number; volumeNumMin?: number }
+): string[] {
   const ids: string[] = [];
-  for (const m of markets) {
+  const liqMin = opts?.liquidityNumMin ?? 5000;
+  const volMin = opts?.volumeNumMin ?? 1000;
+  const filtered = markets.filter((m) => {
+    const metrics = m.metrics as { liquidity?: string; volume24hr?: string } | undefined;
+    const liq = parseFloat(String(metrics?.liquidity ?? 0)) || 0;
+    const vol = parseFloat(String(metrics?.volume24hr ?? 0)) || 0;
+    return liq >= liqMin || vol >= volMin;
+  });
+  const pool = filtered.length ? filtered : markets;
+  const sorted = [...pool].sort((a, b) => {
+    const pa = marketYesPrice(a) ?? 0.5;
+    const pb = marketYesPrice(b) ?? 0.5;
+    const target = 0.5;
+    const midScoreA = 1 - Math.min(1, Math.abs(pa - target) / 0.25);
+    const midScoreB = 1 - Math.min(1, Math.abs(pb - target) / 0.25);
+    const liqA = marketLiquidityScore(a);
+    const liqB = marketLiquidityScore(b);
+    return liqB * 0.55 + midScoreB * 0.45 - (liqA * 0.55 + midScoreA * 0.45);
+  });
+  for (const m of sorted) {
+    const yesP = marketYesPrice(m);
+    if (opts?.midBand && yesP != null && (yesP < opts.midBand.min || yesP > opts.midBand.max)) continue;
     const yes =
       (m.outcomes as { yes?: { tokenId?: string } })?.yes?.tokenId ??
       (m as { yesTokenId?: string }).yesTokenId;
@@ -45,7 +96,7 @@ function tokenIdsFromDiscovery(markets: Array<Record<string, unknown>>, limit: n
       (m.outcomes as { no?: { tokenId?: string } })?.no?.tokenId ??
       (m as { noTokenId?: string }).noTokenId;
     if (yes) ids.push(yes);
-    if (no) ids.push(no);
+    if (no && (!opts?.midBand || yesP == null)) ids.push(no);
     if (ids.length >= limit * 2) break;
   }
   return [...new Set(ids)].slice(0, limit * 2);
@@ -109,11 +160,31 @@ export async function buildAlphaReport(
         };
       }
     }
+    const midMin = req.midPriceMin ?? 0.45;
+    const midMax = req.midPriceMax ?? 0.55;
+    const liqMin = req.liquidityNumMin ?? 5000;
+    const volMin = req.volumeNumMin ?? 1000;
+    context.midPriceBand = { min: midMin, max: midMax };
+    context.liquidityFilters = { liquidityNumMin: liqMin, volumeNumMin: volMin };
     const tids = req.tokenIds?.length
       ? req.tokenIds
-      : tokenIdsFromDiscovery(discovered.markets as unknown as Record<string, unknown>[], maxCandidates);
+      : tokenIdsFromDiscovery(
+          discovered.markets as unknown as Record<string, unknown>[],
+          maxCandidates,
+          { midBand: { min: midMin, max: midMax }, liquidityNumMin: liqMin, volumeNumMin: volMin }
+        );
+    context.tokensAfterFilters = tids.length;
     for (const tokenId of tids.slice(0, maxCandidates)) {
-      inputs.push({ tokenId, source: 'discovery', label: topic });
+      const m = (discovered.markets as Record<string, unknown>[]).find((mk) => {
+        const yes = (mk.outcomes as { yes?: { tokenId?: string } })?.yes?.tokenId;
+        return yes === tokenId;
+      });
+      inputs.push({
+        tokenId,
+        source: 'discovery',
+        label: String(m?.question || topic).slice(0, 80),
+        prior: m ? marketYesPrice(m) ?? undefined : undefined,
+      });
     }
   } else {
     const tids = req.tokenIds || [];
@@ -177,7 +248,7 @@ export async function buildAlphaReport(
       opportunities: [],
       context,
       agentDirective:
-        'No ranked opportunities after scan/filters. DO NOT ask the human. Try list_active_maker_reward_markets with relaxed maxMinCostUsd, discover_topic for non-reward goals, or wait_seconds then re-scan.',
+        'No ranked opportunities after scan/filters (scores are 0–100, never negative). DO NOT ask the human. Relax midPriceMin/Max or liquidityNumMin, try goal:"rewards" + list_active_maker_reward_markets, or discover_topic with a broader topic.',
       nextTools: ['get_strategies', 'list_active_maker_reward_markets', 'discover_topic', 'wait_seconds'],
       hostNote:
         'Deterministic MCP intelligence only — empty result is valid; host adjusts strategy filters.',

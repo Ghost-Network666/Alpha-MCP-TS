@@ -11,6 +11,7 @@ export type OpportunityInput = {
   source?: 'rewards' | 'discovery' | 'manual';
   rewardMeta?: Partial<RewardCandidate>;
   farmability?: FarmabilitySnapshot;
+  liquidityScore?: number;
 };
 
 export type RankedOpportunity = {
@@ -18,13 +19,18 @@ export type RankedOpportunity = {
   tokenId: string;
   label: string;
   compositeScore: number;
+  confidenceScore: number;
   confidence: 'high' | 'medium' | 'low';
+  actionability: 'strong' | 'moderate' | 'weak' | 'skip';
   signals: {
     farmabilityScore?: number;
     rewardAttractiveness?: number;
     bayesianDivergenceBps?: number;
     cheapestMinCostUsd?: number;
     competitionSignal?: string;
+    currentMid?: number;
+    bookDepth?: number;
+    liquidityScore?: number;
   };
   recommendation: string;
   nextTools: string[];
@@ -32,6 +38,17 @@ export type RankedOpportunity = {
 
 function clamp01(n: number): number {
   return Math.max(0, Math.min(1, n));
+}
+
+function deriveActionability(
+  composite: number,
+  farm?: FarmabilitySnapshot
+): RankedOpportunity['actionability'] {
+  if (!farm?.success) return composite >= 40 ? 'weak' : 'skip';
+  if (composite >= 72 && (farm.farmabilityScore ?? 0) >= 55) return 'strong';
+  if (composite >= 48 && (farm.farmabilityScore ?? 0) >= 35) return 'moderate';
+  if (composite >= 30) return 'weak';
+  return 'skip';
 }
 
 export function rankOpportunities(
@@ -55,6 +72,27 @@ export function rankOpportunities(
       signals.farmabilityScore = farm.farmabilityScore;
       composite += farm.farmabilityScore * 0.45;
       signals.competitionSignal = farm.competitionSignal;
+      signals.currentMid = farm.currentMid;
+      signals.bookDepth = farm.approximateBookDepth;
+    }
+    if (inp.liquidityScore != null && inp.liquidityScore > 0) {
+      signals.liquidityScore = inp.liquidityScore;
+      composite += Math.min(18, Math.log10(inp.liquidityScore + 1) * 5);
+    }
+    if (
+      (goal === 'discovery' || goal === 'mispricing') &&
+      farm?.currentMid != null &&
+      farm.currentMid >= 0.45 &&
+      farm.currentMid <= 0.55
+    ) {
+      composite += 15;
+    } else if (
+      (goal === 'discovery' || goal === 'mispricing') &&
+      inp.prior != null &&
+      inp.prior >= 0.45 &&
+      inp.prior <= 0.55
+    ) {
+      composite += 10;
     }
     if (reward?.cheapestMinCostUsd != null) {
       signals.cheapestMinCostUsd = reward.cheapestMinCostUsd;
@@ -72,15 +110,23 @@ export function rankOpportunities(
       composite += Math.min(25, bay.divergenceBps / 4);
     }
 
+    const compositeScore = Number(Math.min(100, Math.max(0, composite)).toFixed(1));
+    const confidenceScore = compositeScore;
     const confidence: RankedOpportunity['confidence'] =
-      composite >= 70 ? 'high' : composite >= 45 ? 'medium' : 'low';
+      confidenceScore >= 70 ? 'high' : confidenceScore >= 45 ? 'medium' : 'low';
+    const actionability = deriveActionability(confidenceScore, farm);
 
     let recommendation = farm?.recommendation || reward?.whyRecommended || 'Review manually';
+    if (actionability === 'strong') {
+      recommendation = `Actionable: ${recommendation}`;
+    } else if (actionability === 'skip') {
+      recommendation = `Low confidence — widen filters or pick another market. ${farm?.error || ''}`.trim();
+    }
     if (goal === 'mispricing' && (signals.bayesianDivergenceBps ?? 0) >= 500) {
       recommendation = 'External signal diverges from platform price — host should validate thesis before sizing';
     }
 
-    const nextTools: string[] = ['get_strategies', 'fetch_market'];
+    const nextTools: string[] = ['get_strategies', 'fetch_market', 'get_spread', 'get_order_book'];
     if (goal === 'rewards') {
       nextTools.push('suggest_qualified_size', 'place_optimized_reward_order');
     } else if (goal === 'weather' || goal === 'discovery') {
@@ -93,8 +139,10 @@ export function rankOpportunities(
     return {
       tokenId: inp.tokenId,
       label: inp.label || reward?.question || inp.tokenId.slice(0, 12) + '...',
-      compositeScore: Number(Math.min(100, composite).toFixed(1)),
+      compositeScore,
+      confidenceScore,
       confidence,
+      actionability,
       signals,
       recommendation,
       nextTools: [...new Set(nextTools)],

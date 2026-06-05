@@ -1,4 +1,5 @@
 // src/mcp/llms-guide.ts
+import { buildKnownGotchasMarkdown } from './agent-gotchas.js';
 // Call-time delivered non-stale .md style guide for agents (SDK README + MCP mappings).
 // The official TS SDK README (https://github.com/Polymarket/ts-sdk/blob/main/README.md — kept up-to-date by the maintainers) is the PRIMARY and canonical source of truth for all SDK coverage, APIs, client factories (createPublicClient/createSecureClient), decorators (allActions), methods (listMarkets, placeLimitOrder, etc.), parameters, errors, and examples. The MCP llms guide + prompts provide only MCP-specific overlays/mappings on top (exact tool names + call shapes + "use explicit only, no intent", strategyStore, resources, cards, categories). Never rely on stale local copies.
 // How added/updated to the MCP (instead of stale .MD files or direct llms.txt):
@@ -39,7 +40,7 @@ export function buildMcpLlmsGuide(): string {
   let md = `# MCP Server - Full Agent Guide (SDK README + MCP mappings)
 
 This MCP is **lightweight and agent-first** for the CLOB prediction market platform (prediction markets on Polygon via CLOB + CTF).
-**Core principle**: Tier-1 default (~23 tools via TIER1_CORE_TOOL_NAMES). Full 142 via load_agent_profile / get_tools_by_category. Use prompts + get_agent_recipes — never guess. 
+**Core principle**: Tier-1 default (~28 tools). Full ~145 via categories. **route_agent_intent** maps goals → native tool steps + sdkAlignment (confirm via fetch_sdk_readme). Never trade-by-intent. 
 **Agents must never guess**: Always start with the mandatory sequence below. All your logic/rules/filters/exits in strategy store (get_strategies first every loop). Use only native SDK paths via these explicit tools. Follow every agentDirective. Public: always provide your own keys (no defaults/hardcodes anywhere in this MCP or docs).
 
 **Base instructions (PRIMARY SOURCE OF TRUTH):** For the underlying TS SDK (all APIs, clients, auth, examples, concepts, client creation with createPublicClient/createSecureClient, .extend(allActions) for decorators, method signatures like listMarkets/fetchMarket/placeLimitOrder, param shapes, pagination, errors, WS managers, wallet adapters, etc.), read the official README first and treat it as canonical: https://github.com/Polymarket/ts-sdk/blob/main/README.md (maintained up-to-date by the maintainers — this MCP uses the SDK 100% natively with no custom HTTP, only thin safe wrappers + formatters + categories + strategyStore). 
@@ -47,13 +48,15 @@ This MCP is **lightweight and agent-first** for the CLOB prediction market platf
 Instead of duplicating SDK docs or using stale local MDs/llms.txt, this prompt + the MCP resource polymarket://mcp/llms.txt delivers MCP-specific overlays + exact native call mappings on top of the SDK README so consuming agents have zero ambiguity on "how do I do X natively in *this MCP* using the SDK". Load the SDK README first, then this MCP guide.
 
 ## Mandatory Startup Sequence (NEVER SKIP)
-1. get_agent_recipes — exact tool names + JSON args.
-2. prompts/get **agent_routing** — primary native routing contract (tier-1, profiles, goal flows).
-3. prompts/get mcp_llms_full_guide + mcp_tool_structure_and_categories.
+1. get_agent_recipes — exact tool names + JSON args + intent registry.
+2. route_agent_intent({ intent: "session_startup" }) then route_agent_intent({ intent }) — execute steps; confirm SDK readme vs sdkAlignment.mcpToSdk.
+3. prompts/get agent_routing + mcp_llms_full_guide + mcp_tool_structure_and_categories.
 4. get_strategies() (no args).
-5. discover_topic({ topic }) OR list_active_maker_reward_markets OR generate_alpha_report({ goal }) per objective.
-6. load_agent_profile / get_tools_by_category only when needed; re-call tools/list.
-7. Obey agentDirectives. set/update_strategy for all rules. wait_seconds for rate discipline.
+5. Per task: route_agent_intent({ intent: "rewards_farm"|"weather_alpha"|... }) OR discover_topic / list_active / alpha_report.
+6. load_agent_profile / get_tools_by_category when tier-1 insufficient; re-call tools/list.
+7. Obey agentDirectives. Explicit price/size on place_* — never trading-by-intent.
+
+${buildKnownGotchasMarkdown()}
 
 **Never use "intent" for pure trading** — call place tools directly with your sizes/params from strategy or calc. suggest_qualified_size / get_farmability are *advisory only* for reward qualification/sizing policy. For directional or any core trading: compute or load policy then pass concrete values to place_limit_order etc.
 
@@ -61,9 +64,10 @@ Instead of duplicating SDK docs or using stale local MDs/llms.txt, this prompt +
 - Meta: get_agent_recipes, search_tools, load_agent_profile, list_tool_categories, get_tools_by_category, get_mcp_usage
 - Discovery: discover_topic, fetch_market
 - Strategy: get/set/update/clear_strategy, wait_seconds, suggest_qualified_size
-- Intelligence: generate_alpha_report, compute_market_signals, rank_market_opportunities (deterministic; host LLM reasons)
+- Meta: route_agent_intent (PRIMARY intent router)
+- Intelligence: generate_alpha_report, compute_market_signals (deterministic; host LLM reasons)
 - Rewards: list_active_maker_reward_markets, get_farmability
-- Trading: place_limit_order, cancel_order, list_open_orders, post_orders
+- Trading: place_limit_order (SDK: no orderType on wire), get_order_book, get_spread, cancel_order, list_open_orders, post_orders
 - Account: get_balance_allowance, list_positions
 - Weather: get_uk_weather_forecast
 
@@ -98,7 +102,7 @@ MCP: list_markets, fetch_market (tokenId via internal listMarkets clob), search,
 ### 3. CLOB Trading (Orders) — secure client, gasless when possible
 client.placeOrder(params) [or placeLimitOrder/placeMarketOrder/postOrder in current beta], cancelOrder, batchCancel, getOpenOrders, getOrder, getOrderBook, getBBO, getMidpoint, getPrices, getPriceHistory
 
-MCP: place_limit_order / place_market_order / create_and_post_order / post_orders, cancel_*, list_open_orders / fetch_order, fetch_order_book / midpoint / price / spread / history, get_farmability (for BBO/depth/signals).
+MCP: place_limit_order / place_market_order / post_orders, cancel_*, list_open_orders, get_order_book / get_spread, get_farmability.
 
 ### 4-10. Portfolio, Account, Wallet, Rewards, Builders, WS, Helpers
 See the exact lists in the user's expert instructions (client.getPositions, getProfile, claimRewards, ClobMarketWebSocketManager, buildHmacSignature, wallet adapters, etc.).
@@ -163,7 +167,7 @@ MCP: approve_erc20, approve_erc1155_for_all, deploy_deposit_wallet, fetch_deposi
 - client.subscribeTo(topic)
 - client.unsubscribe()
 
-MCP: list_active_maker_reward_markets (primary enriched), list_current_rewards, get_farmability (rewards + book + score), place_maker_reward_order / place_optimized_reward_order, validate_for_maker_rewards, suggest_reward_order_parameters, list_user_earnings*, fetch_reward_percentages. Subscriptions via resources (polymarket://user/* bridged).
+MCP: list_active_maker_reward_markets (primary enriched), get_farmability, place_optimized_reward_order, place_maker_reward_order, list_user_earnings*. Subscriptions via resources (polymarket://user/* bridged).
 
 ### 8. Builders & Relayer
 - Builder program actions
