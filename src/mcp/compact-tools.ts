@@ -5,7 +5,9 @@ const MAX_DESC = 180;
 /** Short tool descriptions for tier-1 tools/list (full text in get_tools_by_category). */
 export const COMPACT_TOOL_DESCRIPTIONS: Record<string, string> = {
   get_agent_recipes: '[Meta] Startup JSON recipes + knownGotchas + intent registry.',
-  route_agent_intent: '[Meta] PRIMARY: intent → ordered tools/call steps (not trade-by-intent).',
+  route_agent_intent: '[Meta] Batch intent plan + enables built-in per-tool routing.',
+  configure_agent_routing:
+    '[Meta] ON/OFF: every native tool returns routing.nextTools + SDK method (Hermes/OpenClaw).',
   search_tools: '[Meta] Find tools by keyword (detail: name|summary|schema).',
   load_agent_profile: '[Meta] Register profile bundle; re-call tools/list.',
   list_tool_categories: '[Meta] List categories for get_tools_by_category.',

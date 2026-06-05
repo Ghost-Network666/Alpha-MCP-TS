@@ -16,11 +16,11 @@ export function buildNeverGuessPrompt(): string {
 - Obey every agentDirective.
 
 ## 1. First calls (in order)
-1. tools/call route_agent_intent({ intent: "session_startup" }) — includes fetch_sdk_readme + get_agent_recipes
-2. tools/call fetch_sdk_readme — confirm SDK method names match routed MCP tools (see sdkAlignment.mcpToSdk)
-3. prompts/get agent_routing + never_guess_contract + mcp_tool_structure_and_categories
-4. tools/call route_agent_intent({ intent: "<your goal>" }) — execute EVERY returned step; load_agent_profile when plan says so
-5. Re-call tools/list after load_agent_profile (hosts that whitelist tools/list)
+1. tools/call configure_agent_routing({ enabled: true, intent: "rewards_farm", autonomousAssist: true })
+2. tools/call fetch_sdk_readme — https://github.com/Polymarket/ts-sdk/blob/main/README.md (match routing.sdkMethod)
+3. prompts/get agent_routing + never_guess_contract
+4. Use ANY native tool — obey routing.nextTools on every response (no guessing which tool is next)
+5. Re-call tools/list after load_agent_profile when routed
 
 ## 2. Tier-1 tools
 ${tier1}

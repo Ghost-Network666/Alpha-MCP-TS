@@ -12,9 +12,9 @@ MCP server: AlphaMCP-TS (`alphamcp` in Grok) — stdio `dist/mcp.js`, tier-1 ~28
 ## MCP usage and routing (never guess)
 
 - All platform actions go through **native AlphaMCP-TS** `tools/call` only (official `@polymarket/client` SDK under the hood). No direct HTTP.
-- **Every session:** `route_agent_intent({ intent: "session_startup" })` then execute returned steps in order.
+- **Every session:** `configure_agent_routing({ enabled: true, intent: "rewards_farm", autonomousAssist: true })` then use native tools — each response includes `routing.nextTools`.
 - **Before trading or book reads:** `fetch_sdk_readme` (or `polymarket://sdk/readme`) and match `sdkAlignment.mcpToSdk` from the route response to the SDK README method — never invent parameters.
-- **Per task:** `route_agent_intent({ intent: "rewards_farm"|"weather_alpha"|"mispricing_flip"|"discovery_scan"|... })` then run each `steps[]` tool with exact `arguments` from the plan.
+- **Per task:** change intent via `configure_agent_routing({ enabled: true, intent: "..." })` or call one native tool (e.g. `list_active_maker_reward_markets`) and follow `routing.nextTools` on the response.
 - Intent routes **which** tools to call — **not** price/size/side. Use explicit numbers on `place_limit_order` / `place_optimized_reward_order`.
 - When the plan includes `load_agent_profile`, call it then **re-call `tools/list`** (strict hosts only expose listed tools).
 - Discovery: `discover_topic`, `list_active_maker_reward_markets`, `get_agent_recipes` — not `polymarket://markets` as a catalog.

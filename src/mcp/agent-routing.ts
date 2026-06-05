@@ -24,11 +24,11 @@ export function buildAgentRoutingPrompt(): string {
 - Obey every agentDirective. Do NOT ask the human for option menus.
 
 ## Mandatory startup (every session)
-1. tools/call route_agent_intent({ intent: "session_startup" }) — fetch_sdk_readme → recipes → strategies
-2. Confirm SDK README methods match routed tools (sdkAlignment in route response; never invent args)
-3. prompts/get never_guess_contract + agent_routing + mcp_tool_structure_and_categories
-4. tools/call route_agent_intent({ intent: "<goal>" }) — native tools only, in step order
-5. Re-call tools/list after any load_agent_profile step
+1. tools/call configure_agent_routing({ enabled: true, intent: "<goal>", autonomousAssist: true })
+2. tools/call fetch_sdk_readme — confirm routing.sdkMethod per native tool (SDK README is canonical)
+3. prompts/get never_guess_contract + agent_routing
+4. Call native tools — each response includes routing.toolPurpose + routing.nextTools (built-in, no extra meta calls)
+5. Re-call tools/list after load_agent_profile when plan includes it
 
 ## Intent routing (PRIMARY)
 Call route_agent_intent({ intent: "<name>", topic?, tokenId?, maxMinCostUsd? }) then execute each step in order.

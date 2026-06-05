@@ -60,7 +60,7 @@ export function getToolsByCategory(
     if (catLower === 'account' && /balance|allowance|portfolio|position|notification|setup_trading|gasless_ready|closed_only/.test(n)) return true;
     if (catLower === 'advanced' && /approve_|transfer_erc|prepare_|sign_|send_transaction|deploy_|api_key|heartbeat/.test(n)) return true;
     if (catLower === 'utilities' && /wait_seconds|suggest_qualified/.test(n)) return true;
-    if (catLower === 'meta' && /list_tool_categories|get_tools_by_category|get_mcp_usage|get_agent_recipes|search_tools|load_agent_profile|fetch_sdk_readme|run_agent_cycle|route_agent_intent/.test(n)) return true;
+    if (catLower === 'meta' && /list_tool_categories|get_tools_by_category|get_mcp_usage|get_agent_recipes|search_tools|load_agent_profile|fetch_sdk_readme|run_agent_cycle|route_agent_intent|configure_agent_routing/.test(n)) return true;
     if (catLower === 'resources' && /watch_order|send_heartbeat/.test(n)) return true;
     return false;
   });

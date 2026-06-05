@@ -63,6 +63,8 @@ import { resolveConditionIdForToken, resolveTokenIdFromToolArgs } from './utils/
 import { normalizePlaceLimitOrderArgs } from './trading/place-limit-args.js';
 import { buildKnownGotchasMarkdown } from './mcp/agent-gotchas.js';
 import { buildIntentRoute, INTENT_REGISTRY } from './mcp/intent-routing.js';
+import { enrichNativeToolResponse } from './mcp/native-routing.js';
+import { readRoutingConfig, writeRoutingConfig } from './mcp/intent-context.js';
 import { seedSessionStrategyDefaults } from './mcp/strategy-seed.js';
 
 /** Shared schema: hex tokenId OR slug OR decimal market id. */
@@ -443,6 +445,25 @@ const publicTools = [
         goal: { type: 'string', enum: ['rewards', 'weather', 'mispricing', 'trading', 'discovery'] },
       },
       required: ['intent'],
+    },
+  },
+  {
+    name: 'configure_agent_routing',
+    description:
+      '[Meta] Turn built-in agent routing ON/OFF for Hermes/OpenClaw/Grok. When enabled, every native tool response includes routing.nextTools + toolPurpose + sdkMethod (SDK README via fetch_sdk_readme). autonomousAssist:true attaches full loopPlan — agent still executes each tools/call (no MCP auto-trade). Example: configure_agent_routing({ enabled: true, intent: "rewards_farm", autonomousAssist: true }).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        enabled: { type: 'boolean', description: 'Enable per-tool routing envelopes' },
+        intent: { type: 'string', enum: Object.keys(INTENT_REGISTRY) },
+        autonomousAssist: {
+          type: 'boolean',
+          description: 'Attach full intent loopPlan on every native tool response',
+        },
+        maxMinCostUsd: { type: 'number' },
+        topic: { type: 'string' },
+      },
+      required: ['enabled'],
     },
   },
   {
@@ -2043,6 +2064,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return sec;
   };
 
+  const toolResult = await (async () => {
   switch (name) {
     // === Category-based discovery tools (for fast agent tool discovery) ===
     case 'list_tool_categories':
@@ -2081,9 +2103,66 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
     }
 
+    case 'configure_agent_routing': {
+      const cfg = writeRoutingConfig(strategyStore, {
+        enabled: Boolean(args.enabled),
+        activeIntent: args.intent,
+        autonomousAssist: args.autonomousAssist ?? Boolean(args.enabled),
+        maxMinCostUsd: args.maxMinCostUsd,
+        topic: args.topic,
+      });
+      await persistStrategiesToDisk();
+      const strategies: Record<string, unknown> = {};
+      for (const [k, v] of strategyStore.entries()) strategies[k] = v;
+      const plan = cfg.activeIntent
+        ? buildIntentRoute({
+            intent: cfg.activeIntent,
+            topic: cfg.topic,
+            maxMinCostUsd: cfg.maxMinCostUsd,
+            strategies,
+          })
+        : null;
+      if (cfg.enabled && plan?.profile) {
+        const prof = AGENT_PROFILES[plan.profile];
+        if (prof) {
+          for (const cat of prof.categories) {
+            for (const t of getToolsByCategory([...publicTools, ...secureTools], cat)) {
+              currentlyExposedToolNames.add(t.name);
+            }
+          }
+        }
+      }
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify(
+            {
+              success: true,
+              mcpRouting: cfg,
+              plan,
+              agentDirective: cfg.enabled
+                ? `Routing enabled. Use ANY native tool — each response includes routing.nextTools. Execute loopPlan when autonomousAssist is true. ${plan?.tradingRule || ''}`
+                : 'Routing disabled. Native tools return minimal hints only.',
+              note: 'Re-call tools/list after enable if your host whitelists listed tools.',
+            },
+            null,
+            2
+          ),
+        }],
+      };
+    }
+
     case 'route_agent_intent': {
       const strategies: Record<string, unknown> = {};
       for (const [k, v] of strategyStore.entries()) strategies[k] = v;
+      writeRoutingConfig(strategyStore, {
+        enabled: true,
+        activeIntent: args.intent,
+        autonomousAssist: args.autonomousAssist !== false,
+        maxMinCostUsd: args.maxMinCostUsd,
+        topic: args.topic,
+      });
+      await persistStrategiesToDisk();
       const plan = buildIntentRoute({
         intent: args.intent,
         topic: args.topic,
@@ -3664,6 +3743,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: [{ type: 'text', text: `Unknown tool: ${name}` }]
       };
   }
+  })();
+  return enrichNativeToolResponse(name, args as Record<string, unknown>, toolResult, strategyStore);
 });
 
 // ==================== MCP RESOURCES (Live Subscriptions) ====================

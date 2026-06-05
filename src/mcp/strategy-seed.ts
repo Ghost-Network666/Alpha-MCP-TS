@@ -18,6 +18,12 @@ export function seedSessionStrategyDefaults(
     updatedAt: now,
     note: 'Auto-seeded when strategy store was empty — evolve via update_strategy.',
   });
+  store.set('mcp:routing', {
+    enabled: false,
+    autonomousAssist: false,
+    note: 'Call configure_agent_routing({ enabled: true, intent, autonomousAssist: true }) to embed routing on every native tool.',
+    updatedAt: now,
+  });
   store.set('filter:liquidity_discovery', {
     liquidityNumMin: 10000,
     volumeNumMin: 5000,
