@@ -6,3 +6,8 @@ export { buildAlphaReport, type AlphaReport, type AlphaReportGoal, type AlphaRep
 export { detectMispricing, scanMispricingOpportunities, type MispricingSignal } from './mispricing.js';
 export { getMomentumSignal, type MomentumSignal } from './momentum.js';
 export { computeEnsembleEdge, type EnsembleEdge } from './ensemble.js';
+
+export { getOrderFlowSignal, type OrderFlowSignal } from './orderflow.js';
+export { computeRiskKelly, type RiskKellySignal } from './riskkelly.js';
+export { getCrossMarketSignal, type CrossMarketSignal } from './crossmarket.js';
+export { getBeastSignalBundle } from '../automation/beastSignals.js';

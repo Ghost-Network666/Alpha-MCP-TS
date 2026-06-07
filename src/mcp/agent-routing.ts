@@ -71,3 +71,7 @@ ${buildKnownGotchasMarkdown()}
 Base SDK: https://github.com/Polymarket/ts-sdk/blob/main/README.md
 `;
 }
+// Beast composite intents (final capable improvement)
+  'beast_arb_farm': { summary: 'Run arb detection + adaptive MM on active rewards with Kelly sizing and risk guard. Uses mispricing + farmability + ensemble + riskkelly.' },
+  'beast_momentum_portfolio': { summary: 'Momentum/reversal + orderflow + cross-market signals for portfolio edge. Fused via ensemble, with live OBI and risk.' },
+  'beast_live_autonomous': { summary: 'Subscribe to beast signals resource + route locked beast plans. Host heartbeat drives; MCP provides unlimited real-time signals.' },

@@ -596,3 +596,11 @@ export function createResourceManager(
 ): ResourceManager {
   return new ResourceManager(server, getPub, getSec);
 }
+
+// Beast live signals resource (final improvement for real-time autonomous)
+  {
+    uriTemplate: 'polymarket://beast/signals/{tokenId}',
+    name: 'Beast Trading Signals (Live)',
+    description: 'Fused research-backed beast signals (mispricing, momentum, ensemble edge, orderflow, risk/Kelly, cross-market). Subscribe for real-time updates to drive host autonomous loops.',
+    mimeType: 'application/json',
+  },
