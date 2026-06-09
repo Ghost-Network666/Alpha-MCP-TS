@@ -1,7 +1,8 @@
-# Copy to .grok/config.toml and set your repo path + node binary.
+# Copy to .grok/config.toml (local only — never commit config.toml).
+# Credentials: ~/.hermes/.env only. Set YOUR_REPO_ROOT to this checkout.
 [mcp_servers.alphamcp]
-command = "bash"
-args = ["-lc", "cd '/absolute/path/to/AlphaMCP TS' && exec node dist/mcp.js"]
+command = "node"
+args = ["/YOUR_REPO_ROOT/Alpha-MCP-TS/dist/mcp.js"]
 enabled = true
 startup_timeout_sec = 30
 tool_timeout_sec = 120

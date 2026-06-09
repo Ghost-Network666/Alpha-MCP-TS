@@ -25,8 +25,8 @@ Thumbs.db
 .cursor/
 .mcp.json
 
-# Optional: uncomment to keep machine-local Grok path private
-# .grok/config.toml
+# Machine-local Grok MCP path — never commit (may contain usernames/paths)
+.grok/config.toml
 *.swp
 *.swo
 
