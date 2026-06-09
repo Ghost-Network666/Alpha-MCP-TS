@@ -24,7 +24,7 @@ export const COMPACT_TOOL_DESCRIPTIONS: Record<string, string> = {
   update_strategy: '[Strategy] Partial merge into strategy key.',
   clear_strategy: '[Strategy] Delete one strategy key.',
   wait_seconds: '[Utilities] Server-side backoff (rate discipline).',
-  get_balance_allowance: '[Account] USDC/conditional balance + allowance.',
+  get_balance_allowance: '[Account] USDC (COLLATERAL) or outcome token (CONDITIONAL + tokenId) balance.',
   list_positions: '[Account] Open positions with PnL cards.',
   list_active_maker_reward_markets: '[Rewards] PRIMARY enriched reward market scan.',
   get_farmability: '[Rewards] SDK book+rewards+mid. slug/decimal ok; non-reward=book-only.',

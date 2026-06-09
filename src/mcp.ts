@@ -1747,14 +1747,22 @@ const secureTools = [
   },
   {
     name: 'get_balance_allowance',
-    description: '[Account] HIGH PRIORITY for reward farming. Checks your current COLLATERAL (USDC) or CONDITIONAL token balance + allowance on the CLOB. Returns human-readable numbers and exact next steps (approve + deposit + update). Call this BEFORE any place_maker_reward_order when you see balance/allowance errors.',
+    description: '[Account] HIGH PRIORITY for reward farming. Checks COLLATERAL (USDC) or CONDITIONAL outcome-token balance + allowance on the CLOB. Default and usual pre-flight: assetType COLLATERAL (no tokenId). CONDITIONAL requires tokenId (CLOB outcome token from fetch_market / discover_topic cards). Returns human-readable numbers and next steps. Call BEFORE place_maker_reward_order on balance/allowance errors.',
     inputSchema: {
       type: 'object',
       properties: {
         assetType: { 
           type: 'string', 
           enum: ['COLLATERAL', 'CONDITIONAL'], 
-          description: 'COLLATERAL for USDC (most common). CONDITIONAL for specific outcome tokens.' 
+          description: 'COLLATERAL = USDC collateral (default; use for pre-flight). CONDITIONAL = specific outcome token (requires tokenId).' 
+        },
+        tokenId: {
+          type: 'string',
+          description: 'Required when assetType is CONDITIONAL. CLOB outcome tokenId (hex or decimal from market cards). Omit for COLLATERAL.'
+        },
+        sync: {
+          type: 'boolean',
+          description: 'When true (default), refresh CLOB cache via updateBalanceAllowance before fetch. Set false to skip.'
         }
       }
     }
@@ -3128,18 +3136,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return callWithFormat(async () => {
         const sec = await getSec();
         const assetType = (args.assetType || 'COLLATERAL').toUpperCase() as 'COLLATERAL' | 'CONDITIONAL';
+        const tokenId = typeof args.tokenId === 'string' && args.tokenId.trim() ? args.tokenId.trim() : undefined;
+
+        if (assetType === 'CONDITIONAL' && !tokenId) {
+          return {
+            success: false,
+            error: 'CONDITIONAL balance requires tokenId',
+            detail: 'invalid assetId; requires tokenId or deposit wallet',
+            directive: "For USDC pre-flight use get_balance_allowance({ assetType: 'COLLATERAL' }) with no tokenId. For outcome tokens pass tokenId from fetch_market / discover_topic (Yes/No Token Id).",
+            exampleCollateral: { assetType: 'COLLATERAL' },
+            exampleConditional: { assetType: 'CONDITIONAL', tokenId: '<clob outcome tokenId>' }
+          };
+        }
+
+        const balRequest = tokenId ? { assetType, tokenId } : { assetType };
 
         let data: any;
         try {
           // SDK pattern: refresh CLOB cache then fetch (packages/client/src/actions/account.ts)
-          if (args.sync !== false && assetType === 'COLLATERAL') {
+          if (args.sync !== false) {
             await callWithRateLimitProtection(
-              () => updateBalanceAllowance(sec, { assetType }),
+              () => updateBalanceAllowance(sec, balRequest),
               'updateBalanceAllowance'
             ).catch(() => undefined);
           }
           const balRes = await callWithRateLimitProtection(
-            () => fetchBalanceAllowance(sec, { assetType }),
+            () => fetchBalanceAllowance(sec, balRequest),
             'fetchBalanceAllowance'
           );
           if (!balRes.ok) {
@@ -3175,6 +3197,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return {
           success: true,
           assetType,
+          ...(tokenId ? { tokenId } : {}),
           accountWalletType: sec.account?.walletType,
           funder: sec.account?.wallet,
           signer: sec.account?.signer,
@@ -3184,12 +3207,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           sufficientForSmallOrders: sufficient,
           nextSteps: sufficient
             ? "Balance and allowance look usable for small maker orders."
-            : [
-                "1. If allowance is low: call approve_erc20 with the correct USDC token address and a large spender amount (or the CLOB proxy).",
-                "2. If balance is low: deposit USDC into your platform deposit wallet (use deposit or the deposit wallet flow).",
-                "3. After approve/deposit: call update_balance_allowance({assetType: 'COLLATERAL'}) to sync.",
-                "4. Then retry place_maker_reward_order or place_optimized_reward_order."
-              ],
+            : isCollateral
+              ? [
+                  "1. If allowance is low: call approve_erc20 with the correct USDC token address and a large spender amount (or the CLOB proxy).",
+                  "2. If balance is low: deposit USDC into your platform deposit wallet (use deposit or the deposit wallet flow).",
+                  "3. After approve/deposit: call update_balance_allowance({assetType: 'COLLATERAL'}) to sync.",
+                  "4. Then retry place_maker_reward_order or place_optimized_reward_order."
+                ]
+              : [
+                  "1. Ensure tokenId is the correct CLOB outcome token for this market.",
+                  "2. If selling conditional tokens, verify ERC1155 approvals via setup_trading_approvals.",
+                  "3. After on-chain changes: call update_balance_allowance({ assetType: 'CONDITIONAL', tokenId }) to sync.",
+                  "4. For USDC collateral checks use get_balance_allowance({ assetType: 'COLLATERAL' }) instead."
+                ],
           rawAllowances: Object.keys(allowances).length <= 3 ? allowances : "multiple spenders (truncated for size)"
         };
       }, F.formatGeneric, name);
@@ -3636,17 +3666,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }]
       };
     }
-    case 'list_positions':
-      // Custom to attach enhanced PnL summary card (uses new formatPnlSummary + enhance logic for richer agent output cards)
+    case 'list_positions': {
+      // SDK listPositions returns a Paginator — use firstPage(), not raw .map on the paginator object
       try {
-        const res: any = await (await getSec()).listPositions(args);
-        const items = res?.items || res || [];
+        const paginator = await (await getSec()).listPositions(args);
+        const page = await (typeof paginator.firstPage === 'function'
+          ? paginator.firstPage()
+          : (typeof paginator.next === 'function' ? paginator.next() : null));
+        let items = page?.items ?? page?.data ?? (Array.isArray(page) ? page : []);
+        const MAX_ITEMS = 25;
+        if (Array.isArray(items) && items.length > MAX_ITEMS) {
+          items = items.slice(0, MAX_ITEMS);
+        }
+        if (!Array.isArray(items)) {
+          return {
+            isError: true,
+            content: [{ type: 'text' as const, text: `list_positions error: unexpected response shape (expected paginated items array)` }]
+          };
+        }
         const formatted = items.map((p: any) => F.formatPosition(p));
         const summary = F.formatPnlSummary(items);
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ Positions: formatted, PnLSummary: summary }, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 2) }] };
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ Positions: formatted, PnLSummary: summary }, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 2)
+          }]
+        };
       } catch (e: any) {
         return { isError: true, content: [{ type: 'text' as const, text: `list_positions error: ${e?.message || e}` }] };
       }
+    }
     case 'list_closed_positions':
       return callPaginatedWithFormat((await getSec()).listClosedPositions?.(args) ?? Promise.resolve({ items: [] }), F.formatClosedPosition, name);
     case 'fetch_portfolio_value':
