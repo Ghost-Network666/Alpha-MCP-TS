@@ -42,7 +42,10 @@ export async function fetchRewardCandidates(
   const maxMinCostUsd = opts.maxMinCostUsd;
 
   const protectedCall = await callWithRateLimitProtection(
-    () => pub.listCurrentRewards({}),
+    async () => {
+      const paginator = await pub.listCurrentRewards({});
+      return paginator.firstPage();
+    },
     'listCurrentRewards for intelligence'
   );
   if (!protectedCall.ok) {
@@ -52,7 +55,7 @@ export async function fetchRewardCandidates(
     };
   }
 
-  const page = await protectedCall.data.firstPage();
+  const page = protectedCall.data;
   let items = (page?.items || []) as Record<string, unknown>[];
 
   if (maxMinSize != null && !Number.isNaN(maxMinSize)) {
