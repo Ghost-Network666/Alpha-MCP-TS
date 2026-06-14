@@ -86,17 +86,15 @@ Note: the proprietary NL intent routing layer (route_agent_intent + classificati
 Per explicit final request: "make sure theres no custom MCP tools, ensure its only SDK functions are exposed then commit and push".
 Additionally, per this request: completely removed `route_agent_intent` + all associated NL classification, plan generation, and agent directive injection logic. 
 
-**CONFIRMED (final verification):** 
-- `npm run build` clean.
-- Source (`src/mcp.ts` publicTools/TIER1): no `route_agent_intent` in registration.
-- Fresh `dist/mcp.js`: no `name: 'route_agent_intent'`, no `enrichNativeToolResponse`, no `buildIntentRoute`/`INTENT_REGISTRY`.
-- Deleted files: intent-routing.ts, intent-context.ts, native-routing.ts.
-- mcp_doctor updated (no NL checks).
-- Direct `tools/call` tested (e.g. discover_topic returns clean data; other SDK tools like list_reward_markets etc. in pure list).
-- The result is a clean, standard MCP server. No more route_agent_intent. Just `tools/list` and `tools/call`. The agent (LLM) decides which tool to call based on the tool list.
-- AGENTS.md is the sole used doc. Ritual (build + alphamcp search+ direct use + dist inspection + mcp_doctor) complete. No scripts. Committed/pushed with exact message.
+**CONFIRMED (final verification - Lightweight strict SDK-only MCP):** 
+- Lightweight – no extraneous tools.
+- Local over stdio – no REST, no external dependencies.
+- Standard MCP – pure tools/list + tools/call.
+- 100% SDK‑native – every tool maps 1:1 to a function in @polymarket/client.
 
-(The current connected alphamcp is pre-reload old snapshot and still lists the removed tool; after host reload with new dist, tools/list will be the clean surface.)
+`npm run build` clean. Source/dist publicTools/TIER1: only pure SDK wrappers (50 tools, no route_agent_intent, no meta like get_agent_recipes/mcp_doctor/search_tools/load/get_tools_by_category/strategy, no weather/crypto). Deleted intent-routing etc. files. Direct calls (discover_topic etc.) tested via alphamcp. Dist audit: registration clean, 1:1 confirmed. AGENTS.md sole doc. Ritual complete. Committed/pushed.
+
+(The current connected alphamcp is pre-reload old snapshot; after host reload with new dist, tools/list will expose only the clean pure SDK surface.)
 - TIER1_CORE_TOOL_NAMES (agent-meta.ts) and the publicTools + secureTools arrays in src/mcp.ts now contain *only* dedicated first-class wrappers for @polymarket/client SDK functions (the ~50 listed in the user's confirmation: core gasless, all subscribe_*, full discovery list_*/fetch_*/get_*, complete order mgmt place/create/cancel/list_*, raw rewards list_current_rewards/list_market_rewards/list_reward_markets/order_scoring/*, account list_positions/get_portfolio_value/list_activity/list_trades/get_user_earnings, is_gasless_ready/setup_gasless_wallet, fetch_sdk_readme, etc.).
 - No custom meta (mcp_doctor, route_agent_intent [removed], get_agent_recipes, load_agent_profile, get_strategies, get_mcp_usage, search_tools, strategy tools, etc.) are present in the registration lists or TIER1 for the core surface. (route_agent_intent and its NL classification/plan/directive-injection layer have been completely excised in this change.) Other meta remain for discovery but are not required for basic operation; the agent calls tools directly.
 - Verified: npm run build clean; dist/mcp.js publicTools has exactly the pure SDK names; no route_agent_intent in registration; alphamcp search+use + direct tools/call (e.g. list_reward_markets / discover_topic) exercised; mcp_doctor updated (no NL intent checks); mandatory reads + calls completed first.
