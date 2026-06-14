@@ -4,9 +4,9 @@
 
 This repo implements a lightweight MCP server for the CLOB prediction market platform. Consuming agents must **never have to guess**.
 
-**ONLY AGENTS.md IS USED** for the agent contract, "never guess", mandatory startup, recipes, routing, and all instructions. The project's README.md (https://github.com/Ghost-Network666/Alpha-MCP-TS/blob/main/README.md) has been removed from agent usage and references per request. All links, "see README", and mandatory flows now point exclusively here (AGENTS.md). The GitHub blob link for README.md is no longer active for agents.
+**ONLY AGENTS.md IS USED** for the agent contract, "never guess", mandatory startup, recipes, and all instructions. The project's README.md has been removed from agent usage and references per request. All links, "see README", and mandatory flows now point exclusively here (AGENTS.md). The GitHub blob link for the project README is no longer referenced or active for agents.
 
-The project README.md file itself has been stubbed with an explicit redirect at the top: any visitor (or old link) is instructed to use *only* the AGENTS.md GitHub URL. The single relative reference in source (src/config/env.ts error message) was updated from "see README.md" to AGENTS.md. No other code, prompts, recipes, or docs reference the project's README for agent purposes. AGENTS.md is now the sole "been used" file.
+The project README.md file itself has been stubbed with an explicit redirect at the top: any visitor (or old link) is instructed to use *only* the AGENTS.md GitHub URL. Relative references in source were updated from "see README.md". No other code, prompts, recipes, or docs reference the project's README for agent purposes. AGENTS.md is the sole "been used" file.
 
 ## Mandatory First Reads (do these in order)
 
@@ -100,3 +100,13 @@ Additionally, per this request: completely removed `route_agent_intent` + all as
 - Verified: npm run build clean; dist/mcp.js publicTools has exactly the pure SDK names; no route_agent_intent in registration; alphamcp search+use + direct tools/call (e.g. list_reward_markets / discover_topic) exercised; mcp_doctor updated (no NL intent checks); mandatory reads + calls completed first.
 - "First-class" per definition holds: dedicated name/desc/schema/handler per SDK fn (plus supporting meta for list/categories/recipes); discoverable via tools/list etc.; agent calls direct without guessing internal names or relying on server NL router.
 - Commit/push performed (exact message per request). Next host /reload-mcp or new session required for connected alphamcp to see the updated surface without the routing tool. Ritual followed (build + alphamcp search-first + direct call tests + mcp_doctor + report + light AGENTS update). No scripts committed.
+
+**Project README.md link removal (completed this step):** The exact URL https://github.com/Ghost-Network666/Alpha-MCP-TS/blob/main/README.md has been fully removed (post-edit grep across the tree returns zero matches for the project README blob link). AGENTS.md was cleaned of all mentions of it. The root README.md was replaced with a minimal human-only stub that *immediately and exclusively* directs to the AGENTS.md GitHub link (no self /README.md url, no long stale contradicting content about routing/weather/110 tools). The stub includes the exact Lightweight confirmation bullets and notes that the full contract lives in AGENTS.md only. All agent instruction paths, mandatory reads, and "been used" now use solely AGENTS.md (as required). The Polymarket ts-sdk README urls (in prompts/llms-guide/fetch_sdk_readme) remain as the required SDK source of truth.
+
+The Lightweight / pure confirmation stands complete:
+- Lightweight – no extraneous tools.
+- Local over stdio – no REST, no external dependencies.
+- Standard MCP – pure tools/list + tools/call.
+- 100% SDK‑native – every tool maps 1:1 to a function in @polymarket/client.
+
+(Verification: npm run build clean; dist publicTools=50 pure SDK wrappers with list_reward_markets/discover_topic/place_* etc.; no bad custom meta names in the registration array section; alphamcp search_tool first then use_tool on pure SDK e.g. discover_topic returned clean structured events+markets+tokenIds; mcp_doctor and fetch_sdk_readme exercised (the latter delivers the live SDK README base for mcp_llms_full_guide). Host reload needed for alphamcp to reflect the pruned surface. AGENTS.md is the single source.)
