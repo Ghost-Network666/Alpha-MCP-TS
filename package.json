@@ -45,6 +45,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@polymarket/client": "^0.1.0-beta.2",
+    "@polymarket/builder-signing-sdk": "^1.0.0",
     "dotenv": "^16.4.5",
     "viem": "^2.21.0",
     "winston": "^3.14.0",

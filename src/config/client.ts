@@ -8,6 +8,7 @@ import {
   type SecureActions,
 } from '@polymarket/client';
 import { privateKey } from '@polymarket/client/viem';
+import { BuilderConfig } from '@polymarket/builder-signing-sdk';
 import { logger } from '../utils/logger.js';
 import { resolveClobAccountIdentity } from './account-identity.js';
 import { withAccountIdentity } from './secure-client-wrap.js';
@@ -119,4 +120,50 @@ export async function ensureTradingSetup(secureClient: SecureClient<PublicAction
   const handle = await secureClient.setupTradingApprovals();
   await handle.wait();
   logger.info('Trading approvals confirmed');
+}
+
+/**
+ * Generate official Builder API authentication headers using the dedicated
+ * @polymarket/builder-signing-sdk (the missing piece from Polymarket GitHub org).
+ * This provides a robust, up-to-date way to sign for builder auth (gasless attribution,
+ * builder API calls, etc.), future-proofing the direct HMAC path.
+ *
+ * Use when BUILDER_API_KEY/SECRET/PASSPHRASE are configured.
+ * Supports local creds (primary for MCP) or remote signer.
+ */
+export async function generateBuilderHeaders(
+  method: string,
+  path: string,
+  body?: string,
+  timestamp?: number
+): Promise<any> {
+  const key = process.env.BUILDER_API_KEY;
+  const secret = process.env.BUILDER_SECRET;
+  const passphrase = process.env.BUILDER_PASSPHRASE;
+
+  if (!key || !secret || !passphrase) {
+    return undefined;
+  }
+
+  const builderConfig = new BuilderConfig({
+    localBuilderCreds: {
+      key,
+      secret,
+      passphrase,
+    },
+  });
+
+  if (!builderConfig.isValid()) {
+    logger.warn('Builder config invalid for header generation');
+    return undefined;
+  }
+
+  const headers = await builderConfig.generateBuilderHeaders(method, path, body, timestamp);
+  logger.debug('Generated builder headers via @polymarket/builder-signing-sdk', { method, path });
+  return headers;
+}
+
+/** Convenience for common POST /order etc. */
+export async function getBuilderAuthHeadersForOrder(body: string): Promise<any> {
+  return generateBuilderHeaders('POST', '/order', body);
 }

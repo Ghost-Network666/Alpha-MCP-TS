@@ -348,6 +348,11 @@ export function getAgentRecipes(): Record<string, unknown> {
       gtc: { tokenId: '<0x>', price: 0.5, size: 5, side: 'BUY' },
       gtd: { tokenId: '<0x>', price: 0.5, size: 5, side: 'BUY', orderType: 'GTD', expiration: 1735689600 },
     },
+    builderSigning: {
+      tool: 'generate_builder_headers',
+      note: 'Official @polymarket/builder-signing-sdk integration (the missing GitHub piece). Use to generate canonical headers for Builder API auth (gasless attribution, /order etc with BUILDER_* creds). More robust than ad-hoc HMAC; always up-to-date. Example: generate_builder_headers({method: "POST", path: "/order", body: JSON.stringify(payload)}). Used internally for future-proof gasless flows with builder.',
+      example: { method: 'POST', path: '/order', body: '{"marketId":"0x..."}' },
+    },
     orderBook: { tool: 'get_order_book', arguments: { tokenId: '<0x or slug or decimal id>' } },
     strategies: {
       tool: 'get_strategies',

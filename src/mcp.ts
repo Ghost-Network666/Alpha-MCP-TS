@@ -1702,6 +1702,20 @@ const secureTools = [
       required: ['id']
     }
   },
+  {
+    name: 'generate_builder_headers',
+    description: '[Advanced] Use the official @polymarket/builder-signing-sdk (integrated from Polymarket GitHub) to generate authenticated headers for the Builder API (HMAC signing for gasless attribution, builder endpoints, etc.). This is the canonical, robust way (future-proofs direct HMAC). Requires BUILDER_API_KEY/SECRET/PASSPHRASE. Returns headers for custom use in gasless flows.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        method: { type: 'string', description: 'HTTP method e.g. POST' },
+        path: { type: 'string', description: 'API path e.g. /order' },
+        body: { type: 'string', description: 'Optional JSON body string' },
+        timestamp: { type: 'number', description: 'Optional timestamp override' },
+      },
+      required: ['method', 'path'],
+    },
+  },
 
   // === Additional Secure Account / Data (completes all handler cases) ===
   {
@@ -4473,6 +4487,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return callWithFormat(async () => fetchBuilderApiKeys(await getSec()), F.formatGeneric, name);
     case 'revoke_builder_api_key':
       return callWithFormat(async () => { await revokeBuilderApiKey(await getSec()); return { success: true }; }, F.formatGeneric, name);
+
+    case 'generate_builder_headers': {
+      try {
+        const { generateBuilderHeaders } = await import('./config/client.js');
+        const headers = await generateBuilderHeaders(
+          String(args.method),
+          String(args.path),
+          args.body ? String(args.body) : undefined,
+          args.timestamp ? Number(args.timestamp) : undefined
+        );
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ headers, note: 'Generated via @polymarket/builder-signing-sdk for official Builder API auth. Use these headers in gasless/builder flows. Integrated as the dedicated signing piece from Polymarket GitHub.' }, null, 2),
+          }],
+        };
+      } catch (error: any) {
+        return {
+          isError: true,
+          content: [{ type: 'text' as const, text: `generate_builder_headers error: ${error?.message || String(error)}` }],
+        };
+      }
+    }
 
     // ===================================================================
     // SECURITY-SENSITIVE HANDLERS (added per explicit request)
