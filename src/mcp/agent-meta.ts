@@ -1,6 +1,6 @@
 /** Tier-1 default surface: daily-driver tools only. Full handlers via categories (see TOOL_COUNT). */
 
-/** Minimal daily surface — full handlers via route_agent_intent + load_agent_profile / categories. */
+/** Minimal daily surface — full handlers via load_agent_profile / get_tools_by_category / direct tools/call. The agent decides tools from the list exposed by tools/list. */
 export const TIER1_CORE_TOOL_NAMES: readonly string[] = [
   // Pure first-class wrappers for @polymarket/client SDK functions only.
   // No custom MCP meta, routing, doctor, strategy store, or enriched tools in the default surface.

@@ -1,13 +1,7 @@
 /**
  * Deterministic agent cycle planner — NO LLM, NO blocking loop in MCP.
- * Delegates to intent routing; host LLM executes returned steps.
+ * (NL routing removed) — returns guidance to use direct tools/list + tools/call.
  */
-
-import {
-  buildIntentRoute,
-  intentFromCycleGoal,
-  type AgentIntent,
-} from '../mcp/intent-routing.js';
 
 export type CycleGoal = 'rewards' | 'weather' | 'mispricing' | 'trading' | 'discovery';
 
@@ -21,19 +15,14 @@ export type CycleStep = {
 export type AgentCyclePlan = {
   success: boolean;
   goal: CycleGoal;
-  intent: AgentIntent;
   phase: string;
   steps: CycleStep[];
   agentDirective: string;
   nextTools: string[];
   resources: string[];
   prompts: string[];
-  profile?: string;
-  tradingRule: string;
   note: string;
   lockedStrategyKey?: string;
-  priceMovementCondition?: string;
-  researchSource?: string;
 };
 
 export function buildAgentCyclePlan(params: {
@@ -42,34 +31,25 @@ export function buildAgentCyclePlan(params: {
   maxMinCostUsd?: number;
   topic?: string;
   lockedStrategyKey?: string;
-  heartbeat?: boolean; // For native automation: when true or lockedStrategyKey, include send_heartbeat step in the complete plan for host-driven heartbeat loops
+  heartbeat?: boolean;
 }): AgentCyclePlan {
-  const intent = intentFromCycleGoal(params.goal);
-  const route = buildIntentRoute({
-    intent,
-    goal: params.goal,
-    topic: params.topic,
-    maxMinCostUsd: params.maxMinCostUsd,
-    strategies: params.strategies,
-    lockedStrategyKey: params.lockedStrategyKey,
-    heartbeat: params.heartbeat ?? !!params.lockedStrategyKey,
-  });
+  // NL routing removed. Provide a basic direct-call plan. Host/LLM chooses exact tools from tools/list.
+  const steps: CycleStep[] = [
+    { order: 1, tool: 'get_agent_recipes', arguments: {}, why: 'Discover available tools and call shapes.' },
+    { order: 2, tool: 'get_strategies', arguments: params.lockedStrategyKey ? { tokenId: params.lockedStrategyKey } : {}, why: 'Load host rules.' },
+    { order: 3, tool: 'discover_topic', arguments: { topic: params.topic || (params.goal === 'rewards' ? 'politics' : params.goal), full: true }, why: 'Direct discovery for the goal.' },
+  ];
 
   return {
-    success: route.success,
+    success: true,
     goal: params.goal,
-    intent: route.intent,
-    phase: route.phase,
-    steps: route.steps,
-    agentDirective: route.agentDirective,
-    nextTools: route.nextTools,
-    resources: route.resources,
-    prompts: route.prompts,
-    profile: route.profile,
-    tradingRule: route.tradingRule,
-    note: `${route.note} Prefer route_agent_intent({ intent }) when the goal is not a legacy "goal" enum. For native automation on heartbeat, pass lockedStrategyKey — the plan will include send_heartbeat as first step for the host to call on heartbeat/resource events.`,
-    lockedStrategyKey: route.lockedStrategyKey,
-    priceMovementCondition: route.priceMovementCondition,
-    researchSource: route.researchSource,
+    phase: 'direct-call-guidance',
+    steps,
+    agentDirective: 'NL routing removed. Use tools/list (or load_agent_profile/get_tools_by_category) to see the surface, then tools/call the exact tools by name with args you choose. get_agent_recipes gives examples. Obey any per-tool guidance. No server-side plan generation.',
+    nextTools: ['get_agent_recipes', 'discover_topic', 'list_reward_markets'],
+    resources: ['polymarket://market/{tokenId}/book'],
+    prompts: ['mcp_llms_full_guide', 'agent_routing'],
+    note: 'Cycle planner simplified after removal of proprietary routing layer. Agent decides calls from the list.',
+    lockedStrategyKey: params.lockedStrategyKey,
   };
 }

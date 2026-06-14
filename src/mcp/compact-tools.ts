@@ -4,9 +4,8 @@ const MAX_DESC = 180;
 
 /** Short tool descriptions for tier-1 tools/list (full text in get_tools_by_category). */
 export const COMPACT_TOOL_DESCRIPTIONS: Record<string, string> = {
-  get_agent_recipes: '[Meta] Startup JSON recipes + knownGotchas + intent registry.',
-  route_agent_intent: '[Meta] Batch intent plan + enables built-in per-tool routing.',
-  configure_agent_routing: '[Meta] Set routing intent only (routing always on).',
+  get_agent_recipes: '[Meta] Startup JSON recipes + knownGotchas + tool registry for direct discovery.',
+  // route_agent_intent and proprietary NL routing layer removed; agents use tools/list + tools/call directly.
   mcp_doctor: '[Meta] Health check + host doctor commands (Grok/Hermes/OpenClaw).',
   search_tools: '[Meta] Find tools by keyword (detail: name|summary|schema).',
   load_agent_profile: '[Meta] Register profile bundle; re-call tools/list.',

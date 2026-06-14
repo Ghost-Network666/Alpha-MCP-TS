@@ -66,10 +66,7 @@ import { loadStrategyFile, saveStrategyFile } from './strategy/persist.js';
 import { resolveConditionIdForToken, resolveTokenIdFromToolArgs } from './utils/clob-token.js';
 import { normalizePlaceLimitOrderArgs } from './trading/place-limit-args.js';
 import { buildKnownGotchasMarkdown } from './mcp/agent-gotchas.js';
-import { buildIntentRoute, INTENT_REGISTRY } from './mcp/intent-routing.js';
-import { enrichNativeToolResponse } from './mcp/native-routing.js';
 import { buildMcpDoctorReport } from './mcp/mcp-doctor.js';
-import { readRoutingConfig, writeRoutingConfig } from './mcp/intent-context.js';
 import { seedSessionStrategyDefaults } from './mcp/strategy-seed.js';
 
 /** Shared schema: hex tokenId OR slug OR decimal market id. */
@@ -94,7 +91,7 @@ process.env.MCP_SERVER = 'true';
 // Heartbeat is the core mechanism that keeps Hermes + OpenClaw alive and in control.
 // This MCP integrates with that system to "remain active": hosts call send_heartbeat (liveness hook per their
 // heartbeat.md contract), get_strategies (read locked composite market:volume rules), MCP planners
-// (route_agent_intent / run_agent_cycle with lockedStrategyKey for complete deterministic intent plans),
+// (run_agent_cycle with lockedStrategyKey for host-driven plans if used),
 // intel tools (with host-provided externalSignals from Hermes x_search etc.), explicit execution tools,
 // and update_strategy (evolve the shared bag under keys the host manages).
 // The store is lightweight, free-form, composite-key friendly (e.g. "weather:low", "politics:high").
@@ -1883,7 +1880,7 @@ const secureTools = [
   // These exist so the host (Hermes) can orchestrate "swarm-like" narrow research on its own heartbeat
   // by calling many small native tools + persisting after each under the locked composite key.
   // MCP never runs continuous agents or loops internally — all composition and timing is host-driven
-  // via route_agent_intent (granular research intents) or direct calls after loading the Intelligence category.
+  // via direct calls or get_agent_recipes after loading the Intelligence category.
   // Every tool reinforces: signals only, persist via update_strategy to the exact lockedStrategyKey,
   // never execute trades. This closes granularity gaps while fully preserving the "host uses intent +
   // native tools" contract.
@@ -2115,7 +2112,7 @@ const PROMPTS = [
   },
   {
     name: 'mispricing_quick_flips',
-    description: 'Guide for quick flips: compute_market_signals + get_farmability + explicit place_limit_order. Use route_agent_intent({ intent: "mispricing_flip" }) for the tool plan.',
+    description: 'Guide for quick flips: compute_market_signals + get_farmability + explicit place_limit_order. Discover via tools/list or get_agent_recipes then call directly.',
     arguments: []
   },
   {
@@ -2207,276 +2204,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(report, null, 2) }],
       };
-    }
-
-    case 'configure_agent_routing': {
-      const cfg = writeRoutingConfig(strategyStore, {
-        activeIntent: args.intent,
-        autonomousAssist: args.autonomousAssist !== false,
-        maxMinCostUsd: args.maxMinCostUsd,
-        topic: args.topic,
-      });
-      await persistStrategiesToDisk();
-      const strategies: Record<string, unknown> = {};
-      for (const [k, v] of strategyStore.entries()) strategies[k] = v;
-      const plan = cfg.activeIntent
-        ? buildIntentRoute({
-            intent: cfg.activeIntent,
-            topic: cfg.topic,
-            maxMinCostUsd: cfg.maxMinCostUsd,
-            strategies,
-          })
-        : null;
-      if (plan?.profile) {
-        const prof = AGENT_PROFILES[plan.profile];
-        if (prof) {
-          for (const cat of prof.categories) {
-            for (const t of getToolsByCategory([...publicTools, ...secureTools], cat)) {
-              currentlyExposedToolNames.add(t.name);
-            }
-          }
-        }
-      }
-      return {
-        content: [{
-          type: 'text' as const,
-          text: JSON.stringify(
-            {
-              success: true,
-              mcpRouting: cfg,
-              plan,
-              agentDirective: `Routing is always on. Use ANY native tool — each response includes routing.nextTools. ${plan?.tradingRule || ''}`,
-              routingAlwaysOn: true,
-              note: 'Re-call tools/list after enable if your host whitelists listed tools.',
-            },
-            null,
-            2
-          ),
-        }],
-      };
-    }
-
-    case 'route_agent_intent': {
-      const strategies: Record<string, unknown> = {};
-      for (const [k, v] of strategyStore.entries()) strategies[k] = v;
-      writeRoutingConfig(strategyStore, {
-        activeIntent: args.intent || 'session_startup',
-        autonomousAssist: args.autonomousAssist !== false,
-        maxMinCostUsd: args.maxMinCostUsd,
-        topic: args.topic,
-      });
-      await persistStrategiesToDisk();
-      if (typeof getLockedKey === 'function') {
-        const rkey = getLockedKey(args);
-        if (rkey) recordQualifier(rkey, 'route');
-      }
-
-      const plan = buildIntentRoute({
-        intent: args.intent,
-        naturalLanguage: args.naturalLanguage,
-        topic: args.topic,
-        tokenId: args.tokenId,
-        market: args.market,
-        slug: args.slug,
-        maxMinCostUsd: args.maxMinCostUsd,
-        goal: args.goal,
-        strategies,
-        lockedStrategyKey: args.lockedStrategyKey,
-        heartbeat: args.heartbeat,
-      });
-
-      const conf = (plan as any).confidence ?? 1.0;
-      const method = (plan as any).classificationMethod || 'explicit';
-      const MIN_CONF = 0.55;
-      const usedNL = !!args.naturalLanguage && !args.intent;
-      if (usedNL && conf < MIN_CONF) {
-        recordClassificationFeedback({ naturalLanguage: args.naturalLanguage, resolvedIntent: plan.intent, method, confidence: conf });
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify({
-              success: false,
-              blockedByConfidence: true,
-              confidence: conf,
-              resolvedIntent: plan.intent,
-              classificationMethod: method,
-              message: 'Low confidence natural language classification. Gate applied.',
-              agentDirective: 'Re-phrase or use explicit intent from get_agent_recipes. Call get_routing_feedback for tuning data.',
-              suggestedTools: ['get_agent_recipes', 'search_tools', 'route_agent_intent with explicit intent'],
-            }, null, 2)
-          }]
-        };
-      }
-
-      (plan as any).confidence = conf;
-      (plan as any).classificationMethod = method;
-      recordClassificationFeedback({ naturalLanguage: args.naturalLanguage, resolvedIntent: plan.intent, method, confidence: conf });
-
-      if (typeof getLockedKey === 'function') {
-        const rkey = getLockedKey(args);
-        if (rkey) recordQualifier(rkey, 'route');
-      }
-
-      // Full intelligence routing: agent calls route_agent_intent once with naturalLanguage.
-      // For read/discovery/intel queries (e.g. "list all world cup events..."), MCP internally
-      // classifies, builds plan, auto-executes native steps (using full server-side collection
-      // to bypass client caps), and returns the complete structured answer directly.
-      // Agent never guesses the tool/sequence/args — one native call delivers the response.
-      const nl = args.naturalLanguage || '';
-      const isIntelQuery = plan.intent.includes('discovery') || plan.intent === 'alpha_scan' || /list|all|full|events|markets|world.?cup|catalog|slate|group|find|show|top|popular|high liquidity|high volume/i.test(nl);
-      if (isIntelQuery) {
-        // AUTOMATIC FILTER EXTRACTION from naturalLanguage / intent.
-        // So if the query would return mass data (30k events or huge Gamma), MCP applies filters server-side
-        // (closed, liquidity/volume mins, titleSearch, etc.) AUTOMATICALLY. Agent never stresses about volume,
-        // pagination, or raw filter objects — the result is already filtered and complete.
-        const filters: any = {};
-        const nlLower = nl.toLowerCase();
-        if (/open|active|live|current/i.test(nlLower) && !/closed/i.test(nlLower)) filters.closed = false;
-        if (/closed|ended|past|expired/i.test(nlLower)) filters.closed = true;
-        const liqMatch = nlLower.match(/liquidity\s*(over|above|>|min|high|>=)\s*(\d+)(k|m)?/i);
-        if (liqMatch) {
-          let val = parseInt(liqMatch[2]);
-          if (liqMatch[3] === 'k') val *= 1000;
-          if (liqMatch[3] === 'm') val *= 1000000;
-          filters.liquidityNumMin = val;
-        }
-        const volMatch = nlLower.match(/volume\s*(over|above|>|min|high|>=)\s*(\d+)(k|m)?/i);
-        if (volMatch) {
-          let val = parseInt(volMatch[2]);
-          if (volMatch[3] === 'k') val *= 1000;
-          if (volMatch[3] === 'm') val *= 1000000;
-          filters.volumeNumMin = val;
-        }
-        const titleMatch = nlLower.match(/(title|question|name|about|containing|with)\s+["']?([^"']+?)["']?/i);
-        if (titleMatch) filters.titleSearch = titleMatch[2].trim();
-
-        // Smart topic extraction using resolveTopicSlug for full coverage across Gamma tags (sports, election, trump, crypto, world-cup, etc.)
-        // Safe default always resolvable; titleSearch carries the specific subject so "list events about XYZ" works even if no exact tag.
-        // This + auto-merge in discoverTopic (full server paging + any extra filter keys) = MCP internal handling for everything across Gamma. No raw, no client caps, no agent pagination/filter code.
-        let topic = 'politics';
-        const candidates = ['world-cup', 'sports', 'nfl', 'crypto', 'bitcoin', 'election', 'trump', 'ai', 'uk', 'weather', 'politics', 'macro', 'fed', 'sports'];
-        for (const c of candidates) {
-          const probe = c.replace(/-/g, ' ');
-          if (nlLower.includes(probe) || nlLower.includes(c)) { topic = c; break; }
-        }
-        if (!resolveTopicSlug(topic)) topic = 'politics';
-
-        // Broad subject extraction for titleSearch if not already captured (supports "everything across Gamma")
-        let titleSearch = filters.titleSearch;
-        if (!titleSearch) {
-          const subj = nl.match(/(?:about|on|for|containing|with|named|called|events? about|markets? on)\s+["']?([^"'.!?;]+)["']?/i);
-          if (subj && subj[1]) titleSearch = subj[1].trim();
-        }
-        if (titleSearch) filters.titleSearch = titleSearch;
-
-        const directAnswer: any = {
-          query: nl || plan.intent,
-          source: 'internal full intelligence execution (route_agent_intent + native discovery with full collection + auto-filters)',
-          appliedFilters: filters,
-          topicUsed: topic,
-        };
-
-        // UNCONDITIONAL full filtered discovery for ANY Gamma intel query (list events, markets, tags, world-cup, weather, crypto, politics, elections, sports, arbitrary subject via titleSearch, etc.).
-        // Extracts best topic from NL (alias aware) or safe default, applies auto-filters from intent/NL, full server-side paging/collection (offset loop inside discoverTopic).
-        // Extreme intent intelligence: agent calls route once with NL (filters in language like "open", "liquidity over X", "title containing Y", "high volume sports"), MCP handles ALL fetching, filtering, pagination, mass data internally across Gamma/CLOB reads.
-        // Returns pre-filtered complete structured data in directAnswer — no mass raw (30k+ events etc.), no client pagination, no guessing, no tmp, lightweight usable cards with tokenIds/prices/liquidity. Agent sees 1 tool, gets answer, no issues.
-        const res = await discoverTopic({
-          topic,
-          closed: filters.closed ?? false,
-          includeEvents: true,
-          includeMarkets: true,
-          full: true,
-          ...(filters.titleSearch ? { titleSearch: filters.titleSearch } : {}),
-          ...(filters.liquidityNumMin ? { liquidityNumMin: filters.liquidityNumMin } : {}),
-          ...(filters.volumeNumMin ? { volumeNumMin: filters.volumeNumMin } : {}),
-        });
-        directAnswer.events = res.events || [];
-        directAnswer.markets = res.markets || [];
-        directAnswer.tagId = res.tagId;
-        directAnswer.tagSlug = res.tagSlug;
-        directAnswer.note = 'Complete structured Gamma data (full server-side paging + automatic filters applied — no client caps, no raw mass data ever leaves the MCP, everything handled internally in route_agent_intent). Events + markets include tokenIds, liquidity, prices from SDK. TokenIds ready for fetch_market / get_order_book / trading. Already filtered per your natural language intent — agent never guesses filters, pagination, or deals with 30k+ raw items. 1 call, full answer.';
-
-        if (directAnswer.events?.length || directAnswer.markets?.length) {
-          (plan as any).directAnswer = directAnswer;
-          (plan as any).agentDirective = `NATIVE INTENT DELIVERED: This is the complete filtered answer from one call to route_agent_intent (the ONE tool for Gamma questions). The directAnswer has the full (but automatically filtered) events/markets data — agent never guesses next tool, args, or filters. Everything across Gamma handled inside MCP (no leaking, no raw SDK, no client hacks). ${plan.agentDirective || ''}`;
-        }
-      }
-
-      return {
-        content: [{ type: 'text' as const, text: JSON.stringify(plan, null, 2) }],
-      };
-    }
-
-    case 'execute_recipe': {
-      // Minimal NLR + breaker orchestrator (builds on route_agent_intent plan).
-      const strategies: Record<string, unknown> = {};
-      for (const [k, v] of strategyStore.entries()) strategies[k] = v;
-      const plan = buildIntentRoute({ intent: args.intent, naturalLanguage: args.naturalLanguage, lockedStrategyKey: args.lockedStrategyKey, heartbeat: args.heartbeat, strategies });
-      const conf = (plan as any).confidence ?? 1.0;
-      const MIN = 0.55;
-      if ((!!args.naturalLanguage && !args.intent) && conf < MIN) {
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ success: false, blockedByConfidence: true, confidence: conf, agentDirective: 'Low conf NL. Use explicit or get_agent_recipes.' }) }] };
-      }
-      recordClassificationFeedback({ naturalLanguage: args.naturalLanguage, resolvedIntent: plan.intent, method: (plan as any).classificationMethod || 'explicit', confidence: conf });
-
-      const dryRun = !!args.dryRun;
-      const log: any[] = [];
-      let halted = false;
-      const steps = plan.steps.slice(0, args.maxSteps || 20);
-      for (const step of steps) {
-        const entry: any = { order: step.order, tool: step.tool, arguments: step.arguments, status: 'planned' };
-        const isMut = isMutationTool(step.tool) || isHighRiskAdvanced(step.tool);
-        if (isDegraded(step.tool) && !dryRun) {
-          entry.status = 'circuit-broken';
-          entry.breaker = getBreakerState()[step.tool];
-          log.push(entry);
-          halted = true;
-          recordStepOutcome(step.tool, false);
-          break;
-        }
-        if (dryRun) {
-          entry.status = 'dry-run-validated';
-        } else if (isMut) {
-          const g = Guard.getGuardrails(strategyStore);
-          if (g.readOnly) {
-            entry.status = 'blocked-by-guardrail';
-            entry.reason = 'readOnly guardrail';
-            recordStepOutcome(step.tool, false);
-            halted = true;
-          } else {
-            entry.status = 'delegated-to-host (mutation will hit guardrails)';
-            recordStepOutcome(step.tool, true);
-          }
-        } else {
-          entry.status = 'delegated-to-host';
-          recordStepOutcome(step.tool, true);
-        }
-        log.push(entry);
-        if (halted) break;
-      }
-      return { content: [{ type: 'text' as const, text: JSON.stringify({ success: !halted, resolvedIntent: plan.intent, confidence: conf, executionLog: log, plan }) }] };
-    }
-
-    case 'delegate_to_agent': {
-      const agentId = String(args.agentId || 'peer');
-      const delegated = args.intent || args.naturalLanguage || 'session_startup';
-      const payload = {
-        success: true,
-        delegate: {
-          agentId,
-          intent: delegated,
-          context: args.context || {},
-          handoffPayload: { type: 'a2a-delegation', to: agentId, intent: delegated, lockedStrategyKey: args.lockedStrategyKey, guardrails: Guard.getGuardrails(strategyStore) },
-          agentDirective: 'Host: use this payload with sessions_spawn / A2A equivalent to hand off. Receiver starts with get_agent_recipes + route_agent_intent.',
-        },
-      };
-      recordClassificationFeedback({ resolvedIntent: String(delegated), method: 'explicit', confidence: 1 });
-      return { content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }] };
-    }
-
-    case 'get_routing_feedback': {
-      const snap = strategyStore.get('routing:feedback') || {};
-      return { content: [{ type: 'text' as const, text: JSON.stringify({ success: true, counters: snap.counters || {}, recent: (snap.recent || []).slice(0, args.limit || 20), note: 'Tune classifier aliases from this data. Persisted in strategy bag.' }, null, 2) }] };
     }
 
     case 'get_available_tools': {
@@ -2593,8 +2320,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               ...getAgentRecipes(),
               tier1Core: [...TIER1_CORE_TOOL_NAMES],
               profiles: AGENT_PROFILES,
-              intentRouting: 'route_agent_intent({ intent }) — see intentRouting in this payload',
-              loadMore: 'load_agent_profile({ profile }) or get_tools_by_category({ category }) — all handlers remain callable',
+              loadMore: 'load_agent_profile({ profile }) or get_tools_by_category({ category }) — all handlers remain callable. Use tools/list and tools/call directly; the agent decides the tool from the discovered list.',
             },
             null,
             2
@@ -2637,7 +2363,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           text: JSON.stringify({
             address,
             note: address ? 'Use wallet://' + address + '/events with resources/subscribe for live push of trades/fills/splits/merges/redeems (auth user WS if own wallet from credentials; public order-book derived or snapshot for third-party after list_trades({maker}) to find markets). Zero-token real-time wallet monitoring via official SDK. Also use list_trades({maker}) + market book resources for public derivation.' : 'No 0x address found in input.',
-            agentDirective: 'For public or auth wallet monitoring (official UserWsClient limitation for third-party). Subscribe the wallet resource for push notifications. Re-call route_agent_intent for next steps.',
+            agentDirective: 'For public or auth wallet monitoring (official UserWsClient limitation for third-party). Subscribe the wallet resource for push notifications. Use search_tools or get_agent_recipes to discover follow-up tools and call them directly by name.',
           }, null, 2),
         }],
       };
@@ -2662,7 +2388,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             name: t.name,
             description: t.description,
             inputSchema: t.inputSchema,
-            agentDirective: 'Now call the tool directly with matching args, or use route_agent_intent(NL) for plans. This enables lazy on-demand schema loading for token efficiency.',
+            agentDirective: 'Now call the tool directly with matching args from the schema. Use search_tools or get_agent_recipes to find tools; the agent decides and calls via exact name + args.',
           }, null, 2),
         }],
       };
@@ -2676,12 +2402,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           text: JSON.stringify({
             ok: true,
             tier1ToolCount: currentlyExposedToolNames.size,
-            routingAlwaysOn: true,
-            intentCount: Object.keys(INTENT_REGISTRY || {}).length,
             credentialSource: source,
             resources: 'polymarket://user/* and market/* active for real-time (zero-token push via subscribe)',
-            note: 'Lightweight health for monitoring. For full: mcp_doctor. Supports agent self-improvement loops with low token cost.',
-            agentDirective: 'Use for quick checks in learning cycles. Re-call route_agent_intent for next phase.',
+            note: 'Lightweight health for monitoring. For full: mcp_doctor. Supports agent self-improvement loops with low token cost. Agents use tools/list to discover available tools then tools/call by exact name + args (LLM decides based on list).',
           }, null, 2),
         }],
       };
@@ -4749,7 +4472,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
   }
   })();
-  return enrichNativeToolResponse(name, args as Record<string, unknown>, toolResult, strategyStore);
+  return toolResult;
 });
 
 // ==================== MCP RESOURCES (Live Subscriptions) ====================

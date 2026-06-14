@@ -4,9 +4,7 @@
  */
 
 import { TIER1_CORE_TOOL_NAMES } from './agent-meta.js';
-import { INTENT_REGISTRY } from './intent-routing.js';
 import { GAMMA_TAG_BY_SLUG } from '../data/gamma-tag-registry.js';
-import { readRoutingConfig } from './intent-context.js';
 
 export type McpDoctorReport = {
   ok: boolean;
@@ -15,9 +13,6 @@ export type McpDoctorReport = {
   handshake: 'ok' | 'failed';
   tier1ToolCount: number;
   tier1Tools: string[];
-  routingAlwaysOn: true;
-  routingConfig: ReturnType<typeof readRoutingConfig>;
-  intentCount: number;
   gammaTagCount: number;
   checks: Array<{ name: string; ok: boolean; detail: string }>;
   hostDoctorCommands: {
@@ -26,7 +21,8 @@ export type McpDoctorReport = {
     openclaw: string;
   };
   agentDirective: string;
-  // Production additions for complete Hermes heartbeat + Intelligence signals orchestration (CLOB V2 aligned, end-to-end autonomous, no guessing).
+  // Note: proprietary NL routing (route_agent_intent + intent classification + central agentDirective injection) removed.
+  // Agents use standard tools/list + tools/call directly. Guidance via prompts, get_agent_recipes, mcp_doctor.
   v2Alignment?: string;
   intelligenceRole?: string;
   endToEndNote?: string;
@@ -50,11 +46,6 @@ export function buildMcpDoctorReport(
     detail: `tools/list returned ${opts.toolsListed} (expected ~${tier1.length})`,
   });
   checks.push({
-    name: 'routing_always_on',
-    ok: true,
-    detail: 'Built-in routing envelopes on every native tool (cannot disable)',
-  });
-  checks.push({
     name: 'mcp_doctor_tool',
     ok: tier1.includes('mcp_doctor'),
     detail: 'mcp_doctor in tier-1 for in-session health',
@@ -73,9 +64,6 @@ export function buildMcpDoctorReport(
     handshake: opts.handshakeOk ? 'ok' : 'failed',
     tier1ToolCount: opts.toolsListed,
     tier1Tools: tier1,
-    routingAlwaysOn: true,
-    routingConfig: readRoutingConfig(store),
-    intentCount: Object.keys(INTENT_REGISTRY).length,
     gammaTagCount: Object.keys(GAMMA_TAG_BY_SLUG).length,
     checks,
     hostDoctorCommands: {
@@ -86,7 +74,7 @@ export function buildMcpDoctorReport(
     v2Alignment: 'CLOB V2 (Apr 2026): batch via post_orders (up to 15), higher limits, new fields (min_order_size/tick_size/neg_risk in books/markets), pUSD collateral, V2 signing. Use WS resources + get_farmability for decisions; policy in strategyStore; send_heartbeat for host heartbeat.md liveness.',
     intelligenceRole: 'The MCP Intelligence layer stays inside the MCP as a research service that Hermes (the brain) calls via heartbeat. Tools like generate_alpha_report, rank_market_opportunities, and compute_market_signals remain native. Their job is to produce research-backed signals (not decisions). These signals are fed into the strategy store (supporting data layer) so Hermes can use them when executing the locked per-market/per-volume strategy. The Intelligence layer must never execute trades directly — only provide data. MCP does not host models or a model under MCP (per host direct use by Hermes/OpenClaw).\n\nUnlike common categories of current prediction market intelligence systems, on-chain analytics platforms, and autonomous trading agents (Simple alpha reports / ranking engines; Bayesian signal blending; Basic regime detection; External data scraping + LLM summarization), the MCP deliberately provides only deterministic SDK + host-externalSignals-fused signals and simple ranking/health/competition/farmability cards. Lightweight helpers such as computeBayesianPosterior (for contradiction detection in the signals card only) are present; these are not hosted models or blending engines. Any complex modeling, regime detection, or LLM summarization is performed by Hermes (the brain) or supplied upstream via externalSignals.\n\nNarrow specialized research tools (get_liquidity_health, get_competition_signal, compute_divergence, get_reward_farmability_snapshot, analyze_signal_contradiction, and granular research_* intents) exist so the host can orchestrate many narrow mandates on its heartbeat, persisting after each under the locked key. The host (not the MCP) runs the "swarm" via native tools + intent routing. See get_agent_recipes (intelligenceLayerRole + narrowResearchMandates + endToEndProductionAutonomousExample) for the full contract.\n\nTHE TOOL THAT LOCKS THE AGENT IS TOGGLEABLE (off by default, host-controlled): route_agent_intent({ intent: "enable_locked_autonomy", lockedStrategyKey: "market:volume" }) sets strategyLock:true on that composite via update_strategy. Use "disable_locked_autonomy" (or direct update_strategy) to turn it off. heartbeat_locked_autonomy plans inspect the flag after get_strategies(locked); only when true do they emit the hard "LOCKED TO this key ONLY... STAY LOCKED... narrow research sequence only for this key" directive + restriction. When false (default), the key is still excellent for targeted narrow research/signals/price-movement on the host heartbeat, but the brain retains full routing freedom. This is the explicit native surface Hermes/OpenClaw uses to arm/disarm strict per-tick pinning.',
     agentDirective: ok
-      ? 'MCP healthy (production-ready for Hermes heartbeat orchestration of locked per-market:volume strategies + Intelligence research signals). COMPLETE INTENT LANGUAGE ROUTING: 43+ intents in route_agent_intent cover 100% of native tools (meta, discovery, market data, portfolio, trading/cancels, on-chain CTF, gasless prepares, advanced, strategy, weather, automation, etc.). Always start with route_agent_intent or get_agent_recipes — never guess tool names or sequences. Use native tools; obey routing.nextTools on every response. Load get_agent_recipes for full end-to-end autonomous multi-market examples. Persist intel signals to locked key.'
+      ? 'MCP healthy. NL routing layer removed. Use tools/list to discover, tools/call by exact name+args (agent/LLM decides from the list). See AGENTS.md, prompts/get mcp_llms_full_guide, get_agent_recipes for guidance. All other tools (SDK discovery, orders, rewards, WS, account) intact.'
       : 'MCP unhealthy — run host doctor command from hostDoctorCommands, npm run build, restart host.',
   };
 }

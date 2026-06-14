@@ -3,7 +3,6 @@
  */
 
 import { buildKnownGotchasMarkdown } from './agent-gotchas.js';
-import { INTENT_REGISTRY } from './intent-routing.js';
 import { AGENT_PROFILES, TIER1_CORE_TOOL_NAMES } from './agent-meta.js';
 
 export function buildAgentRoutingPrompt(): string {
@@ -12,53 +11,33 @@ export function buildAgentRoutingPrompt(): string {
     .join('\n');
 
   const tier1 = TIER1_CORE_TOOL_NAMES.map((t) => `  - ${t}`).join('\n');
-  const intents = Object.entries(INTENT_REGISTRY)
-    .map(([k, v]) => `  - ${k}: ${v.summary}`)
-    .join('\n');
 
   return `AGENT ROUTING — NATIVE MCP (READ FIRST, NEVER GUESS)
 
-## Native contract
+## Native contract (NL routing layer removed)
 - SDK only (@polymarket/client). No direct HTTP. Formatted cards only.
-- **route_agent_intent** maps host LLM *goals* → tool steps. It does NOT place trades by intent — you still pass explicit price/size/side.
-- Obey every agentDirective. Do NOT ask the human for option menus.
+- No server-side NL parsing, no route_agent_intent, no proprietary routing layer or central agentDirective injection on responses.
+- Agents use tools/list to discover the full surface (tier-1 core + categories via load/get_tools_by_category + get_agent_recipes for examples), then tools/call with the exact tool name and arguments. The agent (LLM) decides which tool to call and in what order based on the list and descriptions.
+- Obey guidance in responses where helpful. Do NOT ask the human for option menus.
 
 ## Mandatory startup (every session)
-1. Built-in routing is always on — optional configure_agent_routing({ intent: "<goal>" })
-2. consult mcp_llms_full_guide prompt (links canonical SDK README URL) — confirm routing.sdkMethod per native tool (SDK README is canonical)
-3. prompts/get never_guess_contract + agent_routing
-4. Call native tools — each response includes routing.toolPurpose + routing.nextTools (built-in, no extra meta calls)
-5. Re-call tools/list after load_agent_profile when plan includes it
+1. consult mcp_llms_full_guide prompt (links canonical SDK README URL)
+2. prompts/get never_guess_contract + agent_routing
+3. Call get_agent_recipes + get_strategies
+4. Use tools/list (or load_agent_profile / get_tools_by_category / search_tools for discovery), then tools/call directly by name+args. Re-call tools/list after loading more surface.
 
-## Intent routing (PRIMARY)
-Call route_agent_intent({ intent: "<name>", topic?, tokenId?, maxMinCostUsd? }) then execute each step in order.
-${intents}
-
-Trading rule: intent picks tools only. place_limit_order / place_optimized_reward_order need YOUR numeric price, size, side.
-
-## Exposure ladder (currently 110 tools after full profile; live tools/list is truth)
-| Step | Tool |
-|------|------|
-| Default | tools/list — tier-1 (~${TIER1_CORE_TOOL_NAMES.length} tools) |
-| Route | route_agent_intent({ intent }) |
-| Find | search_tools({ query }) |
-| Bundle | load_agent_profile({ profile }) |
-| Category | get_tools_by_category({ category }) |
-| Refresh | tools/list again |
+## Discovery (PRIMARY now)
+- tools/list — current exposed (tier-1 by default)
+- get_agent_recipes — registry + direct call examples + gotchas
+- search_tools({ query }) — find by name/desc
+- load_agent_profile({ profile: "full" }) or get_tools_by_category — expand
+- tools/list again after expansion
 
 Profiles:
 ${profiles}
 
-## Tier-1 tools
+## Tier-1 tools (pure SDK + supporting meta for list)
 ${tier1}
-
-## Legacy goal → intent
-- rewards → route_agent_intent({ intent: "rewards_farm" })
-- weather → route_agent_intent({ intent: "weather_alpha", topic: "weather" })
-- mispricing → route_agent_intent({ intent: "mispricing_flip" })
-- trading → route_agent_intent({ intent: "trading_monitor" })
-- discovery → route_agent_intent({ intent: "discovery_scan", topic: "..." })
-run_agent_cycle({ goal }) still works — prefer route_agent_intent.
 
 ## Token lookup
 fetch_market({ tokenId }) — listMarkets clob filter internally.
