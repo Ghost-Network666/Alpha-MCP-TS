@@ -2247,30 +2247,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
     }
 
-    case 'list_tags': {
-      // Use the registry for fast, no-SDK call (or pub if needed for live)
-      const { listGammaTagSlugs } = await import('./data/discovery.js');
-      const tags = listGammaTagSlugs();
-      return {
-        content: [{
-          type: 'text' as const,
-          text: JSON.stringify({ Tags: tags, count: tags.length, note: 'Gamma tags for full discovery surface. Use with discover_topic or route_agent_intent for plans.' }, null, 2),
-        }],
-      };
-    }
+    case 'list_tags':
+      return callPaginatedWithFormat(
+        pub.listTags((args || { pageSize: 100 }) as Record<string, unknown>),
+        F.formatTag,
+        name
+      );
 
-    case 'fetch_tag': {
-      const slug = String(args.slug || '');
-      const { resolveTopicSlug, gammaTagId } = await import('./data/discovery.js');
-      const resolved = resolveTopicSlug(slug);
-      const id = resolved ? gammaTagId(resolved) : null;
-      return {
-        content: [{
-          type: 'text' as const,
-          text: JSON.stringify({ slug, resolvedSlug: resolved, id, note: 'Full Gamma tag details. Pair with listMarkets using tagId for Data/Gamma analytics.' }, null, 2),
-        }],
-      };
-    }
+    case 'fetch_tag':
+      return callWithFormat(() => pub.fetchTag(args), F.formatGeneric, name);
 
     // load_agent_profile case removed (meta/progressive, not pure SDK)
 
@@ -2317,31 +2302,62 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // Public tools (no auth) — every response formatted
     case 'list_markets': {
-      // Pure SDK: resolve tagSlug via fetchTag (if provided) to numeric tag_id; never pass tagSlug (SDK ignores it).
-      // Enforce pagination: default limit=10, max=100, offset support. Return items + meta.
+      // Pure SDK: resolve tagSlug via Gamma tags (fetchTagBySlug or fetchTag) to numeric tag_id.
+      // NEVER pass tagSlug to listMarkets (the /markets API ignores it completely).
+      // Use tag_id (number) only. Prefer client.gamma.markets.listMarkets when available.
+      // list_events({ tagSlug }) is the reliable path for category discovery.
       let sdkArgs: Record<string, unknown> = { ...(args || {}) };
       if (sdkArgs.tagSlug != null && sdkArgs.tagId == null) {
+        const slug = String(sdkArgs.tagSlug);
+        let tid: number | null = null;
         try {
-          const tag = await pub.fetchTag({ slug: String(sdkArgs.tagSlug) });
-          const tid = (tag as any)?.id ?? (tag as any)?.tag_id ?? (tag as any)?.tagId;
-          if (tid != null) {
-            sdkArgs.tagId = Number(tid);
-            sdkArgs.tag_id = Number(tid);
-          }
-        } catch {
-          /* proceed; tag filter may be ignored if unresolvable */
+          // Try direct SDK fetchTag first
+          const tag = await pub.fetchTag({ slug });
+          tid = (tag as any)?.id ?? (tag as any)?.tag_id ?? (tag as any)?.tagId;
+        } catch {}
+
+        if (tid == null) {
+          try {
+            // Fallback to explicit Gamma path (as documented for the /markets API)
+            const g = (pub as any).gamma || pub;
+            const tagsApi = g?.tags;
+            if (tagsApi) {
+              let tag: any;
+              if (typeof tagsApi.fetchTagBySlug === 'function') {
+                tag = await tagsApi.fetchTagBySlug(slug);
+              } else if (typeof tagsApi.fetchTag === 'function') {
+                tag = await tagsApi.fetchTag({ slug });
+              }
+              tid = (tag as any)?.id ?? (tag as any)?.tag_id ?? (tag as any)?.tagId;
+            }
+          } catch {}
+        }
+
+        if (tid != null) {
+          sdkArgs.tagId = Number(tid);
+          sdkArgs.tag_id = Number(tid);
         }
       }
       if (sdkArgs.tagId != null) {
         sdkArgs.tag_id = Number(sdkArgs.tagId);
       }
       delete sdkArgs.tagSlug;
+
       const lim = Math.min(Math.max(1, Number((sdkArgs as any).limit ?? (sdkArgs as any).pageSize ?? 10)), 100);
       const off = Number((sdkArgs as any).offset ?? 0) || 0;
       (sdkArgs as any).pageSize = lim;
       (sdkArgs as any).limit = lim;
       (sdkArgs as any).offset = off;
-      const base = await callPaginatedWithFormat(pub.listMarkets(sdkArgs), F.formatMarket, name, lim, off);
+
+      // Prefer gamma.markets.listMarkets if exposed (per SDK docs for tag_id filtering)
+      let listFn = pub.listMarkets.bind(pub);
+      try {
+        const g = (pub as any).gamma;
+        if (g?.markets && typeof g.markets.listMarkets === 'function') {
+          listFn = g.markets.listMarkets.bind(g.markets);
+        }
+      } catch {}
+      const base = await callPaginatedWithFormat(listFn(sdkArgs), F.formatMarket, name, lim, off);
       // Keep lightweight note injection for agent guidance (no state)
       const note = (sdkArgs as any).tag_id != null
         ? `Using tag_id=${(sdkArgs as any).tag_id}. For category-level discovery, use list_events with a tag slug instead – it provides more reliable tag filtering.`
