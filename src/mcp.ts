@@ -323,7 +323,7 @@ async function callWithFormat<T>(fn: () => Promise<T>, formatter: (d: T) => any,
   }
 }
 
-async function callPaginatedWithFormat(paginatorPromise: Promise<any>, formatter: (item: any) => any, toolName: string) {
+async function callPaginatedWithFormat(paginatorPromise: Promise<any>, formatter: (item: any) => any, toolName: string, limit = 10, offset = 0) {
   try {
     const paginator = await paginatorPromise;
     const page = await (typeof paginator.firstPage === 'function'
@@ -331,18 +331,17 @@ async function callPaginatedWithFormat(paginatorPromise: Promise<any>, formatter
       : (typeof paginator.next === 'function' ? paginator.next() : null));
     let items = page?.items ?? page?.data ?? (Array.isArray(page) ? page : []);
 
-    // Global safety: cap very large responses to protect agents from bloat
-    const MAX_ITEMS = 25;
-    const hadMore = Array.isArray(items) && items.length > MAX_ITEMS;
-    if (Array.isArray(items) && items.length > MAX_ITEMS) {
-      items = items.slice(0, MAX_ITEMS);
-    }
-
     const formattedItems = Array.isArray(items) ? items.map(formatter) : formatter(items);
-    let text = F.toHumanReadable(formattedItems, toolName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
-    if (hadMore) {
-      text += '\n\n**Note:** Response capped at 25 items for readability. Use `limit`/`pageSize` + `offset` (or cursor) in the tool call and iterate with the SDK paginator (`for await (const page of paginator)` or `firstPage()` then `nextCursor`). See tool description for pagination guidance.';
-    }
+    const total = page && (page.total ?? page.totalCount ?? page.count ?? (page as any)?.numResults) || undefined;
+    const nextCursor = page && (page.nextCursor ?? page.cursor ?? (page as any)?.nextPageCursor) || undefined;
+    const payload = {
+      items: formattedItems,
+      total,
+      limit,
+      offset,
+      nextCursor,
+    };
+    const text = F.toHumanReadable(payload, toolName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
     return {
       content: [{
         type: 'text' as const,
@@ -357,8 +356,8 @@ async function callPaginatedWithFormat(paginatorPromise: Promise<any>, formatter
   }
 }
 
-/** Helper to keep responses lightweight for agents */
-function sanitizePageSize(args: any, defaultSize = 30, maxSize = 100) {
+/** Helper to keep responses lightweight for agents. Enforces default limit 10, max 100 per requirements. */
+function sanitizePageSize(args: any, defaultSize = 10, maxSize = 100) {
   const size = args?.pageSize ?? args?.limit ?? defaultSize;
   return Math.min(Math.max(1, Number(size) || defaultSize), maxSize);
 }
@@ -411,7 +410,7 @@ const publicTools = [
   },
   {
     name: 'list_markets',
-    description: '[Discovery] SDK listMarkets (tagId, titleSearch, clobTokenIds, rewardsMinSize, closed, pageSize, etc.). Pagination: include limit/pageSize (e.g. 10) and offset/cursor. Agent: use for-await on the paginator or firstPage() + resume from nextCursor to handle large result sets efficiently. Full filters supported (closed, active, tag_id, liquidity_num_min, volume_num_min, etc.).',
+    description: '[Discovery] SDK listMarkets (tagId, titleSearch, clobTokenIds, rewardsMinSize, closed, pageSize, etc.). Pagination: include limit/pageSize (e.g. 10) and offset/cursor. Agent: use for-await on the paginator or firstPage() + resume from nextCursor to handle large result sets efficiently. Full filters supported (closed, active, tag_id, liquidity_num_min, volume_num_min, etc.). Default limit is 10 items (max 100). Use offset for pagination. For category-level discovery, use list_events with a tag slug instead – it provides more reliable tag filtering.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -423,20 +422,24 @@ const publicTools = [
         rewardsMinSize: { type: 'number' },
         volumeNumMin: { type: 'number' },
         liquidityNumMin: { type: 'number' },
-        pageSize: { type: 'number' }
+        pageSize: { type: 'number' },
+        limit: { type: 'number', description: 'Max items returned (default 10, max 100)' },
+        offset: { type: 'number', description: 'Pagination offset (default 0)' }
       }
     }
   },
   {
     name: 'list_events',
-    description: '[Discovery] SDK listEvents (tagSlug, titleSearch, closed, pageSize).',
+    description: '[Discovery] SDK listEvents (tagSlug, titleSearch, closed, pageSize). This is the recommended path for discovering all markets under a category or tournament. Default limit is 10 items (max 100). Use offset for pagination.',
     inputSchema: {
       type: 'object',
       properties: {
         pageSize: { type: 'number' },
         closed: { type: 'boolean' },
         tagSlug: { type: 'string' },
-        titleSearch: { type: 'string' }
+        titleSearch: { type: 'string' },
+        limit: { type: 'number', description: 'Max items returned (default 10, max 100)' },
+        offset: { type: 'number', description: 'Pagination offset (default 0)' }
       }
     }
   },
@@ -453,8 +456,8 @@ const publicTools = [
   },
   {
     name: 'list_tags',
-    description: '[Discovery / Gamma] List all Gamma tags.',
-    inputSchema: { type: 'object', properties: {} }
+    description: '[Discovery / Gamma] List all Gamma tags. Default limit is 10 items (max 100). Use offset for pagination.',
+    inputSchema: { type: 'object', properties: { limit: { type: 'number' }, offset: { type: 'number' } } }
   },
   {
     name: 'fetch_tag',
@@ -518,22 +521,24 @@ const publicTools = [
   },
   {
     name: 'fetch_market_tags',
-    description: '[Discovery] Direct SDK fetchMarketTags.',
+    description: '[Discovery] Direct SDK fetchMarketTags. Default limit is 10 items (max 100). Use offset for pagination.',
     inputSchema: {
       type: 'object',
-      properties: { id: { type: 'string' } },
+      properties: { id: { type: 'string' }, limit: { type: 'number' }, offset: { type: 'number' } },
       required: ['id']
     }
   },
   {
     name: 'list_comments',
-    description: '[Discovery] Direct SDK listComments.',
+    description: '[Discovery] Direct SDK listComments. Default limit is 10 items (max 100). Use offset for pagination.',
     inputSchema: {
       type: 'object',
       properties: {
         market: { type: 'string' },
         event: { type: 'string' },
-        pageSize: { type: 'number' }
+        pageSize: { type: 'number' },
+        limit: { type: 'number' },
+        offset: { type: 'number' }
       }
     }
   },
@@ -544,24 +549,24 @@ const publicTools = [
   },
   {
     name: 'list_current_rewards',
-    description: '[Rewards] Direct raw SDK listCurrentRewards() - all active reward programs.',
+    description: '[Rewards] Direct raw SDK listCurrentRewards() - all active reward programs. Default limit is 10 items (max 100). Use offset for pagination.',
     inputSchema: {
       type: 'object',
-      properties: { pageSize: { type: 'number' } }
+      properties: { pageSize: { type: 'number' }, limit: { type: 'number' }, offset: { type: 'number' } }
     }
   },
   {
     name: 'list_market_rewards',
-    description: '[Rewards] Direct raw SDK listMarketRewards(conditionId) - present and future rewards for a market.',
+    description: '[Rewards] Direct raw SDK listMarketRewards(conditionId) - present and future rewards for a market. Default limit is 10 items (max 100). Use offset for pagination.',
     inputSchema: {
       type: 'object',
-      properties: { conditionId: { type: 'string' } },
+      properties: { conditionId: { type: 'string' }, limit: { type: 'number' }, offset: { type: 'number' } },
       required: ['conditionId']
     }
   },
   {
     name: 'list_reward_markets',
-    description: '[Rewards] SDK-native bulk enumeration via listCurrentRewards (getMultipleMarketsWithRewards equivalent) with filters and pagination.',
+    description: '[Rewards] SDK-native bulk enumeration via listCurrentRewards (getMultipleMarketsWithRewards equivalent) with filters and pagination. Default limit is 10 items (max 100). Use offset for pagination.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -602,31 +607,33 @@ const publicTools = [
   },
   {
     name: 'list_simplified_markets',
-    description: '[Discovery] Lightweight markets via listMarkets (accepting_orders, active, rewards, tokens projection).',
+    description: '[Discovery] Lightweight markets via listMarkets (accepting_orders, active, rewards, tokens projection). Default limit is 10 items (max 100). Use offset for pagination.',
     inputSchema: {
       type: 'object',
       properties: {
         closed: { type: 'boolean' },
         pageSize: { type: 'number' },
         tagId: { type: 'number' },
-        q: { type: 'string' }
+        q: { type: 'string' },
+        limit: { type: 'number' },
+        offset: { type: 'number' }
       }
     }
   },
   {
     name: 'list_sampling_markets',
-    description: '[Rewards] Markets eligible for sampling/liquidity rewards (via listCurrentRewards / listMarkets projection).',
+    description: '[Rewards] Markets eligible for sampling/liquidity rewards (via listCurrentRewards / listMarkets projection). Default limit is 10 items (max 100). Use offset for pagination.',
     inputSchema: {
       type: 'object',
-      properties: { pageSize: { type: 'number' }, closed: { type: 'boolean' } }
+      properties: { pageSize: { type: 'number' }, closed: { type: 'boolean' }, limit: { type: 'number' }, offset: { type: 'number' } }
     }
   },
   {
     name: 'list_sampling_simplified_markets',
-    description: '[Rewards] Lightweight sampling markets.',
+    description: '[Rewards] Lightweight sampling markets. Default limit is 10 items (max 100). Use offset for pagination.',
     inputSchema: {
       type: 'object',
-      properties: { pageSize: { type: 'number' } }
+      properties: { pageSize: { type: 'number' }, limit: { type: 'number' }, offset: { type: 'number' } }
     }
   },
   {
@@ -725,10 +732,10 @@ const publicTools = [
   },
   {
     name: 'list_open_orders',
-    description: '[Trading] Direct SDK listOpenOrders.',
+    description: '[Trading] Direct SDK listOpenOrders. Default limit is 10 items (max 100). Use offset for pagination.',
     inputSchema: {
       type: 'object',
-      properties: { market: { type: 'string' } }
+      properties: { market: { type: 'string' }, limit: { type: 'number' }, offset: { type: 'number' } }
     }
   },
   {
@@ -742,10 +749,10 @@ const publicTools = [
   },
   {
     name: 'get_order_history',
-    description: '[Trading] Order history via SDK.',
+    description: '[Trading] Order history via SDK. Default limit is 10 items (max 100). Use offset for pagination.',
     inputSchema: {
       type: 'object',
-      properties: { pageSize: { type: 'number' } }
+      properties: { pageSize: { type: 'number' }, limit: { type: 'number' }, offset: { type: 'number' } }
     }
   },
   {
@@ -759,12 +766,14 @@ const publicTools = [
   },
   {
     name: 'list_positions',
-    description: '[Account] Direct SDK listPositions (with PnL).',
+    description: '[Account] Direct SDK listPositions (with PnL). Default limit is 10 items (max 100). Use offset for pagination.',
     inputSchema: {
       type: 'object',
       properties: {
         market: { type: 'array', items: { type: 'string' } },
-        pageSize: { type: 'number' }
+        pageSize: { type: 'number' },
+        limit: { type: 'number' },
+        offset: { type: 'number' }
       }
     }
   },
@@ -787,20 +796,22 @@ const publicTools = [
   },
   {
     name: 'list_activity',
-    description: '[Account] Direct SDK listActivity (trades, rewards, on-chain).',
+    description: '[Account] Direct SDK listActivity (trades, rewards, on-chain). Default limit is 10 items (max 100). Use offset for pagination.',
     inputSchema: {
       type: 'object',
-      properties: { pageSize: { type: 'number' } }
+      properties: { pageSize: { type: 'number' }, limit: { type: 'number' }, offset: { type: 'number' } }
     }
   },
   {
     name: 'list_trades',
-    description: '[Account] Direct SDK listTrades (maker filter supported).',
+    description: '[Account] Direct SDK listTrades (maker filter supported). Default limit is 10 items (max 100). Use offset for pagination.',
     inputSchema: {
       type: 'object',
       properties: {
         maker: { type: 'string' },
-        pageSize: { type: 'number' }
+        pageSize: { type: 'number' },
+        limit: { type: 'number' },
+        offset: { type: 'number' }
       }
     }
   },
@@ -1663,8 +1674,8 @@ const secureTools = [
   },
   {
     name: 'fetch_market_tags',
-    description: '[Discovery] Direct SDK fetchMarketTags(id).',
-    inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] }
+    description: '[Discovery] Direct SDK fetchMarketTags(id). Default limit is 10 items (max 100). Use offset for pagination.',
+    inputSchema: { type: 'object', properties: { id: { type: 'string' }, limit: { type: 'number' }, offset: { type: 'number' } }, required: ['id'] }
   },
   {
     name: 'list_sports',
@@ -1779,8 +1790,8 @@ const secureTools = [
   // Series, teams, additional discovery
   {
     name: 'list_series',
-    description: '[Discovery] SDK listSeries — series/competition metadata.',
-    inputSchema: { type: 'object', properties: { pageSize: { type: 'number' } } }
+    description: '[Discovery] SDK listSeries — series/competition metadata. Default limit is 10 items (max 100). Use offset for pagination.',
+    inputSchema: { type: 'object', properties: { pageSize: { type: 'number' }, limit: { type: 'number' }, offset: { type: 'number' } } }
   },
   {
     name: 'fetch_series',
@@ -1789,19 +1800,19 @@ const secureTools = [
   },
   {
     name: 'list_teams',
-    description: '[Discovery] SDK listTeams — teams metadata (sports etc).',
-    inputSchema: { type: 'object', properties: {} }
+    description: '[Discovery] SDK listTeams — teams metadata (sports etc). Default limit is 10 items (max 100). Use offset for pagination.',
+    inputSchema: { type: 'object', properties: { limit: { type: 'number' }, offset: { type: 'number' } } }
   },
   // Additional account / closed / leaderboards
   {
     name: 'list_closed_positions',
-    description: '[Account] SDK listClosedPositions — settled positions history.',
-    inputSchema: { type: 'object', properties: { address: { type: 'string' } } }
+    description: '[Account] SDK listClosedPositions — settled positions history. Default limit is 10 items (max 100). Use offset for pagination.',
+    inputSchema: { type: 'object', properties: { address: { type: 'string' }, limit: { type: 'number' }, offset: { type: 'number' } } }
   },
   {
     name: 'list_account_trades',
-    description: '[Account] SDK listAccountTrades — authenticated user trade history.',
-    inputSchema: { type: 'object', properties: {} }
+    description: '[Account] SDK listAccountTrades — authenticated user trade history. Default limit is 10 items (max 100). Use offset for pagination.',
+    inputSchema: { type: 'object', properties: { limit: { type: 'number' }, offset: { type: 'number' } } }
   },
   {
     name: 'get_trader_leaderboard',
@@ -1816,8 +1827,8 @@ const secureTools = [
   // More discovery / onchain analytics
   {
     name: 'list_market_holders',
-    description: '[Discovery] SDK listMarketHolders.',
-    inputSchema: { type: 'object', properties: { market: { type: 'string' } } }
+    description: '[Discovery] SDK listMarketHolders. Default limit is 10 items (max 100). Use offset for pagination.',
+    inputSchema: { type: 'object', properties: { market: { type: 'string' }, limit: { type: 'number' }, offset: { type: 'number' } } }
   },
   {
     name: 'fetch_event_live_volume',
@@ -1826,8 +1837,8 @@ const secureTools = [
   },
   {
     name: 'list_open_interest',
-    description: '[Analytics] SDK listOpenInterest.',
-    inputSchema: { type: 'object', properties: {} }
+    description: '[Analytics] SDK listOpenInterest. Default limit is 10 items (max 100). Use offset for pagination.',
+    inputSchema: { type: 'object', properties: { limit: { type: 'number' }, offset: { type: 'number' } } }
   },
   {
     name: 'fetch_builder_volume',
@@ -2092,7 +2103,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'list_series': return callWithFormat(() => pub.listSeries((args||{})), (x:any)=>x, name);
     case 'fetch_series': return callWithFormat(() => pub.fetchSeries(args as any), (x:any)=>x, name);
     case 'list_teams': return callWithFormat(() => pub.listTeams?.((args||{})) ?? [], (x:any)=>x, name);
-    case 'list_closed_positions': return callWithFormat(() => pub.listClosedPositions?.(args as any) ?? sec?.listClosedPositions?.(args), F.formatGeneric || ((x:any)=>x), name);
+    case 'list_closed_positions': { const lim = sanitizePageSize(args); const off = Number((args as any)?.offset ?? 0) || 0; const callArgs = { ...(args || {}), pageSize: lim, limit: lim, offset: off }; return callWithFormat(() => pub.listClosedPositions?.(callArgs as any) ?? (sec?.listClosedPositions?.(callArgs) ?? Promise.resolve([])), F.formatGeneric || ((x:any)=>x), name); }
     case 'list_account_trades': return callWithFormat(() => pub.listAccountTrades?.(args as any) ?? [], (x:any)=>x, name);
     case 'get_trader_leaderboard': return callWithFormat(() => pub.listTraderLeaderboard?.(args as any) ?? [], (x:any)=>x, name);
     case 'get_builder_leaderboard': return callWithFormat(() => pub.listBuilderLeaderboard?.(args as any) ?? [], (x:any)=>x, name);
@@ -2263,23 +2274,83 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // load_agent_profile case removed (meta/progressive, not pure SDK)
 
-    case 'discover_topic':
-      return callWithFormat(
-        () => discoverTopic(args as { topic: string; pageSize?: number; closed?: boolean; includeEvents?: boolean; includeMarkets?: boolean }),
-        F.formatDiscoverTopic,
-        name
-      );
+    case 'discover_topic': {
+      // Pure SDK wrapper (no hardcoded aliases, no external discovery helpers with state).
+      // Primary: listEvents({ tagSlug, active:true, closed:false, pageSize:50 })
+      // Fallback: resolve via fetchTag -> listMarkets({ tag_id })
+      // Returns events (with markets) or specific no-content message.
+      const topic = String((args as any)?.topic || '').trim();
+      if (!topic) {
+        return { isError: true, content: [{ type: 'text' as const, text: 'topic (string) is required' }] };
+      }
+      let events: any[] = [];
+      let markets: any[] = [];
+      let resolvedId: number | null = null;
+      try {
+        const evArg = { tagSlug: topic, active: true, closed: false, pageSize: 50 };
+        const pag = await pub.listEvents(evArg as any);
+        const page = await (typeof pag.firstPage === 'function' ? pag.firstPage() : (typeof pag.next === 'function' ? pag.next() : pag));
+        events = (page?.items ?? page?.data ?? (Array.isArray(page) ? page : [])) as any[];
+      } catch {}
+      if (events.length === 0) {
+        try {
+          const tag = await pub.fetchTag({ slug: topic });
+          resolvedId = (tag as any)?.id ?? (tag as any)?.tag_id ?? (tag as any)?.tagId ?? null;
+          if (resolvedId != null) {
+            const mArg = { tagId: resolvedId, tag_id: resolvedId, pageSize: 50 };
+            const pagM = await pub.listMarkets(mArg as any);
+            const pageM = await (typeof pagM.firstPage === 'function' ? pagM.firstPage() : (typeof pagM.next === 'function' ? pagM.next() : pagM));
+            markets = (pageM?.items ?? pageM?.data ?? (Array.isArray(pageM) ? pageM : [])) as any[];
+          }
+        } catch {}
+      }
+      if (events.length === 0 && markets.length === 0) {
+        return {
+          content: [{ type: 'text' as const, text: `No content found for tag '${topic}'. Try list_events with a known slug.` }]
+        };
+      }
+      const shape = { topic, tagSlug: topic, tagId: resolvedId || undefined, events, markets, sdkParamsUsed: { primary: 'listEvents tagSlug', fallback: resolvedId ? 'listMarkets tag_id' : null } };
+      const formatted = F.formatDiscoverTopic(shape as any);
+      const text = F.toHumanReadable(formatted, 'Discover Topic');
+      return { content: [{ type: 'text' as const, text }] };
+    }
 
     // Public tools (no auth) — every response formatted
     case 'list_markets': {
-      const sdkArgs = await buildListMarketsParams((args || {}) as Record<string, unknown>);
-      const note = discoveryAgentNote('list_markets', (args || {}) as Record<string, unknown>, sdkArgs);
-      const base = await callPaginatedWithFormat(pub.listMarkets(sdkArgs), F.formatMarket, name);
+      // Pure SDK: resolve tagSlug via fetchTag (if provided) to numeric tag_id; never pass tagSlug (SDK ignores it).
+      // Enforce pagination: default limit=10, max=100, offset support. Return items + meta.
+      let sdkArgs: Record<string, unknown> = { ...(args || {}) };
+      if (sdkArgs.tagSlug != null && sdkArgs.tagId == null) {
+        try {
+          const tag = await pub.fetchTag({ slug: String(sdkArgs.tagSlug) });
+          const tid = (tag as any)?.id ?? (tag as any)?.tag_id ?? (tag as any)?.tagId;
+          if (tid != null) {
+            sdkArgs.tagId = Number(tid);
+            sdkArgs.tag_id = Number(tid);
+          }
+        } catch {
+          /* proceed; tag filter may be ignored if unresolvable */
+        }
+      }
+      if (sdkArgs.tagId != null) {
+        sdkArgs.tag_id = Number(sdkArgs.tagId);
+      }
+      delete sdkArgs.tagSlug;
+      const lim = Math.min(Math.max(1, Number((sdkArgs as any).limit ?? (sdkArgs as any).pageSize ?? 10)), 100);
+      const off = Number((sdkArgs as any).offset ?? 0) || 0;
+      (sdkArgs as any).pageSize = lim;
+      (sdkArgs as any).limit = lim;
+      (sdkArgs as any).offset = off;
+      const base = await callPaginatedWithFormat(pub.listMarkets(sdkArgs), F.formatMarket, name, lim, off);
+      // Keep lightweight note injection for agent guidance (no state)
+      const note = (sdkArgs as any).tag_id != null
+        ? `Using tag_id=${(sdkArgs as any).tag_id}. For category-level discovery, use list_events with a tag slug instead – it provides more reliable tag filtering.`
+        : undefined;
       if (note && base.content?.[0]?.text && !base.isError) {
         try {
           const parsed = JSON.parse(base.content[0].text);
           base.content[0].text = JSON.stringify(
-            { markets: parsed, agentDirective: note, sdkParamsUsed: sdkArgs },
+            { ...parsed, agentDirective: note, sdkParamsUsed: sdkArgs },
             (_k, v) => (typeof v === 'bigint' ? v.toString() : v),
             2
           );
@@ -2292,37 +2363,87 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'fetch_market':
       return callWithFormat(() => getMarket(args as any), F.formatMarket, name);
     case 'list_events': {
-      const sdkArgs = buildListEventsParams((args || {}) as Record<string, unknown>);
-      const note = discoveryAgentNote('list_events', (args || {}) as Record<string, unknown>, sdkArgs);
-      const base = await callPaginatedWithFormat(pub.listEvents(sdkArgs), F.formatEvent, name);
-      if (note && base.content?.[0]?.text && !base.isError) {
-        try {
-          const parsed = JSON.parse(base.content[0].text);
-          base.content[0].text = JSON.stringify(
-            { events: parsed, agentDirective: note, sdkParamsUsed: sdkArgs },
-            (_k, v) => (typeof v === 'bigint' ? v.toString() : v),
-            2
-          );
-        } catch {
-          /* keep original payload */
-        }
-      }
+      // Pure: enforce pagination defaults + pass through (listEvents supports tagSlug reliably for categories).
+      // This is the recommended path for discovering all markets under a category or tournament.
+      let sdkArgs: Record<string, unknown> = { ...(args || {}) };
+      const lim = Math.min(Math.max(1, Number((sdkArgs as any).limit ?? (sdkArgs as any).pageSize ?? 10)), 100);
+      const off = Number((sdkArgs as any).offset ?? 0) || 0;
+      (sdkArgs as any).pageSize = lim;
+      (sdkArgs as any).limit = lim;
+      (sdkArgs as any).offset = off;
+      const base = await callPaginatedWithFormat(pub.listEvents(sdkArgs), F.formatEvent, name, lim, off);
       return base;
     }
     case 'fetch_event':
       return callWithFormat(() => pub.fetchEvent(args), F.formatEvent, name);
-    case 'search':
-      // Use official SDK search directly (SearchResults shape: { markets, events, tags, profiles }).
-      // Do NOT wrap in callPaginatedWithFormat — it is not a simple item paginator.
-      return callWithFormat(() => pub.search(args), F.formatSearchResults, name);
-    case 'list_tags':
+    case 'search': {
+      // Pure SDK: prefer client.gamma.search.publicSearch with broad flags for events/markets/tags/closed.
+      // Fallback to listMarkets titleSearch (closed:true) if empty.
+      // If still empty: specific guidance message. No custom state/caching.
+      const q = String((args as any)?.q || '').trim();
+      if (!q) {
+        return { isError: true, content: [{ type: 'text' as const, text: 'q (query string) is required' }] };
+      }
+      let res: any = null;
+      let used = 'pub.search';
+      try {
+        const gamma = (pub as any)?.gamma ?? (pub as any);
+        const ps = gamma?.search?.publicSearch;
+        if (typeof ps === 'function') {
+          res = await ps({
+            q,
+            search_events: true,
+            search_markets: true,
+            keep_closed_markets: true,
+            search_tags: true,
+            limit_per_type: (args as any)?.pageSize ?? (args as any)?.limit ?? 20,
+            page: (args as any)?.page ?? 0,
+          });
+          used = 'gamma.search.publicSearch';
+        }
+      } catch {}
+      if (!res) {
+        try { res = await pub.search(args); } catch {}
+      }
+      const has = res && ((res.events && res.events.length) || (res.markets && res.markets.length) || (res.tags && res.tags.length) || (res.profiles && res.profiles.length));
+      if (!has) {
+        try {
+          const fbPag = await pub.listMarkets({ titleSearch: q, closed: true, pageSize: 20 } as any);
+          const fbPage = await (typeof fbPag.firstPage === 'function' ? fbPag.firstPage() : (typeof fbPag.next === 'function' ? fbPag.next() : fbPag));
+          const fbItems = (fbPage?.items ?? fbPage?.data ?? (Array.isArray(fbPage) ? fbPage : [])) as any[];
+          if (fbItems.length > 0) {
+            res = { markets: fbItems, events: [], tags: [], profiles: [] };
+            used = 'listMarkets titleSearch fallback';
+          }
+        } catch {}
+      }
+      const stillEmpty = !res || (!res.events?.length && !res.markets?.length && !res.tags?.length && !res.profiles?.length);
+      if (stillEmpty) {
+        return {
+          content: [{ type: 'text' as const, text: `No results found for '${q}'. Try a different keyword or use list_events with a known tag slug.` }]
+        };
+      }
+      // attach used for debug (light)
+      const withMeta = { ...res, _used: used };
+      return callWithFormat(() => Promise.resolve(withMeta), F.formatSearchResults, name);
+    }
+    case 'list_tags': {
+      const lim = sanitizePageSize(args);
+      const off = Number((args as any)?.offset ?? 0) || 0;
+      const callArgs = { ...(args || {}), pageSize: lim, limit: lim, offset: off };
       return callPaginatedWithFormat(
-        pub.listTags((args || { pageSize: 100 }) as Record<string, unknown>),
+        pub.listTags(callArgs as Record<string, unknown>),
         F.formatTag,
-        name
+        name,
+        lim,
+        off
       );
-    case 'list_sports':
-      return callWithFormat(() => pub.listSports(), F.formatGeneric, name);
+    }
+    case 'list_sports': {
+      const lim = sanitizePageSize(args);
+      const off = Number((args as any)?.offset ?? 0) || 0;
+      return callWithFormat(() => pub.listSports({ pageSize: lim, limit: lim, offset: off } as any), F.formatGeneric, name);
+    }
     case 'list_teams':
       return callWithFormat(() => pub.listTeams(), F.formatGeneric, name);
     case 'fetch_tag':
@@ -2423,8 +2544,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'fetch_last_trade_prices':
       // SDK expects array of { tokenId }
       return callWithFormat(() => pub.fetchLastTradePrices(args.tokenIds.map((id: string) => ({ tokenId: id }))), F.formatGeneric, name);
-    case 'list_trades':
-      return callPaginatedWithFormat(pub.listTrades(args), F.formatTrade, name);
+    case 'list_trades': {
+      const lim = sanitizePageSize(args);
+      const off = Number((args as any)?.offset ?? 0) || 0;
+      const callArgs = { ...(args || {}), pageSize: lim, limit: lim, offset: off };
+      return callPaginatedWithFormat(pub.listTrades(callArgs), F.formatTrade, name, lim, off);
+    }
     case 'estimate_market_price':
       return callWithFormat(() => pub.estimateMarketPrice(args), F.formatGeneric, name);
 
@@ -2695,11 +2820,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'list_reward_markets': {
       try {
         const pub = getPublicClient();
+        const lim = sanitizePageSize(args);
+        const off = Number((args as any)?.offset ?? 0) || 0;
         // Direct SDK-native: listCurrentRewards (the bulk getMultipleMarketsWithRewards / reward enumeration equivalent).
         // Supports post-filter for q (text), tag (if in data), numeric rewardsMinSize etc, pagination via slice (SDK paginator).
         const protectedCall = await callWithRateLimitProtection(
           async () => {
-            const paginator = await pub.listCurrentRewards({});
+            const paginator = await pub.listCurrentRewards({ pageSize: lim, limit: lim, offset: off });
             return paginator.firstPage();
           },
           'listCurrentRewards for list_reward_markets'
@@ -2719,8 +2846,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (args.rewardsMinSize != null) {
           items = items.filter((r: any) => parseFloat(String(r.rewardsMinSize ?? r.rewards_min_size ?? 0)) >= parseFloat(args.rewardsMinSize));
         }
-        const pageSize = Math.min(Math.max(1, args.pageSize || 100), 100);
-        const page = items.slice(0, pageSize);
+        const page = items.slice(0, lim);
         const formatted = page.map((r: any) => ({
           conditionId: r.conditionId,
           rewards_min_size: r.rewardsMinSize ?? r.rewards_min_size,
@@ -2728,18 +2854,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           rate_per_day: r.totalDailyRate ?? r.total_daily_rate ?? r.sponsoredDailyRate,
           total_rewards: r.totalRewards ?? r.total_rewards,
           market: r.market || r.conditionId,
-          raw: { ...r } // but clean in practice; task wants no raw, so omit or minimal
         }));
         return {
           content: [{
             type: 'text' as const,
             text: JSON.stringify({
-              success: true,
-              count: formatted.length,
-              pageSize,
+              items: formatted,
+              total: (protectedCall.data as any)?.total,
+              limit: lim,
+              offset: off,
+              nextCursor: (protectedCall.data as any)?.nextCursor,
               source: 'Direct SDK listCurrentRewards (getMultipleMarketsWithRewards equivalent via @polymarket/client)',
-              markets: formatted,
-              agentDirective: 'Raw SDK bulk for all rewarding markets. Use with get_farmability for book, then place_*. Pagination via pageSize. Full coverage of discovery methods.',
+              agentDirective: 'Raw SDK bulk for all rewarding markets. Use with get_farmability for book, then place_*. Default limit 10 (max 100). For category use list_events(tagSlug).',
             }, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 2),
           }],
         };
@@ -2783,9 +2909,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'list_simplified_markets': {
       try {
         const pub = getPublicClient();
-        const pageSize = Math.min(args.pageSize || 100, 100);
+        const lim = sanitizePageSize(args);
+        const off = Number((args as any)?.offset ?? 0) || 0;
         const protectedCall = await callWithRateLimitProtection(
-          () => pub.listMarkets({ closed: !!args.closed, pageSize, ...(args.tagId ? { tagId: args.tagId } : {}), ...(args.q ? { titleSearch: args.q } : {}) }),
+          () => pub.listMarkets({ closed: !!args.closed, pageSize: lim, limit: lim, offset: off, ...(args.tagId ? { tagId: args.tagId } : {}), ...(args.q ? { titleSearch: args.q } : {}) }),
           'listMarkets for simplified'
         );
         if (!protectedCall.ok) throw new Error(protectedCall.message);
@@ -2799,7 +2926,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           rewards: m.rewards || { minSize: m.rewardsMinSize },
           tokens: m.tokens || m.clobTokenIds || m.outcomes,
         }));
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ success: true, count: items.length, markets: items, source: 'SDK listMarkets (simplified projection)' }, null, 2) }] };
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ items, total: (page as any)?.total, limit: lim, offset: off, nextCursor: (page as any)?.nextCursor, source: 'SDK listMarkets (simplified projection)' }, null, 2) }] };
       } catch (e: any) {
         return { content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: e?.message || String(e) }, null, 2) }] };
       }
@@ -2808,12 +2935,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'list_sampling_markets': {
       try {
         const pub = getPublicClient();
-        const pageSize = Math.min(args.pageSize || 100, 100);
+        const lim = sanitizePageSize(args);
+        const off = Number((args as any)?.offset ?? 0) || 0;
         // Use listCurrentRewards as proxy for sampling/liquidity reward eligible (or listMarkets with reward filter); direct getSamplingMarkets if attached.
-        const protectedCall = await callWithRateLimitProtection(() => pub.listCurrentRewards({ pageSize }), 'sampling via current rewards');
+        const protectedCall = await callWithRateLimitProtection(() => pub.listCurrentRewards({ pageSize: lim, limit: lim, offset: off }), 'sampling via current rewards');
         if (!protectedCall.ok) throw new Error(protectedCall.message);
-        const items = (protectedCall.data?.items || []).map((r: any) => ({ conditionId: r.conditionId, rewards: r }));
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ success: true, count: items.length, markets: items, source: 'SDK listCurrentRewards (sampling/liquidity eligible)' }, null, 2) }] };
+        const page = await (protectedCall.data?.firstPage ? protectedCall.data.firstPage() : protectedCall.data);
+        const items = (page?.items || []).map((r: any) => ({ conditionId: r.conditionId, rewards: r }));
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ items, total: (page as any)?.total, limit: lim, offset: off, nextCursor: (page as any)?.nextCursor, source: 'SDK listCurrentRewards (sampling/liquidity eligible)' }, null, 2) }] };
       } catch (e: any) {
         return { content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: e?.message || String(e) }, null, 2) }] };
       }
@@ -2822,17 +2951,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'list_sampling_simplified_markets': {
       try {
         const pub = getPublicClient();
-        const pageSize = Math.min(args.pageSize || 100, 100);
-        const protectedCall = await callWithRateLimitProtection(() => pub.listCurrentRewards({ pageSize }), 'sampling simplified');
+        const lim = sanitizePageSize(args);
+        const off = Number((args as any)?.offset ?? 0) || 0;
+        const protectedCall = await callWithRateLimitProtection(() => pub.listCurrentRewards({ pageSize: lim, limit: lim, offset: off }), 'sampling simplified');
         if (!protectedCall.ok) throw new Error(protectedCall.message);
-        const items = (protectedCall.data?.items || []).map((r: any) => ({
+        const page = await (protectedCall.data?.firstPage ? protectedCall.data.firstPage() : protectedCall.data);
+        const items = (page?.items || []).map((r: any) => ({
           conditionId: r.conditionId,
           accepting_orders: true,
           active: true,
           rewards: { minSize: r.rewardsMinSize, maxSpread: r.rewardsMaxSpread },
           tokens: r.tokens || [],
         }));
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ success: true, count: items.length, markets: items, source: 'SDK simplified sampling projection' }, null, 2) }] };
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ items, total: (page as any)?.total, limit: lim, offset: off, nextCursor: (page as any)?.nextCursor, source: 'SDK simplified sampling projection' }, null, 2) }] };
       } catch (e: any) {
         return { content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: e?.message || String(e) }, null, 2) }] };
       }
@@ -3063,20 +3194,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'subscribe_wallet_activity': { const a=String(args.address||'').trim(); if(!a.toLowerCase().startsWith('0x')) return {isError:true,content:[{type:'text',text:'address required'}]}; const u=`polymarket://wallet/${a}/activity`; await resourceManager.subscribe(u).catch(()=>{}); return {content:[{type:'text',text:JSON.stringify({success:true,resource:u, note:'On-chain viem listener active for public wallet activity. Use read_resource on the uri. No guessing — standard MCP resource flow.', agentDirective:'Use read_resource on the returned uri for current activity; rely on resources/updated for realtime. The agent controls when and how to track this wallet (pair with list_trades maker + strategy updates).'})}]}; }
     case 'is_gasless_ready': { try{const s=await getSecureClient();const r=await s.isGaslessReady().catch(()=>false);return{content:[{type:'text',text:JSON.stringify({success:true,isGaslessReady:r})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
     case 'setup_gasless_wallet': { try{const s=await getSecureClient();await s.setupGaslessWallet().catch(()=>{});return{content:[{type:'text',text:JSON.stringify({success:true})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
-    case 'list_current_rewards': { try{const p=getPublicClient();const c=await callWithRateLimitProtection(()=>p.listCurrentRewards({pageSize:sanitizePageSize(args)}),'listCurrentRewards');if(!c.ok)throw new Error(c.message);const pg=await (c.data.firstPage?c.data.firstPage():c.data);return{content:[{type:'text',text:JSON.stringify({success:true,rewards:pg?.items||[],source:'Direct SDK listCurrentRewards'})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
+    case 'list_current_rewards': { try{const p=getPublicClient();const lim=sanitizePageSize(args);const off=Number((args as any)?.offset??0)||0;const c=await callWithRateLimitProtection(()=>p.listCurrentRewards({pageSize:lim,offset:off,limit:lim}),'listCurrentRewards');if(!c.ok)throw new Error(c.message);const pg=await (c.data.firstPage?c.data.firstPage():c.data);const items=pg?.items||[];return{content:[{type:'text',text:JSON.stringify({items,total:(pg as any)?.total,limit:lim,offset:off,nextCursor:(pg as any)?.nextCursor,source:'Direct SDK listCurrentRewards'},null,2)}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:(e as any).message})}]};} }
     case 'list_market_rewards': { try{const p=getPublicClient();const cid=args.conditionId;if(!cid)throw new Error('conditionId required');const c=await callWithRateLimitProtection(()=>p.listMarketRewards({conditionId:cid}),'listMarketRewards');if(!c.ok)throw new Error(c.message);return{content:[{type:'text',text:JSON.stringify({success:true,rewards:c.data||{},source:'Direct SDK listMarketRewards'})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
     case 'order_scoring': { return {content:[{type:'text',text:JSON.stringify({success:true,note:'Scoring context via SDK rewards/farmability.'})}]}; }
     case 'batch_order_scoring': { return {content:[{type:'text',text:JSON.stringify({success:true,note:'Batch via SDK.'})}]}; }
     case 'get_portfolio_value': { try{const s=await getSecureClient();const v=await s.fetchPortfolioValue();return{content:[{type:'text',text:JSON.stringify(F.formatPortfolioValue(v))}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
-    case 'list_activity': { try{const s=await getSecureClient();const pag=await s.listActivity({pageSize:sanitizePageSize(args)});const pg=await (typeof pag.firstPage==='function'?pag.firstPage():pag);const it=(pg?.items||[]).map((a:any)=>F.formatActivity(a));return{content:[{type:'text',text:JSON.stringify({success:true,activity:it,source:'Direct SDK listActivity'})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
-    case 'list_trades': { try{const s=await getSecureClient();const pag=await (typeof (s as any).listTrades==='function'?(s as any).listTrades({maker:args.maker,pageSize:sanitizePageSize(args)}):s.listActivity({pageSize:sanitizePageSize(args)}));const pg=await (typeof pag.firstPage==='function'?pag.firstPage():pag);const it=(pg?.items||[]).map((t:any)=>F.formatActivity?F.formatActivity(t):t);return{content:[{type:'text',text:JSON.stringify({success:true,trades:it,source:'Direct SDK listTrades'})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
+    case 'list_activity': { try{const s=await getSecureClient();const lim=sanitizePageSize(args);const off=Number((args as any)?.offset??0)||0;const pag=await s.listActivity({pageSize:lim,limit:lim,offset:off});const pg=await (typeof pag.firstPage==='function'?pag.firstPage():pag);const it=(pg?.items||[]).map((a:any)=>F.formatActivity(a));const total=(pg as any)?.total;const nc=(pg as any)?.nextCursor;return{content:[{type:'text',text:JSON.stringify({items:it,total,limit:lim,offset:off,nextCursor:nc,source:'Direct SDK listActivity'},null,2)}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:(e as any).message})}]};} }
+    case 'list_trades': { try{const s=await getSecureClient();const lim=sanitizePageSize(args);const off=Number((args as any)?.offset??0)||0;const maker=(args as any)?.maker;const pag=await (typeof (s as any).listTrades==='function'?(s as any).listTrades({maker,pageSize:lim,limit:lim,offset:off}):s.listActivity({pageSize:lim,limit:lim,offset:off}));const pg=await (typeof pag.firstPage==='function'?pag.firstPage():pag);const it=(pg?.items||[]).map((t:any)=>F.formatActivity?F.formatActivity(t):t);const total=(pg as any)?.total;const nc=(pg as any)?.nextCursor;return{content:[{type:'text',text:JSON.stringify({items:it,total,limit:lim,offset:off,nextCursor:nc,source:'Direct SDK listTrades'},null,2)}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:(e as any).message})}]};} }
     case 'create_limit_order': { const {tokenId}=await resolveTokenIdFromToolArgs(args);return{content:[{type:'text',text:JSON.stringify({success:true,note:'createLimitOrder sign-only via SDK.',tokenId,price:args.price,size:args.size,side:args.side})}]}; }
     case 'create_market_order': { const {tokenId}=await resolveTokenIdFromToolArgs(args);return{content:[{type:'text',text:JSON.stringify({success:true,note:'createMarketOrder sign-only.',tokenId,amount:args.amount,side:args.side})}]}; }
     case 'cancel_market_orders': { try{const s=await getSecureClient();await (s.cancelMarketOrders||s.cancelAllOrders).call(s,{market:args.market});return{content:[{type:'text',text:JSON.stringify({success:true})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
     case 'cancel_all_orders': { try{const s=await getSecureClient();await (s.cancelAllOrders||(async()=>{const os=await s.listOpenOrders({});for(const o of (os.items||[]))await s.cancelOrder({orderId:o.id});})).call(s);return{content:[{type:'text',text:JSON.stringify({success:true})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
     case 'fetch_order': { try{const s=await getSecureClient();const o=await s.fetchOrder({orderId:args.orderId});return{content:[{type:'text',text:JSON.stringify(F.formatOrder(o))}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
     case 'get_order_history': { try{const s=await getSecureClient();const pag=await s.listActivity({pageSize:sanitizePageSize(args)});const pg=await (typeof pag.firstPage==='function'?pag.firstPage():pag);const h=(pg?.items||[]).filter((a:any)=>a.type==='ORDER'||a.type==='TRADE').map((o:any)=>F.formatOrder?F.formatOrder(o):o);return{content:[{type:'text',text:JSON.stringify({success:true,history:h})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
-    case 'list_comments': { try{const p=getPublicClient();const pag=await (p.listComments?p.listComments({market:args.market,event:args.event,pageSize:sanitizePageSize(args)}):p.listActivity({pageSize:sanitizePageSize(args)}));const pg=await (typeof pag.firstPage==='function'?pag.firstPage():pag);const it=(pg?.items||[]).map((c:any)=>F.formatActivity?F.formatActivity(c):c);return{content:[{type:'text',text:JSON.stringify({success:true,comments:it})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
+    case 'list_comments': { try{const p=getPublicClient();const lim=sanitizePageSize(args);const off=Number((args as any)?.offset??0)||0;const pag=await (p.listComments?p.listComments({market:(args as any).market,event:(args as any).event,pageSize:lim,limit:lim,offset:off}):p.listActivity({pageSize:lim,limit:lim,offset:off}));const pg=await (typeof pag.firstPage==='function'?pag.firstPage():pag);const it=(pg?.items||[]).map((c:any)=>F.formatActivity?F.formatActivity(c):c);const total=(pg as any)?.total;const nc=(pg as any)?.nextCursor;return{content:[{type:'text',text:JSON.stringify({items:it,total,limit:lim,offset:off,nextCursor:nc},null,2)}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:(e as any).message})}]};} }
     case 'fetch_market_tags': { try{const p=getPublicClient();const t=await p.fetchMarketTags({id:args.id});return{content:[{type:'text',text:JSON.stringify({success:true,tags:t})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
     case 'list_sports': { try{const p=getPublicClient();const s=await ((p as any).listSports?(p as any).listSports({}):p.listEvents({category:'sports'}));return{content:[{type:'text',text:JSON.stringify({success:true,sports:s.items||s})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
     case 'get_midpoint': { try{const p=getPublicClient();const {tokenId}=await resolveTokenIdFromToolArgs(args);const m=await p.fetchMidpoint({tokenId});return{content:[{type:'text',text:JSON.stringify({success:true,midpoint:m})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
@@ -3475,8 +3606,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return callWithFormat(async () => (await getSec()).cancelAll(), F.formatCancelResponse, name);
     case 'cancel_market_orders':
       return callWithFormat(async () => (await getSec()).cancelMarketOrders(args), F.formatCancelResponse, name);
-    case 'list_open_orders':
-      return callPaginatedWithFormat((await getSec()).listOpenOrders(args), F.formatOrder, name);
+    case 'list_open_orders': {
+      const lim = sanitizePageSize(args);
+      const off = Number((args as any)?.offset ?? 0) || 0;
+      const callArgs = { ...(args || {}), pageSize: lim, limit: lim, offset: off };
+      return callPaginatedWithFormat((await getSec()).listOpenOrders(callArgs), F.formatOrder, name, lim, off);
+    }
     case 'fetch_order':
       return callWithFormat(async () => (await getSec()).fetchOrder(args), F.formatOrder, name);
     case 'watch_order_until_filled': {
@@ -3506,16 +3641,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
     case 'list_positions': {
       // SDK listPositions returns a Paginator — use firstPage(), not raw .map on the paginator object
+      // Enforce default limit 10 / max 100 + offset + return items/total/limit/offset/nextCursor shape.
       try {
-        const paginator = await (await getSec()).listPositions(args);
+        const lim = sanitizePageSize(args);
+        const off = Number((args as any)?.offset ?? 0) || 0;
+        const callArgs = { ...(args || {}), pageSize: lim, limit: lim, offset: off };
+        const paginator = await (await getSec()).listPositions(callArgs);
         const page = await (typeof paginator.firstPage === 'function'
           ? paginator.firstPage()
           : (typeof paginator.next === 'function' ? paginator.next() : null));
         let items = page?.items ?? page?.data ?? (Array.isArray(page) ? page : []);
-        const MAX_ITEMS = 25;
-        if (Array.isArray(items) && items.length > MAX_ITEMS) {
-          items = items.slice(0, MAX_ITEMS);
-        }
         if (!Array.isArray(items)) {
           return {
             isError: true,
@@ -3524,22 +3659,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
         const formatted = items.map((p: any) => F.formatPosition(p));
         const summary = F.formatPnlSummary(items);
+        const total = (page as any)?.total ?? (page as any)?.totalCount ?? undefined;
+        const nextC = (page as any)?.nextCursor ?? (page as any)?.cursor ?? undefined;
         return {
           content: [{
             type: 'text' as const,
-            text: JSON.stringify({ Positions: formatted, PnLSummary: summary }, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 2)
+            text: JSON.stringify({ items: formatted, PnLSummary: summary, total, limit: lim, offset: off, nextCursor: nextC }, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 2)
           }]
         };
       } catch (e: any) {
         return { isError: true, content: [{ type: 'text' as const, text: `list_positions error: ${e?.message || e}` }] };
       }
     }
-    case 'list_closed_positions':
-      return callPaginatedWithFormat((await getSec()).listClosedPositions?.(args) ?? Promise.resolve({ items: [] }), F.formatClosedPosition, name);
+    case 'list_closed_positions': {
+      const lim = sanitizePageSize(args);
+      const off = Number((args as any)?.offset ?? 0) || 0;
+      const callArgs = { ...(args || {}), pageSize: lim, limit: lim, offset: off };
+      return callPaginatedWithFormat((await getSec()).listClosedPositions?.(callArgs) ?? Promise.resolve({ items: [] }), F.formatClosedPosition, name, lim, off);
+    }
     case 'fetch_portfolio_value':
       return callWithFormat(async () => (await getSec()).fetchPortfolioValue(), F.formatPortfolioValue, name);
-    case 'list_activity':
-      return callPaginatedWithFormat((await getSec()).listActivity(args), F.formatActivity, name);
+    case 'list_activity': {
+      const lim = sanitizePageSize(args);
+      const off = Number((args as any)?.offset ?? 0) || 0;
+      const callArgs = { ...(args || {}), pageSize: lim, limit: lim, offset: off };
+      return callPaginatedWithFormat((await getSec()).listActivity(callArgs), F.formatActivity, name, lim, off);
+    }
     case 'list_account_trades':
       return callPaginatedWithFormat((await getSec()).listAccountTrades(args), F.formatTrade, name);
     case 'setup_trading_approvals': {
@@ -3597,10 +3742,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return callWithFormat(() => pub.fetchPublicProfile(args), F.formatPublicProfile, name);
 
     // === Reward Tracking (viewing only) ===
-    case 'list_current_rewards':
-      return callPaginatedWithFormat(pub.listCurrentRewards(args), F.formatCurrentReward, name);
-    case 'list_market_rewards':
-      return callPaginatedWithFormat(pub.listMarketRewards(args), F.formatMarketReward, name);
+    case 'list_current_rewards': {
+      const lim = sanitizePageSize(args);
+      const off = Number((args as any)?.offset ?? 0) || 0;
+      const callArgs = { ...(args || {}), pageSize: lim, limit: lim, offset: off };
+      return callPaginatedWithFormat(pub.listCurrentRewards(callArgs), F.formatCurrentReward, name, lim, off);
+    }
+    case 'list_market_rewards': {
+      const lim = sanitizePageSize(args);
+      const off = Number((args as any)?.offset ?? 0) || 0;
+      const callArgs = { ...(args || {}), pageSize: lim, limit: lim, offset: off };
+      return callPaginatedWithFormat(pub.listMarketRewards(callArgs), F.formatMarketReward, name, lim, off);
+    }
     case 'fetch_reward_percentages':
       return callWithFormat(async () => (await getSec()).fetchRewardPercentages(), F.formatRewardsPercentages, name);
     case 'list_user_earnings_and_markets_config':
@@ -3643,15 +3796,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return callWithFormat(() => pub.fetchRelatedTags(args), F.formatRelatedTag, name);
 
     // Comments
-    case 'list_comments':
-      return callPaginatedWithFormat(pub.listComments(args), F.formatComment, name);
+    case 'list_comments': {
+      const lim = sanitizePageSize(args);
+      const off = Number((args as any)?.offset ?? 0) || 0;
+      const callArgs = { ...(args || {}), pageSize: lim, limit: lim, offset: off };
+      return callPaginatedWithFormat(pub.listComments(callArgs), F.formatComment, name, lim, off);
+    }
     case 'fetch_comment':
       return callWithFormat(() => pub.fetchCommentsById(args), (arr: any[]) => (arr || []).map(F.formatComment), name);
     case 'list_comments_by_user_address':
       return callPaginatedWithFormat(pub.listCommentsByUserAddress(args), F.formatComment, name);
 
-    case 'list_series':
-      return callPaginatedWithFormat(pub.listSeries(args), F.formatSeries, name);
+    case 'list_series': {
+      const lim = sanitizePageSize(args);
+      const off = Number((args as any)?.offset ?? 0) || 0;
+      const callArgs = { ...(args || {}), pageSize: lim, limit: lim, offset: off };
+      return callPaginatedWithFormat(pub.listSeries(callArgs), F.formatSeries, name, lim, off);
+    }
     case 'fetch_series':
       return callWithFormat(() => pub.fetchSeries(args), F.formatSeries, name);
 
@@ -3664,8 +3825,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return callWithFormat(() => pub.fetchEventLiveVolume(args), F.formatSimpleListItem, name);
 
     // === Newly Added SDK Coverage (all formatted) ===
-    case 'list_teams':
-      return callPaginatedWithFormat(pub.listTeams(args), F.formatTeam, name);
+    case 'list_teams': {
+      const lim = sanitizePageSize(args);
+      const off = Number((args as any)?.offset ?? 0) || 0;
+      const callArgs = { ...(args || {}), pageSize: lim, limit: lim, offset: off };
+      return callPaginatedWithFormat(pub.listTeams(callArgs), F.formatTeam, name, lim, off);
+    }
     case 'fetch_market_info':
       return callWithFormat(() => pub.fetchMarketInfo(args), F.formatMarketInfo, name);
     case 'fetch_midpoints':
@@ -3678,8 +3843,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return callWithFormat(() => pub.fetchTradedMarketCount(args), F.formatTradedMarketCount, name);
     case 'fetch_related_tag_resources':
       return callWithFormat(() => pub.fetchRelatedTagResources(args), F.formatRelatedTagResources, name);
-    case 'list_market_positions':
-      return callPaginatedWithFormat(pub.listMarketPositions(args), F.formatMarketPosition, name);
+    case 'list_market_positions': {
+      const lim = sanitizePageSize(args);
+      const off = Number((args as any)?.offset ?? 0) || 0;
+      const callArgs = { ...(args || {}), pageSize: lim, limit: lim, offset: off };
+      return callPaginatedWithFormat(pub.listMarketPositions(callArgs), F.formatMarketPosition, name, lim, off);
+    }
 
     // === Sports (public) ===
     case 'list_sports':
@@ -3696,8 +3865,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     // === Metadata (public) ===
     case 'fetch_event_tags':
       return callWithFormat(() => pub.fetchEventTags(args), F.formatSimpleListItem, name);
-    case 'fetch_market_tags':
-      return callWithFormat(() => pub.fetchMarketTags(args), F.formatSimpleListItem, name);
+    case 'fetch_market_tags': {
+      const base = await callWithFormat(() => pub.fetchMarketTags(args), F.formatSimpleListItem, name);
+      if (base && base.content && base.content[0] && base.content[0].text && !base.isError) {
+        base.content[0].text += '\n\n**Note:** These are the live tags. Use these slugs with list_events for accurate discovery.';
+      }
+      return base;
+    }
     case 'fetch_neg_risk':
       return callWithFormat(() => pub.fetchNegRisk(args), F.formatNegRisk, name);
     case 'fetch_tick_size':
