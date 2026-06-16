@@ -879,6 +879,17 @@ const publicTools = [
     }
   },
   {
+    name: 'subscribe_wallet_activity',
+    description: '[Onchain] Subscribe real-time on-chain activity for ANY public wallet (no auth/credentials needed; fills SDK gap for non-auth maker/wallet tracking). Uses viem to watch USDC Transfer + ConditionalTokens (splits/merges/redeems/transfers) events on Polygon filtered by address. Surfaces as polymarket://wallet/{address}/activity resource (push via resources/updated). Use after extract_wallet_from_url + list_trades({maker}) for CLOB context. Complements (auth-only) subscribe_user.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        address: { type: 'string', description: '0x wallet address (any public address; checksum or lower). No creds required.' }
+      },
+      required: ['address']
+    }
+  },
+  {
     name: 'fetch_sdk_readme',
     description: '[Meta] Live upstream TS SDK README (for reference; kept for full coverage).',
     inputSchema: { type: 'object', properties: {} }
@@ -3007,6 +3018,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'subscribe_prices_crypto': {
       return { content: [{ type: 'text', text: JSON.stringify({ success: true, topic: 'prices.crypto.binance', symbols: args.symbols || [], note: 'Real-time prices via RtdsWebSocketManager or external. SDK supports rtds topic.' }) }] };
     }
+    case 'subscribe_wallet_activity': {
+      const address = String(args.address || '').trim();
+      if (!address || !address.toLowerCase().startsWith('0x')) {
+        return { isError: true, content: [{ type: 'text', text: 'address (0x...) required for on-chain wallet activity subscription' }] };
+      }
+      const uri = `polymarket://wallet/${address}/activity`;
+      await resourceManager.subscribe(uri).catch(() => {});
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: true,
+            resource: uri,
+            address,
+            note: 'On-chain viem listener active (USDC transfers + CTF PositionSplit/Merge/Redemption/Transfers). Push via MCP resource notifications. Public any-wallet (no auth). Read the resource for snapshot; subscribe for live. Pair with list_trades({maker}) + market book resources for full picture. See mcp_llms_full_guide + get_agent_recipes for patterns.',
+            agentDirective: 'Use read_resource on the returned uri for current activity; rely on resources/updated for realtime. No guessing — exact uri + standard MCP resource flow.'
+          }, null, 2)
+        }]
+      };
+    }
     case 'is_gasless_ready': {
       try {
         const sec = await getSecureClient();
@@ -3163,6 +3194,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'subscribe_sports': { return {content:[{type:'text',text:JSON.stringify({success:true,topic:'sports'})}]}; }
     case 'subscribe_user': { await resourceManager.ensureUserSubscription('polymarket://user/orders').catch(()=>{}); return {content:[{type:'text',text:JSON.stringify({success:true,resources:['polymarket://user/*']})}]}; }
     case 'subscribe_prices_crypto': { return {content:[{type:'text',text:JSON.stringify({success:true,topic:'prices.crypto'})}]}; }
+    case 'subscribe_wallet_activity': { const a=String(args.address||'').trim(); if(!a.toLowerCase().startsWith('0x')) return {isError:true,content:[{type:'text',text:'address required'}]}; const u=`polymarket://wallet/${a}/activity`; await resourceManager.subscribe(u).catch(()=>{}); return {content:[{type:'text',text:JSON.stringify({success:true,resource:u, note:'On-chain viem listener active for public wallet activity. Use read_resource on the uri. No guessing — standard MCP resource flow.', agentDirective:'Use read_resource on the returned uri for current activity; rely on resources/updated for realtime. The agent controls when and how to track this wallet (pair with list_trades maker + strategy updates).'})}]}; }
     case 'is_gasless_ready': { try{const s=await getSecureClient();const r=await s.isGaslessReady().catch(()=>false);return{content:[{type:'text',text:JSON.stringify({success:true,isGaslessReady:r})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
     case 'setup_gasless_wallet': { try{const s=await getSecureClient();await s.setupGaslessWallet().catch(()=>{});return{content:[{type:'text',text:JSON.stringify({success:true})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }
     case 'list_current_rewards': { try{const p=getPublicClient();const c=await callWithRateLimitProtection(()=>p.listCurrentRewards({pageSize:sanitizePageSize(args)}),'listCurrentRewards');if(!c.ok)throw new Error(c.message);const pg=await (c.data.firstPage?c.data.firstPage():c.data);return{content:[{type:'text',text:JSON.stringify({success:true,rewards:pg?.items||[],source:'Direct SDK listCurrentRewards'})}]};}catch(e){return{content:[{type:'text',text:JSON.stringify({success:false,error:e.message})}]};} }

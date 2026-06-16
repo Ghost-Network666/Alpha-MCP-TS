@@ -11,6 +11,12 @@ import { logWs } from '../utils/logger.js';
 import { buildMcpLlmsGuide } from './llms-guide.js';
 import { fetchLiveSdkReadme } from './sdk-readme.js';
 
+import { createPublicClient, http, parseAbiItem } from 'viem';
+import { polygon } from 'viem/chains';
+
+const USDC_POLYGON = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174' as const;
+const CTF_POLYGON = '0x4D97DCd97eC945f40cF65F87097ACe5EA0476045' as const;
+
 export const RESOURCE_CAPABILITIES = {
   subscribe: true,
   listChanged: true,
@@ -70,6 +76,12 @@ export const RESOURCE_TEMPLATES = [
     uriTemplate: 'wallet://{address}/events',
     name: 'Wallet Events (Live)',
     description: 'Real-time wallet events for address (trades, order fills, split/merge/redeem). Supports subscribe for push via notifications/resources/updated. Authenticated user WS if own wallet (from credentials); public order-book derived or snapshot for third-party (use after extract_wallet_from_url + list_trades to discover markets). Zero-token monitoring.',
+    mimeType: 'application/json',
+  },
+  {
+    uriTemplate: 'polymarket://wallet/{address}/activity',
+    name: 'Wallet On-Chain Activity (Live, Public Any Address)',
+    description: 'Real-time on-chain activity (USDC transfers + ConditionalTokens splits/merges/redeems/token transfers) for ANY wallet address via viem watchers on Polygon. No auth/credentials required. Use subscribe_wallet_activity({address}) to activate push. Complements list_trades({maker}) historical + auth-only subscribe_user. SDK has no public ClobUser variant or maker-realtime listActivity extension.',
     mimeType: 'application/json',
   },
 ];
@@ -133,6 +145,9 @@ export class ResourceManager {
   // Per-order fill watches (powered by the single user WS)
   private watchedOrders: Set<string> = new Set<string>();
 
+  // On-chain viem watchers for *any* public wallet (no auth) - USDC transfers + ConditionalTokens activity (splits/merges/redeems/transfers). Enables polymarket://wallet/{addr}/activity + subscribe_wallet_activity. Refcounted. (Minimal extension for public tracking gap in SDK; no custom buffers.)
+  private walletOnchain = new Map<string, { unwatch: (() => void)[]; refCount: number; address: string }>();
+
   constructor(
     server: Server,
     getPub: () => PublicClient,
@@ -143,8 +158,19 @@ export class ResourceManager {
     this.getSec = getSec;
   }
 
-  /** Parse a polymarket:// URI and return structured info */
+  /** Parse a polymarket:// URI (or legacy wallet://) and return structured info */
   private parseUri(uri: string): { type: string; tokenId?: string; subPath?: string } | null {
+    // Support legacy wallet://<address>/events (and /activity) for public any-wallet on-chain tracking
+    if (uri.startsWith('wallet://')) {
+      const rest = uri.slice('wallet://'.length);
+      const parts = rest.split('/').filter(Boolean);
+      if (parts.length >= 1) {
+        const address = parts[0];
+        const subPath = parts[1] || 'events';
+        return { type: 'wallet', tokenId: address, subPath };
+      }
+      return null;
+    }
     if (!uri.startsWith('polymarket://')) return null;
     const rest = uri.slice('polymarket://'.length);
     const parts = rest.split('/').filter(Boolean);
@@ -246,6 +272,117 @@ export class ResourceManager {
       this.userSub = null;
       logWs('Closed user resource subscription');
     }
+  }
+
+  /** On-chain (viem) public wallet activity watcher for USDC + CTF (ConditionalTokens) events. Refcounted per lowercased address. Powers polymarket://wallet/{address}/activity (and legacy wallet://) for any address (SDK User WS is auth-only). */
+  private async ensureOnchainWalletSubscription(address: string, uri: string): Promise<void> {
+    const key = address.toLowerCase();
+    let entry = this.walletOnchain.get(key);
+    if (!entry) {
+      try {
+        const viemClient = createPublicClient({ chain: polygon, transport: http() });
+        const unwatchers: (() => void)[] = [];
+        const notify = (ev: any) => this.handleWalletOnchainEvent(address, ev);
+
+        // USDC ERC20 Transfer (from/to wallet) - deposits, withdraws, settlements
+        const usdcTransfer = parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)');
+        unwatchers.push(viemClient.watchEvent({
+          address: USDC_POLYGON,
+          event: usdcTransfer,
+          onLogs: (logs) => {
+            for (const log of logs) {
+              const f = (log.args as any)?.from?.toLowerCase?.();
+              const t = (log.args as any)?.to?.toLowerCase?.();
+              if (f === key || t === key) {
+                notify({ type: 'usdc_transfer', payload: { ...(log.args as any), txHash: log.transactionHash, blockNumber: log.blockNumber ? String(log.blockNumber) : '', address: key }, source: 'viem-onchain' });
+              }
+            }
+          },
+        }));
+
+        // CTF ERC1155-style + custom events (splits ~ "buy/enter position", merges, redeems, transfers of outcome tokens)
+        const ctfSingle = parseAbiItem('event TransferSingle(address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value)');
+        unwatchers.push(viemClient.watchEvent({
+          address: CTF_POLYGON,
+          event: ctfSingle,
+          onLogs: (logs) => {
+            for (const log of logs) {
+              const a = log.args as any;
+              const addrs = [a?.from, a?.to, a?.operator].filter(Boolean).map((x: string) => String(x).toLowerCase());
+              if (addrs.includes(key)) {
+                notify({ type: 'ctf_transfer_single', payload: { ...a, txHash: log.transactionHash, blockNumber: log.blockNumber ? String(log.blockNumber) : '', address: key, tokenId: String(a?.id || '') }, source: 'viem-onchain' });
+              }
+            }
+          },
+        }));
+
+        const ctfSplit = parseAbiItem('event PositionSplit(address indexed stakeholder, bytes32 indexed parentCollectionId, bytes32 indexed conditionId, uint256[] partition, uint256[] amount)');
+        unwatchers.push(viemClient.watchEvent({
+          address: CTF_POLYGON,
+          event: ctfSplit,
+          onLogs: (logs) => {
+            for (const log of logs) {
+              const sh = (log.args as any)?.stakeholder?.toLowerCase?.();
+              if (sh === key) notify({ type: 'position_split', payload: { ...(log.args as any), txHash: log.transactionHash, blockNumber: log.blockNumber ? String(log.blockNumber) : '', address: key }, source: 'viem-onchain' });
+            }
+          },
+        }));
+
+        const ctfMerge = parseAbiItem('event PositionMerge(address indexed stakeholder, bytes32 indexed parentCollectionId, bytes32 indexed conditionId, uint256[] partition, uint256[] amount)');
+        unwatchers.push(viemClient.watchEvent({
+          address: CTF_POLYGON,
+          event: ctfMerge,
+          onLogs: (logs) => {
+            for (const log of logs) {
+              const sh = (log.args as any)?.stakeholder?.toLowerCase?.();
+              if (sh === key) notify({ type: 'position_merge', payload: { ...(log.args as any), txHash: log.transactionHash, blockNumber: log.blockNumber ? String(log.blockNumber) : '', address: key }, source: 'viem-onchain' });
+            }
+          },
+        }));
+
+        const ctfRedeem = parseAbiItem('event PayoutRedemption(address indexed redeemer, bytes32 indexed parentCollectionId, bytes32 indexed conditionId, uint256[] indexSets, uint256 payout)');
+        unwatchers.push(viemClient.watchEvent({
+          address: CTF_POLYGON,
+          event: ctfRedeem,
+          onLogs: (logs) => {
+            for (const log of logs) {
+              const r = (log.args as any)?.redeemer?.toLowerCase?.();
+              if (r === key) notify({ type: 'payout_redemption', payload: { ...(log.args as any), txHash: log.transactionHash, blockNumber: log.blockNumber ? String(log.blockNumber) : '', address: key }, source: 'viem-onchain' });
+            }
+          },
+        }));
+
+        entry = { unwatch: unwatchers, refCount: 0, address: key };
+        this.walletOnchain.set(key, entry);
+        logWs('Started on-chain wallet activity watcher (viem USDC+CTF)', { address: key.slice(0, 10) + '...' });
+      } catch (e: any) {
+        logWs('On-chain wallet watcher start failed (snapshots + user WS still available)', { address: key, error: (e as Error)?.message || String(e) });
+        return;
+      }
+    }
+    entry.refCount++;
+  }
+
+  private async releaseOnchainWalletSubscription(address: string): Promise<void> {
+    const key = address.toLowerCase();
+    const entry = this.walletOnchain.get(key);
+    if (!entry) return;
+    entry.refCount--;
+    if (entry.refCount <= 0) {
+      for (const u of entry.unwatch) { try { u(); } catch {} }
+      this.walletOnchain.delete(key);
+      logWs('Closed on-chain wallet activity watcher', { address: key.slice(0, 10) });
+    }
+  }
+
+  private handleWalletOnchainEvent(address: string, event: any) {
+    const addrLower = address.toLowerCase();
+    for (const u of this.subscribedUris) {
+      if ((u.startsWith('wallet://') || u.includes('wallet/')) && u.toLowerCase().includes(addrLower)) {
+        this.server.sendResourceUpdated({ uri: u }).catch(() => {});
+      }
+    }
+    logWs('Onchain wallet activity event', { address: addrLower.slice(0, 8), type: event?.type });
   }
 
   /** Called by market WS onEvent */
@@ -587,7 +724,7 @@ export class ResourceManager {
             text: JSON.stringify({
               Address: address,
               Events: formatted.length ? formatted : 'None',
-              Note: 'Live push on subscribe (auth wallet uses user WS; third-party: discover markets via list_trades({maker}) then market:// book resources for derived events). Pushes trades, fills, splits, merges, redeems where possible. Official @polymarket/client SDK WS only.',
+              Note: 'On-chain activity resource for public wallet (viem watchers for USDC/CTF). Subscribe to receive standard MCP resource/updated notifications. Snapshot from SDK list_trades({maker}) or filtered activity. SDK limitation: no public auth-free ClobUser realtime; this surfaces the gap.',
             }, null, 2),
           }],
         };
@@ -623,12 +760,14 @@ export class ResourceManager {
         await this.ensureUserSubscription(uri).catch(() => {});
         logWs('Order fill watch registered', { orderId: parsed.tokenId });
       } else if (parsed.type === 'wallet' && parsed.tokenId) {
-        // Authenticated if this matches the connected wallet (user WS will deliver events for it); for third-party use public market book derivation after discovering markets.
+        // Authenticated if this matches the connected wallet (user WS will deliver events for it); for third-party/public use on-chain viem watchers (new) + public market book derivation.
         const currentWallet = process.env.DEPOSIT_WALLET_ADDRESS || process.env.WALLET_ADDRESS;
         if (currentWallet && parsed.tokenId.toLowerCase() === currentWallet.toLowerCase()) {
           await this.ensureUserSubscription(uri).catch(() => {});
         }
-        logWs('Wallet resource subscribed (push for auth wallet; snapshot/public derivation for others)', { address: parsed.tokenId });
+        // Start on-chain listener for USDC/CTF events for this address (enables subscribe_wallet_activity + polymarket://wallet/{addr}/activity for any public wallet, no auth).
+        await this.ensureOnchainWalletSubscription(parsed.tokenId, uri).catch(() => {});
+        logWs('Wallet resource subscribed (onchain viem for public activity + user WS if auth match)', { address: parsed.tokenId });
       }
       // markets list, leaderboards etc. are snapshot-only; subscription is accepted but produces infrequent/no updates
       logWs('Resource subscribed', { uri });
@@ -654,6 +793,8 @@ export class ResourceManager {
     } else if (parsed.type === 'order') {
       // No dedicated WS per order — powered by the shared user subscription
       this.watchedOrders?.delete(parsed.tokenId!);
+    } else if (parsed.type === 'wallet' && parsed.tokenId) {
+      await this.releaseOnchainWalletSubscription(parsed.tokenId).catch(() => {});
     }
     logWs('Resource unsubscribed', { uri });
   }
@@ -669,6 +810,16 @@ export class ResourceManager {
       await this.userSub.sub.close().catch(() => {});
       this.userSub = null;
     }
+
+    // Clean on-chain wallet activity watchers (viem) so public any-wallet tracking resources don't leak on shutdown/reload. The agent controls subscription lifecycle via subscribe/unsubscribe.
+    for (const entry of this.walletOnchain.values()) {
+      for (const u of entry.unwatch) { try { u(); } catch {} }
+    }
+    for (const entry of this.walletOnchain.values()) {
+      for (const u of entry.unwatch) { try { u(); } catch {} }
+    }
+    this.walletOnchain.clear();
+
     this.subscribedUris.clear();
   }
 }

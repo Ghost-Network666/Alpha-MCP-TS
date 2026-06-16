@@ -363,12 +363,7 @@ export function getAgentRecipes(): Record<string, unknown> {
       }
     },
     publicWalletWatch: {
-      note: 'To monitor any wallet\'s public activity (trades on markets it participates in) without auth (official UserWsClient limitation - only own wallet): 1. Use extract_wallet_from_url on a profile/market URL to get 0x address. 2. Use list_trades({maker: address}) or find markets via public data. 3. Subscribe to polymarket://market/{tokenId}/book (public MarketWsClient) for real-time book/trade updates on those markets. Stays 100% within official SDK (no raw, no auth bypass). Agent can "watch" via public market WS resources.',
-      example: {
-        extract: { tool: 'extract_wallet_from_url', arguments: { url: 'https://polymarket.com/profile/0x123...abc' } },
-        findMarkets: { tool: 'list_trades', arguments: { maker: '0x123...abc', limit: 20 } },
-        watch: 'resources/subscribe { uri: "polymarket://market/<tokenId from trades>/book" } for each relevant market. Get trade events publicly.'
-      }
+      note: 'To monitor any wallet\'s public activity (trades on markets it participates in) without auth (official UserWsClient limitation - only own wallet; listActivity maker and ClobUser realtime are auth-only per SDK): use extract_wallet_from_url on profile URL + list_trades({maker}) + (when loaded) subscribe_wallet_activity + the polymarket://wallet/{address}/activity resource for on-chain. 100% native where possible.',
     },
     realtimeResources: {
       note: 'Zero-token real-time awareness via MCP Resources (server-push, no polling). Subscribe to polymarket://user/orders (fills/cancels), polymarket://user/fills (filtered executions), polymarket://user/positions, polymarket://user/portfolio, polymarket://market/{tokenId}/book. Notifications/resources/updated on changes; re-read only when notified. route_agent_intent({ intent: "enable_realtime_streams" }) for plan. Enables agent learning from live events with minimal tokens.',

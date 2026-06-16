@@ -23,6 +23,7 @@ export const MCP_CATEGORIES = [
   'Discovery',
   'Trading',
   'Analytics',
+  'Onchain',    // Public wallet on-chain activity (subscribe_wallet_activity + polymarket://wallet/*/activity via viem; augments Account for 3p tracking)
   'Weather',    // Free UK weather (multi-provider fallback APIs for forecasts/historical/current, native tools for agents + heartbeat)
   'Advanced'    // Low-level, security-sensitive, prepare workflows.
 ];
