@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-06-28T03:05:15.470Z",
+  "description": "Polymarket backtesting dataset — MCP tool output, structured for LLM agents",
+  "source": "Alpha-MCP-TS / @polymarket/client SDK",
+  "files": {
+    "navigation": {
+      "README.md": "Navigation guide + quick reference table"
+    },
+    "stats": {
+      "summary_stats.json": "Top markets by volume/liquidity, tag rankings, dataset counts",
+      "tags.json": "All Polymarket tags with id, label, slug",
+      "tags/all.md": "Human-readable tag directory"
+    },
+    "markets": {
+      "markets/active-p1.md": "Active markets offset 0–99 (list_markets)",
+      "markets/active-p2.md": "Active markets offset 100–199",
+      "markets/active-p3.md": "Active markets offset 200–299",
+      "markets/closed-p1.md": "Closed markets offset 0–99"
+    },
+    "events": {
+      "events/active-p1.md": "Active events offset 0–99 (list_events)",
+      "events/active-p2.md": "Active events offset 100–199",
+      "events/closed-p1.md": "Closed/resolved events offset 0–99",
+      "events/closed-p2.md": "Closed/resolved events offset 100–199"
+    },
+    "topics": {
+      "topics/crypto.md": "Crypto prediction markets (discover_topic)",
+      "topics/bitcoin.md": "Bitcoin markets",
+      "topics/ethereum.md": "Ethereum markets",
+      "topics/ai.md": "AI / machine learning markets",
+      "topics/politics.md": "Global politics markets",
+      "topics/elections.md": "Election markets (all)",
+      "topics/trump.md": "Trump-specific markets",
+      "topics/sports.md": "Sports markets (broad)",
+      "topics/soccer.md": "Soccer / football markets",
+      "topics/nba.md": "NBA basketball markets",
+      "topics/nfl.md": "NFL football markets",
+      "topics/ufc.md": "UFC / MMA markets",
+      "topics/weather.md": "Weather / climate markets"
+    },
+    "searches": {
+      "searches/bitcoin.md": "titleSearch: bitcoin",
+      "searches/trump.md": "titleSearch: trump",
+      "searches/election.md": "titleSearch: election",
+      "searches/openai.md": "titleSearch: openai",
+      "searches/nba.md": "titleSearch: nba",
+      "searches/ukraine.md": "titleSearch: ukraine",
+      "searches/china.md": "titleSearch: china",
+      "searches/inflation.md": "titleSearch: inflation",
+      "searches/recession.md": "titleSearch: recession",
+      "searches/fed-rate.md": "titleSearch: fed rate",
+      "searches/stocks.md": "titleSearch: stock",
+      "searches/world-cup.md": "titleSearch: world cup"
+    },
+    "jsonl_normalized": {
+      "markets_active.jsonl": "100 active markets — 1 JSON per line, normalized schema",
+      "markets_closed.jsonl": "100 closed markets — 1 JSON per line",
+      "events_active.jsonl": "100 active events with nested market summaries",
+      "events_closed.jsonl": "100 closed events with nested market summaries",
+      "markets_by_tag.json": "Markets keyed by tag label with per-tag volume totals",
+      "search_results.json": "Legacy keyword search snapshots"
+    }
+  }
+}

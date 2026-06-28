@@ -67,6 +67,24 @@ ${buildKnownGotchasMarkdown()}
 
 **Never use "intent" for pure trading** — call place tools directly with your sizes/params from strategy or calc. suggest_qualified_size / get_farmability are *advisory only* for reward qualification/sizing policy. For directional or any core trading: compute or load policy then pass concrete values to place_limit_order etc.
 
+## For agent frameworks and autonomous loops (e.g. archived Polymarket/agents or custom frameworks)
+The historical Polymarket/agents repo (Python, archived) built custom Gamma + py-clob-client wrappers, local vector DB (RAG), event/market filtering loops, and execution scaffolding.
+
+**This MCP replaces the data + execution layer** — do not reimplement custom clients:
+
+- **Discovery & markets** (replaces get_all_events/get_all_markets + custom filters): \`list_events\` (use \`tagSlug\` + \`includeMarkets=true\` for categories/tournaments; recommended), \`list_markets\` (active/closed, titleSearch, tagId via \`fetch_tag\` first), \`search\`, \`discover_topic\` (any string topic), \`fetch_market\`, \`list_tags\`/\`fetch_tag\`.
+- **Intelligence / "RAG" style filtering**: Host provides external signals (news, X, web via its own tools) as \`externalSignals\`. Feed to \`compute_market_signals\`, \`generate_alpha_report\` (or narrow intelligence tools), \`get_farmability\`, \`get_liquidity_health\` etc. Persist results under composite keys in the strategy store. MCP has no built-in RAG or news fetch.
+- **Orderbook / prices / live data**: \`get_order_book\`, \`get_midpoint\`, \`get_spread\`, \`get_farmability\`; live via resources (\`polymarket://market/{tokenId}/book\`, user resources) + WebSocket subscribe tools.
+- **Trading execution** (replaces execute_order / market orders): **Explicit only**. \`place_limit_order\`, \`place_market_order\`, \`place_optimized_reward_order\`, \`post_orders\` (batch), with concrete \`price\`/\`size\`/\`side\` from strategy + \`get_farmability\`/\`book\`. Use \`suggest_qualified_size\` for reward sizing.
+- **CTF positions / tokens**: \`split_position\`, \`merge_positions\`, \`redeem_positions\`, \`prepare_*\` variants, \`resolve_condition_by_token\`.
+- **Gasless, approvals, setup, auth**: \`setup_gasless_wallet\`, \`setup_trading_approvals\`, \`create_secure_client\`, builder/API key tools.
+- **Account / positions / rewards**: \`list_positions\`, \`list_closed_positions\`, \`get_balance_allowance\`, \`list_active_maker_reward_markets\`, \`get_farmability\`, \`list_market_rewards\`.
+- **Loop control**: Host owns the loop (heartbeat.md / OpenClaw). Call \`send_heartbeat\`, \`get_strategies\` (locked composite key first on every tick), \`update_strategy\` to persist. Use resources + \`wait_seconds\` for event-driven autonomy instead of tight polling.
+
+**Migration pattern**: Replace custom Polymarket/Gamma classes with direct MCP tool calls after \`tools/list\`. Host/framework keeps its RAG/decision/loop code and drives everything via standard MCP \`tools/call\` + the live prompts (\`mcp_llms_full_guide\` first, which starts with the current official TS SDK README).
+
+This keeps the MCP as a pure, flat 1:1 SDK proxy while any framework (Python, TS, custom) owns higher-level autonomy.
+
 ## Complete Surface (flat model — tools/list returns ALL tools immediately)
 - Every first-class 1:1 wrapper for @polymarket/client SDK functions (core gasless/client, subscribe_*, full discovery list_*/fetch_*/search, order mgmt place/create/cancel/post/list_*/fetch_*, rewards list_current/list_market/list_reward/order_scoring/*, account list_*/get_*, onchain split/merge/redeem + prepares, builder/api key mgmt, leaderboards, series, comments, profiles, RFQ, etc.).
 - Meta convenience (optional, always visible): get_agent_recipes, search_tools, get_tools_by_category, list_tool_categories, mcp_doctor, mcp_health, get_mcp_usage, get_strategies / update_strategy / set_strategy, send_heartbeat, watch_order_until_filled, extract_wallet_from_url, etc.

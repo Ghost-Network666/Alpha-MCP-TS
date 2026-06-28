@@ -1,0 +1,605 @@
+{
+  "count": 100,
+  "tags": [
+    {
+      "id": "100264",
+      "label": "538",
+      "slug": "538",
+      "created": "2024-06-11"
+    },
+    {
+      "id": "103243",
+      "label": "adam 22",
+      "slug": "adam-22",
+      "created": "2026-01-23"
+    },
+    {
+      "id": "101561",
+      "label": "Alireza Firouzja",
+      "slug": "alireza-firouzja",
+      "created": "2024-12-20"
+    },
+    {
+      "id": "101611",
+      "label": "Altcoins",
+      "slug": "altcoins",
+      "created": "2025-01-02"
+    },
+    {
+      "id": "1623",
+      "label": "aly ngouille ndiaye",
+      "slug": "aly-ngouille-ndiaye",
+      "created": "2024-03-11"
+    },
+    {
+      "id": "100548",
+      "label": "amy klobuchar",
+      "slug": "amy-klobuchar",
+      "created": "2024-09-19"
+    },
+    {
+      "id": "100037",
+      "label": "arch",
+      "slug": "arch",
+      "created": null
+    },
+    {
+      "id": "100253",
+      "label": "asylum",
+      "slug": "asylum",
+      "created": "2024-06-04"
+    },
+    {
+      "id": "104243",
+      "label": "Audemars Piguet index",
+      "slug": "audemars-piguet-index",
+      "created": "2026-03-16"
+    },
+    {
+      "id": "101896",
+      "label": "bat",
+      "slug": "bat",
+      "created": "2025-02-21"
+    },
+    {
+      "id": "104307",
+      "label": "Betmoar",
+      "slug": "betmoar",
+      "created": "2026-03-26"
+    },
+    {
+      "id": "1225",
+      "label": "brian kelly",
+      "slug": "brian-kelly",
+      "created": "2024-02-06"
+    },
+    {
+      "id": "104208",
+      "label": "Caesars entertainment",
+      "slug": "caesars-entertainment",
+      "created": "2026-03-13"
+    },
+    {
+      "id": "1512",
+      "label": "caitlin clark",
+      "slug": "caitlin-clark",
+      "created": "2024-02-28"
+    },
+    {
+      "id": "1558",
+      "label": "caucus",
+      "slug": "caucus",
+      "created": "2024-03-02"
+    },
+    {
+      "id": "1234",
+      "label": "Champions League",
+      "slug": "champions-league",
+      "created": "2024-02-06"
+    },
+    {
+      "id": "794",
+      "label": "Christmas",
+      "slug": "christmas",
+      "created": "2023-12-27"
+    },
+    {
+      "id": "103303",
+      "label": "Claude",
+      "slug": "claude",
+      "created": "2026-01-28"
+    },
+    {
+      "id": "102934",
+      "label": "college Football Playoffs",
+      "slug": "college-football-playoffs",
+      "created": "2025-12-04"
+    },
+    {
+      "id": "101172",
+      "label": "concession",
+      "slug": "concession",
+      "created": "2024-11-03"
+    },
+    {
+      "id": "790",
+      "label": "controversies",
+      "slug": "controversies",
+      "created": "2023-12-27"
+    },
+    {
+      "id": "103482",
+      "label": "COP",
+      "slug": "cop",
+      "created": "2026-02-03"
+    },
+    {
+      "id": "101604",
+      "label": "Cybertruck",
+      "slug": "cybertruck",
+      "created": "2025-01-01"
+    },
+    {
+      "id": "102825",
+      "label": "Defi App",
+      "slug": "defi-app",
+      "created": "2025-11-10"
+    },
+    {
+      "id": "1588",
+      "label": "democratic alliance",
+      "slug": "democratic-alliance",
+      "created": "2024-03-06"
+    },
+    {
+      "id": "104581",
+      "label": "Ecf mvp",
+      "slug": "ecf-mvp",
+      "created": "2026-04-13"
+    },
+    {
+      "id": "104397",
+      "label": "egypt premier league",
+      "slug": "egypt-premier-league",
+      "created": "2026-03-31"
+    },
+    {
+      "id": "833",
+      "label": "ETF",
+      "slug": "etf",
+      "created": "2024-01-03"
+    },
+    {
+      "id": "100626",
+      "label": "Europa League",
+      "slug": "europa-league",
+      "created": "2024-09-23"
+    },
+    {
+      "id": "101026",
+      "label": "FDIC",
+      "slug": "fdic",
+      "created": "2024-10-22"
+    },
+    {
+      "id": "933",
+      "label": "federal government",
+      "slug": "federal-government",
+      "created": "2024-01-29"
+    },
+    {
+      "id": "100130",
+      "label": "Florida Panthers",
+      "slug": "florida-panthers",
+      "created": null
+    },
+    {
+      "id": "842",
+      "label": "foreign affairs",
+      "slug": "foreign-affairs",
+      "created": "2024-01-08"
+    },
+    {
+      "id": "370",
+      "label": "GDP",
+      "slug": "gdp",
+      "created": "2023-11-02"
+    },
+    {
+      "id": "1188",
+      "label": "green bay packers",
+      "slug": "green-bay-packers",
+      "created": "2024-02-06"
+    },
+    {
+      "id": "733",
+      "label": "haniyeh",
+      "slug": "haniyeh",
+      "created": "2023-12-13"
+    },
+    {
+      "id": "101422",
+      "label": "healthcare",
+      "slug": "healthcare",
+      "created": "2024-12-04"
+    },
+    {
+      "id": "100802",
+      "label": "Hoddy Toddy",
+      "slug": "hoddy-toddy",
+      "created": "2024-10-11"
+    },
+    {
+      "id": "1542",
+      "label": "hostage crisis",
+      "slug": "hostage-crisis",
+      "created": "2024-03-01"
+    },
+    {
+      "id": "100344",
+      "label": "House Races",
+      "slug": "house-races",
+      "created": "2024-08-16"
+    },
+    {
+      "id": "104156",
+      "label": "Hustler Casino Live",
+      "slug": "hustler-casino-live",
+      "created": "2026-03-10"
+    },
+    {
+      "id": "103357",
+      "label": "Influenza",
+      "slug": "influenza",
+      "created": "2026-01-30"
+    },
+    {
+      "id": "411",
+      "label": "intelligence",
+      "slug": "intelligence",
+      "created": "2023-11-02"
+    },
+    {
+      "id": "1396",
+      "label": "international affairs",
+      "slug": "international-affairs",
+      "created": "2024-02-21"
+    },
+    {
+      "id": "103161",
+      "label": "Investec Champions Cup",
+      "slug": "investec-champions-cup",
+      "created": "2026-01-15"
+    },
+    {
+      "id": "101457",
+      "label": "Jerry After Dark",
+      "slug": "jerry-after-dark",
+      "created": "2024-12-10"
+    },
+    {
+      "id": "103082",
+      "label": "Jungleman",
+      "slug": "jungleman",
+      "created": "2026-01-07"
+    },
+    {
+      "id": "101091",
+      "label": "Kansas",
+      "slug": "kansas",
+      "created": "2024-10-25"
+    },
+    {
+      "id": "100257",
+      "label": "keith gill",
+      "slug": "keith-gill",
+      "created": "2024-06-06"
+    },
+    {
+      "id": "103269",
+      "label": "Korea",
+      "slug": "korea",
+      "created": "2026-01-26"
+    },
+    {
+      "id": "1054",
+      "label": "lana del rey",
+      "slug": "lana-del-rey",
+      "created": "2024-02-06"
+    },
+    {
+      "id": "757",
+      "label": "legal cases",
+      "slug": "legal-cases",
+      "created": "2023-12-19"
+    },
+    {
+      "id": "100743",
+      "label": "Los Angeles",
+      "slug": "los-angeles",
+      "created": "2024-10-04"
+    },
+    {
+      "id": "101247",
+      "label": "Macro Graph",
+      "slug": "macro-graph",
+      "created": "2024-11-12"
+    },
+    {
+      "id": "102000",
+      "label": "Macro Indicators",
+      "slug": "macro-indicators",
+      "created": "2025-03-26"
+    },
+    {
+      "id": "101250",
+      "label": "Macro Single",
+      "slug": "macro-single",
+      "created": "2024-11-13"
+    },
+    {
+      "id": "103813",
+      "label": "Major League Cricket",
+      "slug": "major-league-cricket",
+      "created": "2026-02-18"
+    },
+    {
+      "id": "777",
+      "label": "maritime transport",
+      "slug": "maritime-transport",
+      "created": "2023-12-21"
+    },
+    {
+      "id": "77",
+      "label": "mavericks",
+      "slug": "mavericks",
+      "created": "2023-11-02"
+    },
+    {
+      "id": "945",
+      "label": "michelle obama",
+      "slug": "michelle-obama",
+      "created": "2024-02-01"
+    },
+    {
+      "id": "1308",
+      "label": "military invasion",
+      "slug": "military-invasion",
+      "created": "2024-02-09"
+    },
+    {
+      "id": "101994",
+      "label": "NL Central",
+      "slug": "nl-central",
+      "created": "2025-03-25"
+    },
+    {
+      "id": "100746",
+      "label": "Ohtani",
+      "slug": "ohtani",
+      "created": "2024-10-04"
+    },
+    {
+      "id": "101706",
+      "label": "Ontario",
+      "slug": "ontario",
+      "created": "2025-01-16"
+    },
+    {
+      "id": "537",
+      "label": "OpenAI",
+      "slug": "openai",
+      "created": "2023-11-17"
+    },
+    {
+      "id": "100735",
+      "label": "Philly",
+      "slug": "philly",
+      "created": "2024-10-04"
+    },
+    {
+      "id": "1571",
+      "label": "popularity",
+      "slug": "popularity",
+      "created": "2024-03-05"
+    },
+    {
+      "id": "101867",
+      "label": "product marekt fit",
+      "slug": "product-marekt-fit",
+      "created": "2025-02-18"
+    },
+    {
+      "id": "102076",
+      "label": "QB",
+      "slug": "qb",
+      "created": "2025-04-23"
+    },
+    {
+      "id": "100392",
+      "label": "redbull",
+      "slug": "redbull",
+      "created": "2024-08-28"
+    },
+    {
+      "id": "100881",
+      "label": "Russ",
+      "slug": "russ",
+      "created": "2024-10-15"
+    },
+    {
+      "id": "101901",
+      "label": "Sam Bankman-Fried",
+      "slug": "sam-bankman-fried",
+      "created": "2025-02-25"
+    },
+    {
+      "id": "100162",
+      "label": "San Jose Sharks",
+      "slug": "san-jose-sharks",
+      "created": null
+    },
+    {
+      "id": "330",
+      "label": "season finale",
+      "slug": "season-finale",
+      "created": "2023-11-02"
+    },
+    {
+      "id": "101661",
+      "label": "sentate",
+      "slug": "sentate",
+      "created": "2025-01-08"
+    },
+    {
+      "id": "103312",
+      "label": "shakur",
+      "slug": "shakur",
+      "created": "2026-01-29"
+    },
+    {
+      "id": "104272",
+      "label": "Shenzhen",
+      "slug": "shenzhen",
+      "created": "2026-03-19"
+    },
+    {
+      "id": "100148",
+      "label": "slerf",
+      "slug": "slerf",
+      "created": null
+    },
+    {
+      "id": "101003",
+      "label": "Slovan Bratislava",
+      "slug": "slovan-bratislava",
+      "created": "2024-10-21"
+    },
+    {
+      "id": "103531",
+      "label": "SNEX",
+      "slug": "snex",
+      "created": "2026-02-03"
+    },
+    {
+      "id": "101104",
+      "label": "Stoke City",
+      "slug": "stoke-city",
+      "created": "2024-10-28"
+    },
+    {
+      "id": "100222",
+      "label": "story protocol",
+      "slug": "story-protocol",
+      "created": "2024-05-16"
+    },
+    {
+      "id": "101196",
+      "label": "Talk Tuah",
+      "slug": "talk-tuah",
+      "created": "2024-11-06"
+    },
+    {
+      "id": "104333",
+      "label": "TFF Super Kupa",
+      "slug": "soccer-trsk",
+      "created": "2026-03-26"
+    },
+    {
+      "id": "103388",
+      "label": "Thailand Election",
+      "slug": "thailand-election",
+      "created": "2026-02-02"
+    },
+    {
+      "id": "104248",
+      "label": "Tiger Woods",
+      "slug": "tiger-woods",
+      "created": "2026-03-17"
+    },
+    {
+      "id": "102136",
+      "label": "Timothée Chalamet",
+      "slug": "timothee-chalamet",
+      "created": "2025-05-15"
+    },
+    {
+      "id": "101592",
+      "label": "Tom Aspinal",
+      "slug": "tom-aspinal",
+      "created": "2024-12-31"
+    },
+    {
+      "id": "101052",
+      "label": "Topuria",
+      "slug": "topuria",
+      "created": "2024-10-22"
+    },
+    {
+      "id": "713",
+      "label": "tradition",
+      "slug": "tradition",
+      "created": "2023-12-12"
+    },
+    {
+      "id": "979",
+      "label": "traditions",
+      "slug": "traditions",
+      "created": "2024-02-06"
+    },
+    {
+      "id": "101028",
+      "label": "trunout",
+      "slug": "trunout",
+      "created": "2024-10-22"
+    },
+    {
+      "id": "101746",
+      "label": "Tulsi Gabbard",
+      "slug": "tulsi-gabbard",
+      "created": "2025-01-30"
+    },
+    {
+      "id": "101286",
+      "label": "Victor Gyökeres",
+      "slug": "victor-gyokeres",
+      "created": "2024-11-19"
+    },
+    {
+      "id": "101025",
+      "label": "Viktoria Plzen",
+      "slug": "viktoria-plzen",
+      "created": "2024-10-22"
+    },
+    {
+      "id": "100601",
+      "label": "virgins",
+      "slug": "virgins",
+      "created": "2024-09-20"
+    },
+    {
+      "id": "104393",
+      "label": "Vitality",
+      "slug": "vitality",
+      "created": "2026-03-31"
+    },
+    {
+      "id": "101655",
+      "label": "Wildfire",
+      "slug": "wildfire",
+      "created": "2025-01-08"
+    },
+    {
+      "id": "104475",
+      "label": "Wireless festival",
+      "slug": "wireless-festival",
+      "created": "2026-04-06"
+    },
+    {
+      "id": "104377",
+      "label": "Yom",
+      "slug": "yom",
+      "created": "2026-03-30"
+    }
+  ]
+}

@@ -1,0 +1,4195 @@
+{
+  "538": {
+    "tag": {
+      "id": "100264",
+      "label": "538",
+      "slug": "538"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "keith gill": {
+    "tag": {
+      "id": "100257",
+      "label": "keith gill",
+      "slug": "keith-gill"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "House Races": {
+    "tag": {
+      "id": "100344",
+      "label": "House Races",
+      "slug": "house-races"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "redbull": {
+    "tag": {
+      "id": "100392",
+      "label": "redbull",
+      "slug": "redbull"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "virgins": {
+    "tag": {
+      "id": "100601",
+      "label": "virgins",
+      "slug": "virgins"
+    },
+    "count": 1,
+    "total_volume": 147173.34748899934,
+    "markets": [
+      {
+        "id": "2109074",
+        "question": "James Comey sentenced to Prison in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.065,
+          "No": 0.935
+        },
+        "volume_total": 147173.34748899934,
+        "volume_24h": 501.52,
+        "liquidity": 27286.2681,
+        "end_date": "2026-12-31"
+      }
+    ]
+  },
+  "Europa League": {
+    "tag": {
+      "id": "100626",
+      "label": "Europa League",
+      "slug": "europa-league"
+    },
+    "count": 1,
+    "total_volume": 167.590849,
+    "markets": [
+      {
+        "id": "1420689",
+        "question": "Will Antony record the most goal contributions in the 2025-26 UEFA Europa League?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.998,
+          "No": 0.002
+        },
+        "volume_total": 167.590849,
+        "volume_24h": 0,
+        "liquidity": 124.08822,
+        "end_date": "2026-05-21"
+      }
+    ]
+  },
+  "Philly": {
+    "tag": {
+      "id": "100735",
+      "label": "Philly",
+      "slug": "philly"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Los Angeles": {
+    "tag": {
+      "id": "100743",
+      "label": "Los Angeles",
+      "slug": "los-angeles"
+    },
+    "count": 68,
+    "total_volume": 9477138.694292013,
+    "markets": [
+      {
+        "id": "629030",
+        "question": "Will Karen Bass win the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.655,
+          "No": 0.345
+        },
+        "volume_total": 433492.1721160005,
+        "volume_24h": 43591.883976,
+        "liquidity": 91278.836,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "629031",
+        "question": "Will Rick Caruso win the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 486221.66132899985,
+        "volume_24h": 0,
+        "liquidity": 69261.81131,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "629032",
+        "question": "Will Asaad Alnajjar win the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 91810.66597799993,
+        "volume_24h": 3000,
+        "liquidity": 63513.54077,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "629033",
+        "question": "Will Gina Viola win the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 158803.44011100018,
+        "volume_24h": 30,
+        "liquidity": 81928.8982,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "629035",
+        "question": "Will Spencer Pratt win the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.045,
+          "No": 0.955
+        },
+        "volume_total": 4408318.11883501,
+        "volume_24h": 200843.003224,
+        "liquidity": 560622.5533,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "629036",
+        "question": "Will Austin Beutner win the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 34834.630729,
+        "volume_24h": 0,
+        "liquidity": 66530.85698,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "629037",
+        "question": "Will Lindsey Horvath win the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 553486.4322850001,
+        "volume_24h": 499798.95,
+        "liquidity": 55503.22445,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "629038",
+        "question": "Will Monica Rodriguez win the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 32856.730884000004,
+        "volume_24h": 0,
+        "liquidity": 65566.89528,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "629039",
+        "question": "Will Rae Huang win the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 517415.53089799924,
+        "volume_24h": 79.38,
+        "liquidity": 76922.76087,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "629040",
+        "question": "Will Nithya Raman win the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.313,
+          "No": 0.687
+        },
+        "volume_total": 720597.6739169986,
+        "volume_24h": 44042.638069,
+        "liquidity": 68823.46981,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "629041",
+        "question": "Will Adam Miller win the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 191206.5828660002,
+        "volume_24h": 0,
+        "liquidity": 58963.70423,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256139",
+        "question": "Will Karen Bass finish first in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.9915,
+          "No": 0.0085
+        },
+        "volume_total": 141060.225109,
+        "volume_24h": 1236.5046949999999,
+        "liquidity": 58171.71818,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256140",
+        "question": "Will Rick Caruso finish first in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 2165.7729419999996,
+        "volume_24h": 0,
+        "liquidity": 14230.98117,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256141",
+        "question": "Will Asaad Alnajjar finish first in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 3999.1809049999983,
+        "volume_24h": 0,
+        "liquidity": 18246.66926,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256142",
+        "question": "Will Gina Viola finish first in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 2843.068877,
+        "volume_24h": 0,
+        "liquidity": 14668.39706,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256143",
+        "question": "Will Spencer Pratt finish first in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0035,
+          "No": 0.9965
+        },
+        "volume_total": 367971.3595190001,
+        "volume_24h": 11961.540039,
+        "liquidity": 82636.53518,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256144",
+        "question": "Will Austin Beutner finish first in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 2097.4477670000006,
+        "volume_24h": 0,
+        "liquidity": 13738.90046,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256145",
+        "question": "Will Lindsey Horvath finish first in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 5968.272301,
+        "volume_24h": 0,
+        "liquidity": 14413.79465,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256146",
+        "question": "Will Monica Rodriguez finish first in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 2555.771408,
+        "volume_24h": 0,
+        "liquidity": 12447.36456,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256147",
+        "question": "Will Rae Huang finish first in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 3405.75794,
+        "volume_24h": 0,
+        "liquidity": 15964.79427,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256148",
+        "question": "Will Nithya Raman finish first in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.006,
+          "No": 0.994
+        },
+        "volume_total": 136110.35295800006,
+        "volume_24h": 170.38,
+        "liquidity": 27081.83326,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256150",
+        "question": "Will Adam Miller finish first in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 1562.271578,
+        "volume_24h": 0,
+        "liquidity": 14412.20589,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256197",
+        "question": "Will Karen Bass finish second in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.01,
+          "No": 0.99
+        },
+        "volume_total": 8552.674696000002,
+        "volume_24h": 862.5419999999999,
+        "liquidity": 122140.47193,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256198",
+        "question": "Will Rick Caruso finish second in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 2168.5767010000004,
+        "volume_24h": 0,
+        "liquidity": 12556.45394,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256199",
+        "question": "Will Asaad Alnajjar finish second in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 2206.1979560000004,
+        "volume_24h": 0,
+        "liquidity": 7909.25124,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256200",
+        "question": "Will Gina Viola finish second in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 4350.374221000001,
+        "volume_24h": 0,
+        "liquidity": 12149.95291,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256201",
+        "question": "Will Spencer Pratt finish second in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.16,
+          "No": 0.84
+        },
+        "volume_total": 75887.70711699995,
+        "volume_24h": 27657.663065000015,
+        "liquidity": 67763.674,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256202",
+        "question": "Will Austin Beutner finish second in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 3298.3594769999995,
+        "volume_24h": 0,
+        "liquidity": 10693.66916,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256203",
+        "question": "Will Lindsey Horvath finish second in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 3286.6718180000007,
+        "volume_24h": 709.72,
+        "liquidity": 10501.65198,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256204",
+        "question": "Will Monica Rodriguez finish second in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 2338.301414,
+        "volume_24h": 0,
+        "liquidity": 8885.29992,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256205",
+        "question": "Will Rae Huang finish second in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 1995.7204510000004,
+        "volume_24h": 0,
+        "liquidity": 9273.8232,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256206",
+        "question": "Will Nithya Raman finish second in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.845,
+          "No": 0.155
+        },
+        "volume_total": 52604.18908299999,
+        "volume_24h": 25961.001129999997,
+        "liquidity": 67473.3408,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2256207",
+        "question": "Will Adam Miller finish second in the first round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 2042.3850600000003,
+        "volume_24h": 0,
+        "liquidity": 5750.19336,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2261412",
+        "question": "First round outright winner in the LA Mayoral Election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0055,
+          "No": 0.9945
+        },
+        "volume_total": 55410.70287999998,
+        "volume_24h": 9455.48,
+        "liquidity": 31113.07638,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2261547",
+        "question": "Will Karen Bass & Nithya Raman advance to the second round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.825,
+          "No": 0.175
+        },
+        "volume_total": 222223.6490799995,
+        "volume_24h": 64992.45036299999,
+        "liquidity": 69340.1997,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2261548",
+        "question": "Will Karen Bass & Spencer Pratt advance to the second round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.175,
+          "No": 0.825
+        },
+        "volume_total": 498473.0744910009,
+        "volume_24h": 238300.406956,
+        "liquidity": 85617.2034,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2261549",
+        "question": "Will Nithya Raman & Spencer Pratt advance to the second round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 18539.222137,
+        "volume_24h": 4016.0080000000007,
+        "liquidity": 14818.03771,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2261550",
+        "question": "Will another pair of candidates advance to the second round of the 2026 Los Angeles mayoral election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 2075.085444,
+        "volume_24h": 571.86,
+        "liquidity": 11541.86271,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2261551",
+        "question": "Will a candidate win the 2026 Los Angeles mayoral election in the first round?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 23928.995977,
+        "volume_24h": 5610.44,
+        "liquidity": 17814.97867,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2262322",
+        "question": "Will Karen Bass win the first round of the 2026 Los Angeles Mayoral Election by 0–5%?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.042,
+          "No": 0.958
+        },
+        "volume_total": 15420.057009999997,
+        "volume_24h": 3621.4749279999996,
+        "liquidity": 32365.03043,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2262323",
+        "question": "Will Karen Bass win the first round of the 2026 Los Angeles Mayoral Election by 5–10%?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.825,
+          "No": 0.175
+        },
+        "volume_total": 14129.431391000004,
+        "volume_24h": 2718.58,
+        "liquidity": 11346.757,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2262324",
+        "question": "Will Karen Bass win the first round of the 2026 Los Angeles Mayoral Election by 10–15%?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.1345,
+          "No": 0.8655
+        },
+        "volume_total": 19690.488917,
+        "volume_24h": 6269.211282,
+        "liquidity": 4299.12815,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2262325",
+        "question": "Will Karen Bass win the first round of the 2026 Los Angeles Mayoral Election by 15%+?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0025,
+          "No": 0.9975
+        },
+        "volume_total": 7784.019765000001,
+        "volume_24h": 3052.93,
+        "liquidity": 9416.17721,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2262326",
+        "question": "Will Spencer Pratt win the first round of the 2026 Los Angeles Mayoral Election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0045,
+          "No": 0.9955
+        },
+        "volume_total": 32504.067676000006,
+        "volume_24h": 883.469818,
+        "liquidity": 15302.83623,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2262327",
+        "question": "Will Nithya Raman win the first round of the 2026 Los Angeles Mayoral Election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 12404.121462999998,
+        "volume_24h": 226.86,
+        "liquidity": 18092.7599,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2262328",
+        "question": "Will another candidate win the first round of the 2026 Los Angeles Mayoral Election?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 9412.030040999998,
+        "volume_24h": 924.014444,
+        "liquidity": 25511.0801,
+        "end_date": "2026-06-02"
+      },
+      {
+        "id": "2416299",
+        "question": "Will the highest temperature in Los Angeles be 55°F or below on June 4?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 816.4070000000002,
+        "volume_24h": 500,
+        "liquidity": 9312.71348,
+        "end_date": "2026-06-04"
+      },
+      {
+        "id": "2416300",
+        "question": "Will the highest temperature in Los Angeles be between 56-57°F on June 4?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 313.42800000000005,
+        "volume_24h": 0,
+        "liquidity": 9626.72099,
+        "end_date": "2026-06-04"
+      },
+      {
+        "id": "2416301",
+        "question": "Will the highest temperature in Los Angeles be between 58-59°F on June 4?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 958.9470000000001,
+        "volume_24h": 419.55,
+        "liquidity": 9653.17621,
+        "end_date": "2026-06-04"
+      },
+      {
+        "id": "2416302",
+        "question": "Will the highest temperature in Los Angeles be between 60-61°F on June 4?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 1010.428,
+        "volume_24h": 695.994,
+        "liquidity": 8380.43542,
+        "end_date": "2026-06-04"
+      },
+      {
+        "id": "2416303",
+        "question": "Will the highest temperature in Los Angeles be between 62-63°F on June 4?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 317.452011,
+        "volume_24h": 0,
+        "liquidity": 8750.16081,
+        "end_date": "2026-06-04"
+      },
+      {
+        "id": "2416304",
+        "question": "Will the highest temperature in Los Angeles be between 64-65°F on June 4?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 1533.250875,
+        "volume_24h": 679.660664,
+        "liquidity": 9532.68103,
+        "end_date": "2026-06-04"
+      },
+      {
+        "id": "2416305",
+        "question": "Will the highest temperature in Los Angeles be between 66-67°F on June 4?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 4314.003556000001,
+        "volume_24h": 3160.878444,
+        "liquidity": 10248.59577,
+        "end_date": "2026-06-04"
+      },
+      {
+        "id": "2416306",
+        "question": "Will the highest temperature in Los Angeles be between 68-69°F on June 4?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 20598.61806,
+        "volume_24h": 17679.316784,
+        "liquidity": 5552.04992,
+        "end_date": "2026-06-04"
+      },
+      {
+        "id": "2416307",
+        "question": "Will the highest temperature in Los Angeles be between 70-71°F on June 4?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.999,
+          "No": 0.001
+        },
+        "volume_total": 14884.227924999997,
+        "volume_24h": 11673.044818000002,
+        "liquidity": 2390.65812,
+        "end_date": "2026-06-04"
+      },
+      {
+        "id": "2416308",
+        "question": "Will the highest temperature in Los Angeles be between 72-73°F on June 4?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 9349.687330999997,
+        "volume_24h": 6784.242914,
+        "liquidity": 1794.973,
+        "end_date": "2026-06-04"
+      },
+      {
+        "id": "2416309",
+        "question": "Will the highest temperature in Los Angeles be 74°F or higher on June 4?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 12697.128915999996,
+        "volume_24h": 8686.390673,
+        "liquidity": 4202.92526,
+        "end_date": "2026-06-04"
+      },
+      {
+        "id": "2424756",
+        "question": "Will the highest temperature in Los Angeles be 55°F or below on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 1410.0070660000001,
+        "volume_24h": 1018.144,
+        "liquidity": 10487.73921,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424757",
+        "question": "Will the highest temperature in Los Angeles be between 56-57°F on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 296.99199999999996,
+        "volume_24h": 19.994,
+        "liquidity": 11487.70529,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424758",
+        "question": "Will the highest temperature in Los Angeles be between 58-59°F on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 321.535,
+        "volume_24h": 29.534999999999997,
+        "liquidity": 9219.82069,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424759",
+        "question": "Will the highest temperature in Los Angeles be between 60-61°F on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.001,
+          "No": 0.999
+        },
+        "volume_total": 1201.925833,
+        "volume_24h": 70.91,
+        "liquidity": 7379.14194,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424760",
+        "question": "Will the highest temperature in Los Angeles be between 62-63°F on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 1733.051,
+        "volume_24h": 25,
+        "liquidity": 7548.90115,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424761",
+        "question": "Will the highest temperature in Los Angeles be between 64-65°F on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.003,
+          "No": 0.997
+        },
+        "volume_total": 6208.306664999999,
+        "volume_24h": 2075.588,
+        "liquidity": 4392.53189,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424762",
+        "question": "Will the highest temperature in Los Angeles be between 66-67°F on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0155,
+          "No": 0.9845
+        },
+        "volume_total": 2216.94606,
+        "volume_24h": 2057.789059,
+        "liquidity": 3297.40609,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424763",
+        "question": "Will the highest temperature in Los Angeles be between 68-69°F on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.305,
+          "No": 0.695
+        },
+        "volume_total": 1772.503317,
+        "volume_24h": 1390.082925,
+        "liquidity": 1466.9174,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424764",
+        "question": "Will the highest temperature in Los Angeles be between 70-71°F on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.495,
+          "No": 0.505
+        },
+        "volume_total": 1484.687203,
+        "volume_24h": 1161.5275700000002,
+        "liquidity": 2569.6837,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424765",
+        "question": "Will the highest temperature in Los Angeles be between 72-73°F on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.16,
+          "No": 0.84
+        },
+        "volume_total": 1020.239096,
+        "volume_24h": 773.761213,
+        "liquidity": 1498.5749,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424766",
+        "question": "Will the highest temperature in Los Angeles be 74°F or higher on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.055,
+          "No": 0.945
+        },
+        "volume_total": 3169.6968599999996,
+        "volume_24h": 2427.179163,
+        "liquidity": 553.7446,
+        "end_date": "2026-06-05"
+      }
+    ]
+  },
+  "Russ": {
+    "tag": {
+      "id": "100881",
+      "label": "Russ",
+      "slug": "russ"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Viktoria Plzen": {
+    "tag": {
+      "id": "101025",
+      "label": "Viktoria Plzen",
+      "slug": "viktoria-plzen"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "FDIC": {
+    "tag": {
+      "id": "101026",
+      "label": "FDIC",
+      "slug": "fdic"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "trunout": {
+    "tag": {
+      "id": "101028",
+      "label": "trunout",
+      "slug": "trunout"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Kansas": {
+    "tag": {
+      "id": "101091",
+      "label": "Kansas",
+      "slug": "kansas"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Stoke City": {
+    "tag": {
+      "id": "101104",
+      "label": "Stoke City",
+      "slug": "stoke-city"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Macro Graph": {
+    "tag": {
+      "id": "101247",
+      "label": "Macro Graph",
+      "slug": "macro-graph"
+    },
+    "count": 1,
+    "total_volume": 1537318.570483998,
+    "markets": [
+      {
+        "id": "609655",
+        "question": "US recession by end of 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.175,
+          "No": 0.825
+        },
+        "volume_total": 1537318.570483998,
+        "volume_24h": 7087.984201999999,
+        "liquidity": 26391.7498,
+        "end_date": "2027-01-31"
+      }
+    ]
+  },
+  "Macro Single": {
+    "tag": {
+      "id": "101250",
+      "label": "Macro Single",
+      "slug": "macro-single"
+    },
+    "count": 3,
+    "total_volume": 1544611.681452998,
+    "markets": [
+      {
+        "id": "680601",
+        "question": "Negative GDP growth in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0805,
+          "No": 0.9195
+        },
+        "volume_total": 27609.367363999976,
+        "volume_24h": 0,
+        "liquidity": 2848.25746,
+        "end_date": "2027-01-29"
+      },
+      {
+        "id": "908713",
+        "question": "Fed rate hike in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.395,
+          "No": 0.605
+        },
+        "volume_total": 1390235.3190889978,
+        "volume_24h": 10088.302317,
+        "liquidity": 73271.5628,
+        "end_date": "2026-12-09"
+      },
+      {
+        "id": "999095",
+        "question": "ECB rate hike in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.9905,
+          "No": 0.0095
+        },
+        "volume_total": 126766.99500000016,
+        "volume_24h": 847.6600000000001,
+        "liquidity": 15945.4608,
+        "end_date": "2026-12-31"
+      }
+    ]
+  },
+  "Jerry After Dark": {
+    "tag": {
+      "id": "101457",
+      "label": "Jerry After Dark",
+      "slug": "jerry-after-dark"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Alireza Firouzja": {
+    "tag": {
+      "id": "101561",
+      "label": "Alireza Firouzja",
+      "slug": "alireza-firouzja"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Altcoins": {
+    "tag": {
+      "id": "101611",
+      "label": "Altcoins",
+      "slug": "altcoins"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Wildfire": {
+    "tag": {
+      "id": "101655",
+      "label": "Wildfire",
+      "slug": "wildfire"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "product marekt fit": {
+    "tag": {
+      "id": "101867",
+      "label": "product marekt fit",
+      "slug": "product-marekt-fit"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "bat": {
+    "tag": {
+      "id": "101896",
+      "label": "bat",
+      "slug": "bat"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Sam Bankman-Fried": {
+    "tag": {
+      "id": "101901",
+      "label": "Sam Bankman-Fried",
+      "slug": "sam-bankman-fried"
+    },
+    "count": 1,
+    "total_volume": 382531.94342800055,
+    "markets": [
+      {
+        "id": "1422097",
+        "question": "SBF released from custody in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0335,
+          "No": 0.9665
+        },
+        "volume_total": 382531.94342800055,
+        "volume_24h": 3.089586,
+        "liquidity": 23045.66772,
+        "end_date": "2026-12-31"
+      }
+    ]
+  },
+  "QB": {
+    "tag": {
+      "id": "102076",
+      "label": "QB",
+      "slug": "qb"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Timothée Chalamet": {
+    "tag": {
+      "id": "102136",
+      "label": "Timothée Chalamet",
+      "slug": "timothee-chalamet"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Investec Champions Cup": {
+    "tag": {
+      "id": "103161",
+      "label": "Investec Champions Cup",
+      "slug": "investec-champions-cup"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Korea": {
+    "tag": {
+      "id": "103269",
+      "label": "Korea",
+      "slug": "korea"
+    },
+    "count": 1,
+    "total_volume": 1504.7676860000001,
+    "markets": [
+      {
+        "id": "1274019",
+        "question": "Will Bitcoin kimchi premium hit 8% in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.41,
+          "No": 0.59
+        },
+        "volume_total": 1504.7676860000001,
+        "volume_24h": 0,
+        "liquidity": 72.5665,
+        "end_date": "2027-01-01"
+      }
+    ]
+  },
+  "Claude": {
+    "tag": {
+      "id": "103303",
+      "label": "Claude",
+      "slug": "claude"
+    },
+    "count": 76,
+    "total_volume": 2326635.3756529973,
+    "markets": [
+      {
+        "id": "1285586",
+        "question": "Will an Anthropic Claude model score at least 45% on Humanity’s Last Exam?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.245,
+          "No": 0.755
+        },
+        "volume_total": 138783.94801200004,
+        "volume_24h": 47.13,
+        "liquidity": 3145.3456,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "1285713",
+        "question": "Will any Anthropic Claude model score at least 50% on the FrontierMath Exam?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.37,
+          "No": 0.63
+        },
+        "volume_total": 18962.813404999997,
+        "volume_24h": 19.362684,
+        "liquidity": 348.7196,
+        "end_date": "2026-02-28"
+      },
+      {
+        "id": "1744124",
+        "question": "Will a Claude Mythos model be released by June 30, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.37,
+          "No": 0.63
+        },
+        "volume_total": 299829.5250789983,
+        "volume_24h": 30207.910651,
+        "liquidity": 14700.5296,
+        "end_date": "2026-04-30"
+      },
+      {
+        "id": "1831733",
+        "question": "Will any AI model reach 1550 Coding Arena Score by June 30, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.66,
+          "No": 0.34
+        },
+        "volume_total": 4739.416334,
+        "volume_24h": 0,
+        "liquidity": 1317.3699,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "1831736",
+        "question": "Will any AI model reach 1570 Coding Arena Score by June 30, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.165,
+          "No": 0.835
+        },
+        "volume_total": 2143.357801,
+        "volume_24h": 0,
+        "liquidity": 1648.1204,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "1831759",
+        "question": "Will any AI model reach 1560 Coding Arena Score by June 30, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.485,
+          "No": 0.515
+        },
+        "volume_total": 1854.72715,
+        "volume_24h": 0,
+        "liquidity": 46.7608,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "1831760",
+        "question": "Will any AI model reach 1580 Coding Arena Score by December 31, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.48,
+          "No": 0.52
+        },
+        "volume_total": 204.190125,
+        "volume_24h": 0,
+        "liquidity": 25.7766,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1831761",
+        "question": "Will any AI model reach 1600 Coding Arena Score by December 31, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.415,
+          "No": 0.585
+        },
+        "volume_total": 578.256638,
+        "volume_24h": 0,
+        "liquidity": 68.20718,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1831769",
+        "question": "Will any AI model reach 1560 Coding Arena Score by December 31, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.745,
+          "No": 0.255
+        },
+        "volume_total": 3094.2293940000004,
+        "volume_24h": 3,
+        "liquidity": 3895.2666,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1999853",
+        "question": "Will an Anthropic Claude model score at least 50% on Humanity’s Last Exam?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.15,
+          "No": 0.85
+        },
+        "volume_total": 2942.7543879999994,
+        "volume_24h": 125.97,
+        "liquidity": 2520.0574,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "1999854",
+        "question": "Will an Anthropic Claude model score at least 55% on Humanity’s Last Exam?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.059,
+          "No": 0.941
+        },
+        "volume_total": 5894.915069,
+        "volume_24h": 0,
+        "liquidity": 3192.74696,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2034722",
+        "question": "Will Anthropic make a deal with the Pentagon by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.135,
+          "No": 0.865
+        },
+        "volume_total": 27371.53289200005,
+        "volume_24h": 0,
+        "liquidity": 10880.3283,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2110748",
+        "question": "Will Anthropic’s market cap be less than 0.6T at market close on IPO day by December 31 2027?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.016,
+          "No": 0.984
+        },
+        "volume_total": 7865.185241,
+        "volume_24h": 133.7774,
+        "liquidity": 10966.64282,
+        "end_date": "2027-12-31"
+      },
+      {
+        "id": "2110749",
+        "question": "Will Anthropic’s market cap be between 0.6T and 0.9T at market close on IPO day by December 31 2027?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0115,
+          "No": 0.9885
+        },
+        "volume_total": 13768.630473000007,
+        "volume_24h": 274.42904,
+        "liquidity": 17148.46242,
+        "end_date": "2027-12-31"
+      },
+      {
+        "id": "2110750",
+        "question": "Will Anthropic’s market cap be between 0.9T and 1.2T at market close on IPO day by December 31 2027?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0785,
+          "No": 0.9215
+        },
+        "volume_total": 13097.285039,
+        "volume_24h": 307.967521,
+        "liquidity": 9768.14093,
+        "end_date": "2027-12-31"
+      },
+      {
+        "id": "2110751",
+        "question": "Will Anthropic’s market cap be between 1.2T and 1.5T at market close on IPO day by December 31 2027?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.175,
+          "No": 0.825
+        },
+        "volume_total": 12270.622006000005,
+        "volume_24h": 181.627052,
+        "liquidity": 11050.3321,
+        "end_date": "2027-12-31"
+      },
+      {
+        "id": "2110752",
+        "question": "Will Anthropic’s market cap be between 1.5T and 1.8T at market close on IPO day by December 31 2027?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.2115,
+          "No": 0.7885
+        },
+        "volume_total": 11152.048472000002,
+        "volume_24h": 459.011845,
+        "liquidity": 7356.41764,
+        "end_date": "2027-12-31"
+      },
+      {
+        "id": "2110753",
+        "question": "Will Anthropic’s market cap be 1.8T or greater at market close on IPO day by December 31 2027?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.49,
+          "No": 0.51
+        },
+        "volume_total": 56577.657554999976,
+        "volume_24h": 8307.459159,
+        "liquidity": 19815.5211,
+        "end_date": "2027-12-31"
+      },
+      {
+        "id": "2110754",
+        "question": "Will Anthropic not IPO by December 31 2027?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.034,
+          "No": 0.966
+        },
+        "volume_total": 15987.597275000002,
+        "volume_24h": 133.84629999999999,
+        "liquidity": 11156.21444,
+        "end_date": "2027-12-31"
+      },
+      {
+        "id": "2298736",
+        "question": "Will Anthropic’s valuation hit (HIGH) $1.75T by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.042,
+          "No": 0.958
+        },
+        "volume_total": 14972.638323999994,
+        "volume_24h": 3.0300000000000002,
+        "liquidity": 16964.32359,
+        "end_date": "2026-07-01"
+      },
+      {
+        "id": "2298737",
+        "question": "Will Anthropic’s valuation hit (HIGH) $1.5T by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.045,
+          "No": 0.955
+        },
+        "volume_total": 16904.35113600001,
+        "volume_24h": 774.6999999999999,
+        "liquidity": 15235.3396,
+        "end_date": "2026-07-01"
+      },
+      {
+        "id": "2298738",
+        "question": "Will Anthropic’s valuation hit (HIGH) $1.25T by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.225,
+          "No": 0.775
+        },
+        "volume_total": 52974.63399999998,
+        "volume_24h": 937.113039,
+        "liquidity": 4644.2646,
+        "end_date": "2026-07-01"
+      },
+      {
+        "id": "2298739",
+        "question": "Will Anthropic’s valuation hit (HIGH) $1.1T by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.515,
+          "No": 0.485
+        },
+        "volume_total": 72471.75950900002,
+        "volume_24h": 3236.052749,
+        "liquidity": 8911.7549,
+        "end_date": "2026-07-01"
+      },
+      {
+        "id": "2298744",
+        "question": "Will Anthropic’s valuation hit (LOW) $875B by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.065,
+          "No": 0.935
+        },
+        "volume_total": 18468.91049,
+        "volume_24h": 10.638283,
+        "liquidity": 19168.5128,
+        "end_date": "2026-07-01"
+      },
+      {
+        "id": "2298745",
+        "question": "Will Anthropic’s valuation hit (LOW) $850B by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0285,
+          "No": 0.9715
+        },
+        "volume_total": 7774.589958999999,
+        "volume_24h": 490.71751699999993,
+        "liquidity": 19016.47079,
+        "end_date": "2026-07-01"
+      },
+      {
+        "id": "2298746",
+        "question": "Will Anthropic’s valuation hit (LOW) $800B by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.035,
+          "No": 0.965
+        },
+        "volume_total": 14757.349515999997,
+        "volume_24h": 435.121903,
+        "liquidity": 17426.05885,
+        "end_date": "2026-07-01"
+      },
+      {
+        "id": "2298747",
+        "question": "Will Anthropic’s valuation hit (LOW) $750B by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.006,
+          "No": 0.994
+        },
+        "volume_total": 28843.349247000013,
+        "volume_24h": 974.693083,
+        "liquidity": 10978.33728,
+        "end_date": "2026-07-01"
+      },
+      {
+        "id": "2299952",
+        "question": "Will Anthropic's valuation hit (HIGH) $3.0T by December 31?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.165,
+          "No": 0.835
+        },
+        "volume_total": 147592.39349300007,
+        "volume_24h": 1296.04,
+        "liquidity": 55481.7097,
+        "end_date": "2027-01-01"
+      },
+      {
+        "id": "2299953",
+        "question": "Will Anthropic's valuation hit (HIGH) $2.5T by December 31?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.305,
+          "No": 0.695
+        },
+        "volume_total": 95122.99156100006,
+        "volume_24h": 851.857141,
+        "liquidity": 13434.1903,
+        "end_date": "2027-01-01"
+      },
+      {
+        "id": "2299954",
+        "question": "Will Anthropic's valuation hit (HIGH) $2.0T by December 31?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.375,
+          "No": 0.625
+        },
+        "volume_total": 263878.3034050002,
+        "volume_24h": 2849.9016770000003,
+        "liquidity": 29833.408,
+        "end_date": "2027-01-01"
+      },
+      {
+        "id": "2299955",
+        "question": "Will Anthropic's valuation hit (HIGH) $1.75T by December 31?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.59,
+          "No": 0.41
+        },
+        "volume_total": 229930.32904,
+        "volume_24h": 2003.6,
+        "liquidity": 46354.2335,
+        "end_date": "2027-01-01"
+      },
+      {
+        "id": "2299956",
+        "question": "Will Anthropic's valuation hit (HIGH) $1.5T by December 31?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.715,
+          "No": 0.285
+        },
+        "volume_total": 58054.67214400004,
+        "volume_24h": 957.415619,
+        "liquidity": 29388.2188,
+        "end_date": "2027-01-01"
+      },
+      {
+        "id": "2299957",
+        "question": "Will Anthropic's valuation hit (HIGH) $1.25T by December 31?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.875,
+          "No": 0.125
+        },
+        "volume_total": 70372.10097500001,
+        "volume_24h": 0,
+        "liquidity": 9155.1821,
+        "end_date": "2027-01-01"
+      },
+      {
+        "id": "2299958",
+        "question": "Will Anthropic's valuation hit (HIGH) $1.1T by December 31?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.9145,
+          "No": 0.0855
+        },
+        "volume_total": 92357.42828599992,
+        "volume_24h": 235.25,
+        "liquidity": 9182.28886,
+        "end_date": "2027-01-01"
+      },
+      {
+        "id": "2299960",
+        "question": "Will Anthropic's valuation hit (LOW) $800B by December 31?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.115,
+          "No": 0.885
+        },
+        "volume_total": 38940.51975700001,
+        "volume_24h": 179.714614,
+        "liquidity": 8359.4874,
+        "end_date": "2027-01-01"
+      },
+      {
+        "id": "2299961",
+        "question": "Will Anthropic's valuation hit (LOW) $700B by December 31?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.085,
+          "No": 0.915
+        },
+        "volume_total": 22173.484785,
+        "volume_24h": 242.43444,
+        "liquidity": 5117.1543,
+        "end_date": "2027-01-01"
+      },
+      {
+        "id": "2299962",
+        "question": "Will Anthropic's valuation hit (LOW) $600B by December 31?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.095,
+          "No": 0.905
+        },
+        "volume_total": 17220.983916999994,
+        "volume_24h": 393.39000000000004,
+        "liquidity": 10601.2165,
+        "end_date": "2027-01-01"
+      },
+      {
+        "id": "2303886",
+        "question": "Anthropic vs OpenAI - higher valuation on December 31?",
+        "status": "active",
+        "probabilities": {
+          "Anthropic": 0.8,
+          "OpenAI": 0.2
+        },
+        "volume_total": 23160.343965000025,
+        "volume_24h": 542.575567,
+        "liquidity": 9473.2628,
+        "end_date": "2027-01-01"
+      },
+      {
+        "id": "2304178",
+        "question": "OpenAI + Anthropic vs Google - higher valuation on December 31?",
+        "status": "active",
+        "probabilities": {
+          "OpenAI + Anthropic": 0.14,
+          "Google": 0.86
+        },
+        "volume_total": 327.660111,
+        "volume_24h": 0,
+        "liquidity": 10485.0368,
+        "end_date": "2027-01-01"
+      },
+      {
+        "id": "2304322",
+        "question": "Anthropic vs Meta — higher valuation on June 30?",
+        "status": "active",
+        "probabilities": {
+          "Anthropic": 0.065,
+          "Meta": 0.935
+        },
+        "volume_total": 4659.884287999999,
+        "volume_24h": 0,
+        "liquidity": 7420.3179,
+        "end_date": "2026-07-01"
+      },
+      {
+        "id": "2307824",
+        "question": "Will Anthropic's valuation hit (HIGH) $4.0T by December 31?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.085,
+          "No": 0.915
+        },
+        "volume_total": 30720.364358000003,
+        "volume_24h": 51.24,
+        "liquidity": 67242.2114,
+        "end_date": "2027-01-01"
+      },
+      {
+        "id": "2307825",
+        "question": "Will Anthropic's valuation hit (HIGH) $5.0T by December 31?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.065,
+          "No": 0.935
+        },
+        "volume_total": 17858.37046700001,
+        "volume_24h": 10.638283,
+        "liquidity": 121443.092,
+        "end_date": "2027-01-01"
+      },
+      {
+        "id": "2363609",
+        "question": "Trump orders federal review of AI model releases by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.375,
+          "No": 0.625
+        },
+        "volume_total": 99107.58210799955,
+        "volume_24h": 58051.060118999994,
+        "liquidity": 36439.65,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364362",
+        "question": "Will Claude Code Commits hit (LOW) 450.0k by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.585,
+          "No": 0.415
+        },
+        "volume_total": 152.078535,
+        "volume_24h": 0,
+        "liquidity": 92.5142,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364363",
+        "question": "Will Claude Code Commits hit (LOW) 400.0k by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.38,
+          "No": 0.62
+        },
+        "volume_total": 31.610534,
+        "volume_24h": 0,
+        "liquidity": 89.9351,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364364",
+        "question": "Will Claude Code Commits hit (LOW) 350.0k by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.35,
+          "No": 0.65
+        },
+        "volume_total": 201.442346,
+        "volume_24h": 0,
+        "liquidity": 125.75861,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364447",
+        "question": "Will Claude go down 0-2 times in June?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.005,
+          "No": 0.995
+        },
+        "volume_total": 1278.655517,
+        "volume_24h": 0,
+        "liquidity": 2121.67739,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364448",
+        "question": "Will Claude go down 3-5 times in June?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0165,
+          "No": 0.9835
+        },
+        "volume_total": 2188.8832700000003,
+        "volume_24h": 30.162562,
+        "liquidity": 4120.49218,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364449",
+        "question": "Will Claude go down 6-8 times in June?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.27,
+          "No": 0.73
+        },
+        "volume_total": 967.7127110000001,
+        "volume_24h": 7,
+        "liquidity": 1475.1153,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364450",
+        "question": "Will Claude go down 9-11 times in June?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.385,
+          "No": 0.615
+        },
+        "volume_total": 644.1047309999998,
+        "volume_24h": 0,
+        "liquidity": 1352.8695,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364451",
+        "question": "Will Claude go down 12+ times in June?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.305,
+          "No": 0.695
+        },
+        "volume_total": 786.913816,
+        "volume_24h": 0,
+        "liquidity": 2314.476,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364517",
+        "question": "Will Claude Code Commits be less than 500.0k on June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.105,
+          "No": 0.895
+        },
+        "volume_total": 182.58740600000002,
+        "volume_24h": 21.25,
+        "liquidity": 241.7024,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364518",
+        "question": "Will Claude Code Commits be between 500.0k and 550.0k on June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.255,
+          "No": 0.745
+        },
+        "volume_total": 198.871631,
+        "volume_24h": 0,
+        "liquidity": 292.2998,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364519",
+        "question": "Will Claude Code Commits be between 550.0k and 600.0k on June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.325,
+          "No": 0.675
+        },
+        "volume_total": 248.846743,
+        "volume_24h": 0,
+        "liquidity": 311.2319,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364520",
+        "question": "Will Claude Code Commits be between 600.0k and 650.0k on June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.155,
+          "No": 0.845
+        },
+        "volume_total": 176.249472,
+        "volume_24h": 0,
+        "liquidity": 368.6034,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364521",
+        "question": "Will Claude Code Commits be between 650.0k and 700.0k on June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.092,
+          "No": 0.908
+        },
+        "volume_total": 249.79000000000002,
+        "volume_24h": 0,
+        "liquidity": 252.85763,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364522",
+        "question": "Will Claude Code Commits be between 700.0k and 750.0k on June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.149,
+          "No": 0.851
+        },
+        "volume_total": 229.490495,
+        "volume_24h": 5,
+        "liquidity": 216.04076,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2364523",
+        "question": "Will Claude Code Commits be at least 750.0k on June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.345,
+          "No": 0.655
+        },
+        "volume_total": 188.799258,
+        "volume_24h": 0,
+        "liquidity": 183.3919,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "2379995",
+        "question": "Will the next Claude Opus 4.8 model added to the Arena Leaderboard debut at a score below 1480?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.072,
+          "No": 0.928
+        },
+        "volume_total": 3775.658178,
+        "volume_24h": 650.1516760000001,
+        "liquidity": 1155.10272,
+        "end_date": null
+      },
+      {
+        "id": "2379996",
+        "question": "Will the next Claude Opus 4.8 model added to the Arena Leaderboard debut at a score between 1480 and 1490?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.295,
+          "No": 0.705
+        },
+        "volume_total": 1772.7327,
+        "volume_24h": 906.1168,
+        "liquidity": 577.8682,
+        "end_date": null
+      },
+      {
+        "id": "2379997",
+        "question": "Will the next Claude Opus 4.8 model added to the Arena Leaderboard debut at a score between 1490 and 1500?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.53,
+          "No": 0.47
+        },
+        "volume_total": 3885.8333729999995,
+        "volume_24h": 2799.318748,
+        "liquidity": 880.7787,
+        "end_date": null
+      },
+      {
+        "id": "2379998",
+        "question": "Will the next Claude Opus 4.8 model added to the Arena Leaderboard debut at a score between 1500 and 1510?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.235,
+          "No": 0.765
+        },
+        "volume_total": 3227.587457,
+        "volume_24h": 1802.44,
+        "liquidity": 978.468,
+        "end_date": null
+      },
+      {
+        "id": "2379999",
+        "question": "Will the next Claude Opus 4.8 model added to the Arena Leaderboard debut at a score between 1510 and 1520?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.105,
+          "No": 0.895
+        },
+        "volume_total": 2958.1388580000003,
+        "volume_24h": 842.74511,
+        "liquidity": 588.8277,
+        "end_date": null
+      },
+      {
+        "id": "2380000",
+        "question": "Will the next Claude Opus 4.8 model added to the Arena Leaderboard debut at a score of at least 1520?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.029,
+          "No": 0.971
+        },
+        "volume_total": 2928.9596490000004,
+        "volume_24h": 670.222933,
+        "liquidity": 4236.39542,
+        "end_date": null
+      },
+      {
+        "id": "2380186",
+        "question": "Will a Claude Mythos model be released by June 15, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.1455,
+          "No": 0.8545
+        },
+        "volume_total": 133993.85766599988,
+        "volume_24h": 60664.499328999984,
+        "liquidity": 15919.98596,
+        "end_date": "2026-06-15"
+      },
+      {
+        "id": "2380187",
+        "question": "Will a Claude Mythos model be released by July 31, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.675,
+          "No": 0.325
+        },
+        "volume_total": 88628.21756900001,
+        "volume_24h": 16538.389527000003,
+        "liquidity": 25384.5115,
+        "end_date": "2026-07-31"
+      },
+      {
+        "id": "2412744",
+        "question": "Will Anthropic's market cap be less than $1.25T at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.065,
+          "No": 0.935
+        },
+        "volume_total": 392.860908,
+        "volume_24h": 125,
+        "liquidity": 1850.0275,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "2412745",
+        "question": "Will Anthropic's market cap be between $1.25T and $1.5T at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.11,
+          "No": 0.89
+        },
+        "volume_total": 117.703075,
+        "volume_24h": 76.923075,
+        "liquidity": 1636.3305,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "2412746",
+        "question": "Will Anthropic's market cap be between $1.5T and $1.75T at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.133,
+          "No": 0.867
+        },
+        "volume_total": 67.91512499999999,
+        "volume_24h": 0,
+        "liquidity": 1779.76233,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "2412747",
+        "question": "Will Anthropic's market cap be between $1.75T and $2.0T at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.155,
+          "No": 0.845
+        },
+        "volume_total": 63.115554,
+        "volume_24h": 0,
+        "liquidity": 2320.5293,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "2412748",
+        "question": "Will Anthropic's market cap be between $2.0T and $2.25T at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.115,
+          "No": 0.885
+        },
+        "volume_total": 1034.0618869999998,
+        "volume_24h": 0,
+        "liquidity": 3303.8515,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "2412749",
+        "question": "Will Anthropic's market cap be between $2.25T and $2.5T at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.135,
+          "No": 0.865
+        },
+        "volume_total": 53.6,
+        "volume_24h": 0,
+        "liquidity": 2262.4576,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "2412750",
+        "question": "Will Anthropic's market cap be between $2.5T and $2.75T at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.105,
+          "No": 0.895
+        },
+        "volume_total": 33.78,
+        "volume_24h": 0,
+        "liquidity": 2242.8862,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "2412751",
+        "question": "Will Anthropic's market cap be between $2.75T and $3.0T at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.06,
+          "No": 0.94
+        },
+        "volume_total": 33.78,
+        "volume_24h": 0,
+        "liquidity": 2647.1533,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "2412752",
+        "question": "Will Anthropic's market cap be $3.0T or greater at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.075,
+          "No": 0.925
+        },
+        "volume_total": 144.07,
+        "volume_24h": 0,
+        "liquidity": 2822.3466,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "2412753",
+        "question": "Will Anthropic not IPO by December 31, 2027?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.045,
+          "No": 0.955
+        },
+        "volume_total": 33.78,
+        "volume_24h": 0,
+        "liquidity": 2562.1811,
+        "end_date": "2026-12-31"
+      }
+    ]
+  },
+  "Influenza": {
+    "tag": {
+      "id": "103357",
+      "label": "Influenza",
+      "slug": "influenza"
+    },
+    "count": 6,
+    "total_volume": 4811.96552,
+    "markets": [
+      {
+        "id": "2411891",
+        "question": "Will the U.S. flu hospitalization rate per 100,000 in Week 21 be less than 80?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 569.0303,
+        "volume_24h": 13,
+        "liquidity": 1619.90889,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2411892",
+        "question": "Will the U.S. flu hospitalization rate per 100,000 in Week 21 be between 80 and 85?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 280.556727,
+        "volume_24h": 18,
+        "liquidity": 1478.82858,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2411893",
+        "question": "Will the U.S. flu hospitalization rate per 100,000 in Week 21 be between 85 and 90?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.9805,
+          "No": 0.0195
+        },
+        "volume_total": 922.963173,
+        "volume_24h": 291.19385,
+        "liquidity": 3529.46996,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2411894",
+        "question": "Will the U.S. flu hospitalization rate per 100,000 in Week 21 be between 90 and 95?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.006,
+          "No": 0.994
+        },
+        "volume_total": 1300.0372,
+        "volume_24h": 113,
+        "liquidity": 3480.19783,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2411895",
+        "question": "Will the U.S. flu hospitalization rate per 100,000 in Week 21 be between 95 and 100?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.005,
+          "No": 0.995
+        },
+        "volume_total": 847.9797,
+        "volume_24h": 13,
+        "liquidity": 2983.38719,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2411896",
+        "question": "Will the U.S. flu hospitalization rate per 100,000 in Week 21 be at least 100?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 891.39842,
+        "volume_24h": 13,
+        "liquidity": 975.63227,
+        "end_date": "2026-06-05"
+      }
+    ]
+  },
+  "COP": {
+    "tag": {
+      "id": "103482",
+      "label": "COP",
+      "slug": "cop"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "SNEX": {
+    "tag": {
+      "id": "103531",
+      "label": "SNEX",
+      "slug": "snex"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Major League Cricket": {
+    "tag": {
+      "id": "103813",
+      "label": "Major League Cricket",
+      "slug": "major-league-cricket"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Caesars entertainment": {
+    "tag": {
+      "id": "104208",
+      "label": "Caesars entertainment",
+      "slug": "caesars-entertainment"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Shenzhen": {
+    "tag": {
+      "id": "104272",
+      "label": "Shenzhen",
+      "slug": "shenzhen"
+    },
+    "count": 11,
+    "total_volume": 43260.50922200001,
+    "markets": [
+      {
+        "id": "2424712",
+        "question": "Will the highest temperature in Shenzhen be 27°C or below on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 3177.9228519999997,
+        "volume_24h": 905.867852,
+        "liquidity": 12528.70459,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424713",
+        "question": "Will the highest temperature in Shenzhen be 28°C on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 2391.991,
+        "volume_24h": 2000,
+        "liquidity": 7829.83491,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424714",
+        "question": "Will the highest temperature in Shenzhen be 29°C on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 461.987,
+        "volume_24h": 97.97,
+        "liquidity": 10503.69637,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424715",
+        "question": "Will the highest temperature in Shenzhen be 30°C on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 1454.5695000000003,
+        "volume_24h": 1223.5715,
+        "liquidity": 8259.94533,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424716",
+        "question": "Will the highest temperature in Shenzhen be 31°C on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 2152.462256999999,
+        "volume_24h": 1626.704604,
+        "liquidity": 2084.66202,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424717",
+        "question": "Will the highest temperature in Shenzhen be 32°C on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.039,
+          "No": 0.961
+        },
+        "volume_total": 5066.105363,
+        "volume_24h": 4853.388202000001,
+        "liquidity": 764.17981,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424718",
+        "question": "Will the highest temperature in Shenzhen be 33°C on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.09,
+          "No": 0.91
+        },
+        "volume_total": 3757.7376900000004,
+        "volume_24h": 3568.990822000001,
+        "liquidity": 745.1398,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424719",
+        "question": "Will the highest temperature in Shenzhen be 34°C on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.24,
+          "No": 0.76
+        },
+        "volume_total": 3155.242548999999,
+        "volume_24h": 3007.5318640000005,
+        "liquidity": 388.9472,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424720",
+        "question": "Will the highest temperature in Shenzhen be 35°C on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.28,
+          "No": 0.72
+        },
+        "volume_total": 3193.420987999999,
+        "volume_24h": 2865.737659000001,
+        "liquidity": 1203.8192,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424721",
+        "question": "Will the highest temperature in Shenzhen be 36°C on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.275,
+          "No": 0.725
+        },
+        "volume_total": 6231.407229999996,
+        "volume_24h": 5956.968805000001,
+        "liquidity": 638.1985,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2424722",
+        "question": "Will the highest temperature in Shenzhen be 37°C or higher on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.166,
+          "No": 0.834
+        },
+        "volume_total": 12217.66279300001,
+        "volume_24h": 10833.681439000002,
+        "liquidity": 810.31368,
+        "end_date": "2026-06-05"
+      }
+    ]
+  },
+  "Yom": {
+    "tag": {
+      "id": "104377",
+      "label": "Yom",
+      "slug": "yom"
+    },
+    "count": 7,
+    "total_volume": null,
+    "markets": [
+      {
+        "id": "1794611",
+        "question": "YOM FDV above $20M one day after launch?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.585,
+          "No": 0.415
+        },
+        "volume_total": 80.63,
+        "volume_24h": 0,
+        "liquidity": 170.3523,
+        "end_date": "2028-01-01"
+      },
+      {
+        "id": "1794612",
+        "question": "YOM FDV above $50M one day after launch?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.545,
+          "No": 0.455
+        },
+        "volume_total": 164.54000000000002,
+        "volume_24h": 0,
+        "liquidity": 74.9415,
+        "end_date": "2028-01-01"
+      },
+      {
+        "id": "1794613",
+        "question": "YOM FDV above $100M one day after launch?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.385,
+          "No": 0.615
+        },
+        "volume_total": 99.562383,
+        "volume_24h": 0,
+        "liquidity": 122.1295,
+        "end_date": "2028-01-01"
+      },
+      {
+        "id": "1794614",
+        "question": "YOM FDV above $200M one day after launch?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.435,
+          "No": 0.565
+        },
+        "volume_total": 35.556956,
+        "volume_24h": 7,
+        "liquidity": 53.3637,
+        "end_date": "2028-01-01"
+      },
+      {
+        "id": "1794615",
+        "question": "YOM FDV above $300M one day after launch?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.39,
+          "No": 0.61
+        },
+        "volume_total": null,
+        "volume_24h": 0,
+        "liquidity": 79.6272,
+        "end_date": "2028-01-01"
+      },
+      {
+        "id": "1794616",
+        "question": "YOM FDV above $500M one day after launch?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.42,
+          "No": 0.58
+        },
+        "volume_total": 60,
+        "volume_24h": 0,
+        "liquidity": 56.16599,
+        "end_date": "2028-01-01"
+      },
+      {
+        "id": "1794617",
+        "question": "YOM FDV above $800M one day after launch?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.415,
+          "No": 0.585
+        },
+        "volume_total": 14.5,
+        "volume_24h": 0,
+        "liquidity": 58.843,
+        "end_date": "2028-01-01"
+      }
+    ]
+  },
+  "Vitality": {
+    "tag": {
+      "id": "104393",
+      "label": "Vitality",
+      "slug": "vitality"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "international affairs": {
+    "tag": {
+      "id": "1396",
+      "label": "international affairs",
+      "slug": "international-affairs"
+    },
+    "count": 1,
+    "total_volume": 2660.7168619999998,
+    "markets": [
+      {
+        "id": "2321401",
+        "question": "Will the Philippine Senate convict Sara Duterte? ",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.315,
+          "No": 0.685
+        },
+        "volume_total": 2660.7168619999998,
+        "volume_24h": 27.959706,
+        "liquidity": 2347.0211,
+        "end_date": "2026-12-31"
+      }
+    ]
+  },
+  "caitlin clark": {
+    "tag": {
+      "id": "1512",
+      "label": "caitlin clark",
+      "slug": "caitlin-clark"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "popularity": {
+    "tag": {
+      "id": "1571",
+      "label": "popularity",
+      "slug": "popularity"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "season finale": {
+    "tag": {
+      "id": "330",
+      "label": "season finale",
+      "slug": "season-finale"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "OpenAI": {
+    "tag": {
+      "id": "537",
+      "label": "OpenAI",
+      "slug": "openai"
+    },
+    "count": 100,
+    "total_volume": 21182931.81798502,
+    "markets": [
+      {
+        "id": "608362",
+        "question": "Will OpenAI’s market cap be less than $500B at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.1015,
+          "No": 0.8985
+        },
+        "volume_total": 277483.7416210005,
+        "volume_24h": 1145.3428190000002,
+        "liquidity": 5767.21946,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "608363",
+        "question": "Will OpenAI’s market cap be between $500B and $750B at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.076,
+          "No": 0.924
+        },
+        "volume_total": 153905.32884200034,
+        "volume_24h": 561.452422,
+        "liquidity": 8508.33189,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "608364",
+        "question": "Will OpenAI’s market cap be between $750B and $1T at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.061,
+          "No": 0.939
+        },
+        "volume_total": 151553.85812500006,
+        "volume_24h": 230.791133,
+        "liquidity": 9273.69592,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "608365",
+        "question": "Will OpenAI’s market cap be between $1T and $1.25T at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.1235,
+          "No": 0.8765
+        },
+        "volume_total": 194939.0570630005,
+        "volume_24h": 605.515703,
+        "liquidity": 8571.75664,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "608366",
+        "question": "Will OpenAI’s market cap be between $1.25T and $1.5T at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.1345,
+          "No": 0.8655
+        },
+        "volume_total": 506233.14897999953,
+        "volume_24h": 1452.5002969999998,
+        "liquidity": 8802.81708,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "608367",
+        "question": "Will OpenAI’s market cap be $1.5T or greater at market close on IPO day?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.2175,
+          "No": 0.7825
+        },
+        "volume_total": 117693.65908000032,
+        "volume_24h": 5614.485142,
+        "liquidity": 7247.35297,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "608368",
+        "question": "Will OpenAI not IPO by December 31, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.295,
+          "No": 0.705
+        },
+        "volume_total": 334169.33170799905,
+        "volume_24h": 553.3025600000001,
+        "liquidity": 5940.1241,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631120",
+        "question": "Will Google have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.105,
+          "No": 0.895
+        },
+        "volume_total": 29125.72901900001,
+        "volume_24h": 1583.427682,
+        "liquidity": 19361.6121,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631121",
+        "question": "Will Anthropic have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.865,
+          "No": 0.135
+        },
+        "volume_total": 41979.57356100003,
+        "volume_24h": 1394.700566,
+        "liquidity": 11472.722,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631122",
+        "question": "Will OpenAI have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.019,
+          "No": 0.981
+        },
+        "volume_total": 57435.44098699998,
+        "volume_24h": 1497.088387,
+        "liquidity": 20421.60689,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631123",
+        "question": "Will Alibaba have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.003,
+          "No": 0.997
+        },
+        "volume_total": 144164.1891520001,
+        "volume_24h": 1078.9695,
+        "liquidity": 19491.36181,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631124",
+        "question": "Will Z.ai have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.003,
+          "No": 0.997
+        },
+        "volume_total": 423493.10880499997,
+        "volume_24h": 1119.245331,
+        "liquidity": 25997.0771,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631125",
+        "question": "Will xAI have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.009,
+          "No": 0.991
+        },
+        "volume_total": 21323.43033900002,
+        "volume_24h": 1161.6043499999998,
+        "liquidity": 17349.44111,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631126",
+        "question": "Will DeepSeek have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.006,
+          "No": 0.994
+        },
+        "volume_total": 208502.5689269997,
+        "volume_24h": 1097.018011,
+        "liquidity": 17572.74305,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631127",
+        "question": "Will Moonshot have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0035,
+          "No": 0.9965
+        },
+        "volume_total": 212254.488408,
+        "volume_24h": 1051.9731660000002,
+        "liquidity": 23920.12903,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631128",
+        "question": "Will Mistral have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 71981.000286,
+        "volume_24h": 1083.952,
+        "liquidity": 25045.96992,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631129",
+        "question": "Will Meituan have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 281509.77563700016,
+        "volume_24h": 3382.783,
+        "liquidity": 23762.13058,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631130",
+        "question": "Will Microsoft have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0035,
+          "No": 0.9965
+        },
+        "volume_total": 19117.45696200001,
+        "volume_24h": 1870.747,
+        "liquidity": 20891.40832,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631131",
+        "question": "Will Meta have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.005,
+          "No": 0.995
+        },
+        "volume_total": 15395.801166000003,
+        "volume_24h": 1136.6432499999999,
+        "liquidity": 18868.45203,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631132",
+        "question": "Will Amazon have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 28493.572296999984,
+        "volume_24h": 1054.5959999999998,
+        "liquidity": 20551.17247,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631133",
+        "question": "Will Baidu have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 17984.22550000002,
+        "volume_24h": 987.146,
+        "liquidity": 19413.62525,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631134",
+        "question": "Will ByteDance have the top AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 18719.743063000013,
+        "volume_24h": 1008.4559999999999,
+        "liquidity": 19220.62077,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631139",
+        "question": "Will Google have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.135,
+          "No": 0.865
+        },
+        "volume_total": 917886.149893001,
+        "volume_24h": 24241.828915,
+        "liquidity": 60873.2111,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631140",
+        "question": "Will Anthropic have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.8245,
+          "No": 0.1755
+        },
+        "volume_total": 1380795.9996949981,
+        "volume_24h": 20683.855487999997,
+        "liquidity": 27365.65521,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631141",
+        "question": "Will OpenAI have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.034,
+          "No": 0.966
+        },
+        "volume_total": 813328.0813199977,
+        "volume_24h": 24571.972691000003,
+        "liquidity": 75966.37344,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631142",
+        "question": "Will Alibaba have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 703946.3471520084,
+        "volume_24h": 8952.621,
+        "liquidity": 292976.28144,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631143",
+        "question": "Will Z.ai have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 654349.2224570125,
+        "volume_24h": 15875.225,
+        "liquidity": 307004.95043,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631144",
+        "question": "Will xAI have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.004,
+          "No": 0.996
+        },
+        "volume_total": 1424938.7792709307,
+        "volume_24h": 11839.133473,
+        "liquidity": 189074.99196,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631145",
+        "question": "Will DeepSeek have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 794453.2005090037,
+        "volume_24h": 8606.422999999997,
+        "liquidity": 284701.52162,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631146",
+        "question": "Will Moonshot have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 700760.4680800091,
+        "volume_24h": 19169.021999999997,
+        "liquidity": 302473.12631,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631147",
+        "question": "Will Mistral have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 803163.452831006,
+        "volume_24h": 2000,
+        "liquidity": 315341.09327,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631148",
+        "question": "Will Meituan have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 726265.3950700104,
+        "volume_24h": 12240.879999999996,
+        "liquidity": 348794.23749,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631149",
+        "question": "Will Microsoft have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 528699.2275560081,
+        "volume_24h": 9818.661000000002,
+        "liquidity": 317146.69135,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631150",
+        "question": "Will Meta have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 425564.293093004,
+        "volume_24h": 10233.699,
+        "liquidity": 203224.95787,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631151",
+        "question": "Will Amazon have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 443004.1376490089,
+        "volume_24h": 15071.712,
+        "liquidity": 274742.9377,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631152",
+        "question": "Will Baidu have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 481122.0823240071,
+        "volume_24h": 12977.197999999999,
+        "liquidity": 336301.84613,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631153",
+        "question": "Will ByteDance have the best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 456551.3030000092,
+        "volume_24h": 11080.305,
+        "liquidity": 313786.23437,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631160",
+        "question": "Will Google have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.075,
+          "No": 0.925
+        },
+        "volume_total": 7251.498038999998,
+        "volume_24h": 107.37,
+        "liquidity": 5255.4015,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631161",
+        "question": "Will Anthropic have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.88,
+          "No": 0.12
+        },
+        "volume_total": 17976.909235000006,
+        "volume_24h": 129.806665,
+        "liquidity": 5127.7716,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631162",
+        "question": "Will OpenAI have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.026,
+          "No": 0.974
+        },
+        "volume_total": 36260.38861599999,
+        "volume_24h": 126.198001,
+        "liquidity": 7354.01469,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631163",
+        "question": "Will Alibaba have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.003,
+          "No": 0.997
+        },
+        "volume_total": 12711.423302,
+        "volume_24h": 87.47999999999999,
+        "liquidity": 7661.73675,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631164",
+        "question": "Will Z.ai have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 12021.128422999998,
+        "volume_24h": 96.749,
+        "liquidity": 8527.43455,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631165",
+        "question": "Will xAI have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.007,
+          "No": 0.993
+        },
+        "volume_total": 16100.810282000006,
+        "volume_24h": 87.4805,
+        "liquidity": 10266.18083,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631166",
+        "question": "Will DeepSeek have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.011,
+          "No": 0.989
+        },
+        "volume_total": 252100.1277240001,
+        "volume_24h": 87.4811,
+        "liquidity": 10469.4035,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631167",
+        "question": "Will Moonshot have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0015,
+          "No": 0.9985
+        },
+        "volume_total": 7307.198169999998,
+        "volume_24h": 90.523,
+        "liquidity": 8800.81303,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631168",
+        "question": "Will Mistral have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0025,
+          "No": 0.9975
+        },
+        "volume_total": 8708.056201000003,
+        "volume_24h": 87.47999999999999,
+        "liquidity": 8345.43436,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631169",
+        "question": "Will Meituan have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.003,
+          "No": 0.997
+        },
+        "volume_total": 40148.82909399996,
+        "volume_24h": 171.84199999999998,
+        "liquidity": 8396.83757,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631170",
+        "question": "Will Microsoft have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0025,
+          "No": 0.9975
+        },
+        "volume_total": 7255.577630000001,
+        "volume_24h": 87.47999999999999,
+        "liquidity": 9595.91413,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631171",
+        "question": "Will Meta have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.003,
+          "No": 0.997
+        },
+        "volume_total": 7249.997208999997,
+        "volume_24h": 87.47999999999999,
+        "liquidity": 10226.41849,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631172",
+        "question": "Will Amazon have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.002,
+          "No": 0.998
+        },
+        "volume_total": 7558.853999,
+        "volume_24h": 90.142,
+        "liquidity": 8478.03066,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631173",
+        "question": "Will Baidu have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.003,
+          "No": 0.997
+        },
+        "volume_total": 10885.895403,
+        "volume_24h": 87.47999999999999,
+        "liquidity": 5733.87639,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "631174",
+        "question": "Will ByteDance have the second best AI model at the end of June 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.005,
+          "No": 0.995
+        },
+        "volume_total": 7390.028685,
+        "volume_24h": 166.042141,
+        "liquidity": 7975.31919,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "651395",
+        "question": "Will Ari Weinstein leave OpenAI by December 31, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.149,
+          "No": 0.851
+        },
+        "volume_total": 11130.938096000007,
+        "volume_24h": 0,
+        "liquidity": 1479.70429,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "651400",
+        "question": "Will Conrad Kramer leave OpenAI by December 31, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.53,
+          "No": 0.47
+        },
+        "volume_total": 5103.793500000002,
+        "volume_24h": 2.2,
+        "liquidity": 37.7819,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "653788",
+        "question": "OpenAI announces it has achieved AGI before 2027?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.125,
+          "No": 0.875
+        },
+        "volume_total": 78791.69548700008,
+        "volume_24h": 120.636362,
+        "liquidity": 8548.9982,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "656313",
+        "question": "OpenAI $1t+ IPO before 2027?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.565,
+          "No": 0.435
+        },
+        "volume_total": 276179.7851449992,
+        "volume_24h": 38.67,
+        "liquidity": 6315.7909,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "668657",
+        "question": "Sam Altman in jail by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0135,
+          "No": 0.9865
+        },
+        "volume_total": 18383.283225000017,
+        "volume_24h": 8.0824,
+        "liquidity": 7678.34987,
+        "end_date": "2025-12-31"
+      },
+      {
+        "id": "670370",
+        "question": "OpenAI receives federal backstop for infrastructure before July?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0895,
+          "No": 0.9105
+        },
+        "volume_total": 108391.66365199962,
+        "volume_24h": 1,
+        "liquidity": 14845.38655,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "676804",
+        "question": "Will OpenAI launch a new consumer hardware product by December 31, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.33,
+          "No": 0.67
+        },
+        "volume_total": 29269.628019999986,
+        "volume_24h": 19.901173,
+        "liquidity": 772.342,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "676827",
+        "question": "OpenAI acquired before 2027?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.052,
+          "No": 0.948
+        },
+        "volume_total": 3251.79646,
+        "volume_24h": 0,
+        "liquidity": 3923.91086,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "676828",
+        "question": "Will GPT-6 be released by June 30, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.065,
+          "No": 0.935
+        },
+        "volume_total": 176842.88403699914,
+        "volume_24h": 793.560846,
+        "liquidity": 10890.5221,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "676829",
+        "question": "Will GPT-6 be released by December 31, 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.83,
+          "No": 0.17
+        },
+        "volume_total": 41432.54524000004,
+        "volume_24h": 9.690951,
+        "liquidity": 4010.1724,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "676842",
+        "question": "U.S. enacts AI safety bill before 2027?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.095,
+          "No": 0.905
+        },
+        "volume_total": 99436.65451000001,
+        "volume_24h": 0,
+        "liquidity": 9521.3385,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "676843",
+        "question": "Will OpenAI launch a token before 2027?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.07,
+          "No": 0.93
+        },
+        "volume_total": 3602.3620689999993,
+        "volume_24h": 0,
+        "liquidity": 2535.7855,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "676845",
+        "question": "Will Sam Altman get OpenAI equity by June 30?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.13,
+          "No": 0.87
+        },
+        "volume_total": 5041.393521000001,
+        "volume_24h": 55.077366999999995,
+        "liquidity": 528.4136,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "1184762",
+        "question": "Will Elon Musk win his case against Sam Altman?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.108,
+          "No": 0.892
+        },
+        "volume_total": 960247.1856759974,
+        "volume_24h": 11044.226779999999,
+        "liquidity": 31898.89546,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1280323",
+        "question": "Will any OpenAI GPT model score at least 60% on the FrontierMath Exam?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.38,
+          "No": 0.62
+        },
+        "volume_total": 26760.242079000003,
+        "volume_24h": 7.66,
+        "liquidity": 691.1764,
+        "end_date": "2026-02-28"
+      },
+      {
+        "id": "1280324",
+        "question": "Will any OpenAI GPT model score at least 70% on the FrontierMath Exam?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.1775,
+          "No": 0.8225
+        },
+        "volume_total": 10586.668738999999,
+        "volume_24h": 0,
+        "liquidity": 2573.62792,
+        "end_date": "2026-02-28"
+      },
+      {
+        "id": "1285453",
+        "question": "Will OpenAI GPT score at least 50% on Humanity’s Last Exam?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.3,
+          "No": 0.7
+        },
+        "volume_total": 24866.04418999998,
+        "volume_24h": 6.756755,
+        "liquidity": 606.9204,
+        "end_date": "2026-06-30"
+      },
+      {
+        "id": "1294328",
+        "question": "Will OpenAI release a social network in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.25,
+          "No": 0.75
+        },
+        "volume_total": 58694.263824000016,
+        "volume_24h": 123.16,
+        "liquidity": 2423.2944,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1294378",
+        "question": "OpenAI $1T+ valuation in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.6975,
+          "No": 0.3025
+        },
+        "volume_total": 25510.53330699988,
+        "volume_24h": 0,
+        "liquidity": 1207.1222,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1295976",
+        "question": "Will OpenAI announce earbuds or headphones in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.22,
+          "No": 0.78
+        },
+        "volume_total": 109897.91159900001,
+        "volume_24h": 0,
+        "liquidity": 973.9056,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1295977",
+        "question": "Will OpenAI announce a clip-on device for clothing in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.2,
+          "No": 0.8
+        },
+        "volume_total": 24770.678000000007,
+        "volume_24h": 0,
+        "liquidity": 1163.2622,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1295978",
+        "question": "Will OpenAI announce a necklace-style wearable in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.095,
+          "No": 0.905
+        },
+        "volume_total": 19421.239203999994,
+        "volume_24h": 21.97,
+        "liquidity": 3960.8645,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1295979",
+        "question": "Will OpenAI announce a watch in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.155,
+          "No": 0.845
+        },
+        "volume_total": 34355.603238,
+        "volume_24h": 0,
+        "liquidity": 2479.1452,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1295980",
+        "question": "Will OpenAI announce glasses in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.195,
+          "No": 0.805
+        },
+        "volume_total": 46982.65615300002,
+        "volume_24h": 5,
+        "liquidity": 1629.4593,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1295981",
+        "question": "Will OpenAI announce a ring in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.115,
+          "No": 0.885
+        },
+        "volume_total": 4264.06934,
+        "volume_24h": 0,
+        "liquidity": 3215.381,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1295982",
+        "question": "Will OpenAI announce a phone in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.175,
+          "No": 0.825
+        },
+        "volume_total": 34739.316615,
+        "volume_24h": 0,
+        "liquidity": 5143.6813,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1295983",
+        "question": "Will OpenAI announce a tablet in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.129,
+          "No": 0.871
+        },
+        "volume_total": 4163.5082,
+        "volume_24h": 0,
+        "liquidity": 2269.9799,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1295984",
+        "question": "Will OpenAI announce a head-mounted display in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.115,
+          "No": 0.885
+        },
+        "volume_total": 3677.820692,
+        "volume_24h": 0,
+        "liquidity": 3738.213,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1295985",
+        "question": "Will OpenAI announce a computer (Laptop/Desktop) in 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.125,
+          "No": 0.875
+        },
+        "volume_total": 21624.475179000012,
+        "volume_24h": 15,
+        "liquidity": 4343.7415,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1298624",
+        "question": "SpaceX or OpenAI higher IPO Market Cap?",
+        "status": "active",
+        "probabilities": {
+          "SpaceX": 0.8825,
+          "OpenAI": 0.1175
+        },
+        "volume_total": 7769.171720000003,
+        "volume_24h": 0,
+        "liquidity": 1303.04584,
+        "end_date": "2027-12-31"
+      },
+      {
+        "id": "1298648",
+        "question": "OpenAI IPO closing market cap above $800B?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.845,
+          "No": 0.155
+        },
+        "volume_total": 97991.62043000026,
+        "volume_24h": 0,
+        "liquidity": 6345.7994,
+        "end_date": "2027-12-31"
+      },
+      {
+        "id": "1298649",
+        "question": "OpenAI IPO closing market cap above $1T?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.795,
+          "No": 0.205
+        },
+        "volume_total": 1044546.7284299998,
+        "volume_24h": 13.22,
+        "liquidity": 5793.1618,
+        "end_date": "2027-12-31"
+      },
+      {
+        "id": "1298657",
+        "question": "OpenAI IPO closing market cap above $1.2T?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.645,
+          "No": 0.355
+        },
+        "volume_total": 248247.55965600023,
+        "volume_24h": 108.89,
+        "liquidity": 3649.2813,
+        "end_date": "2027-12-31"
+      },
+      {
+        "id": "1298658",
+        "question": "OpenAI IPO closing market cap above $1.4T?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.495,
+          "No": 0.505
+        },
+        "volume_total": 63301.14869599999,
+        "volume_24h": 709.19,
+        "liquidity": 2664.4236,
+        "end_date": "2027-12-31"
+      },
+      {
+        "id": "1298659",
+        "question": "OpenAI IPO closing market cap above $1.6T?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.36,
+          "No": 0.64
+        },
+        "volume_total": 45492.92776100001,
+        "volume_24h": 25,
+        "liquidity": 2658.3869,
+        "end_date": "2027-12-31"
+      },
+      {
+        "id": "1301184",
+        "question": "Will Anthropic or OpenAI IPO first?",
+        "status": "active",
+        "probabilities": {
+          "Anthropic": 0.765,
+          "OpenAI": 0.235
+        },
+        "volume_total": 99626.53004999999,
+        "volume_24h": 2281.012758,
+        "liquidity": 17726.0551,
+        "end_date": "2027-12-31"
+      },
+      {
+        "id": "1321561",
+        "question": "Will SpaceX have the highest IPO Market Cap 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.825,
+          "No": 0.175
+        },
+        "volume_total": 275496.3279030002,
+        "volume_24h": 2382.6499000000003,
+        "liquidity": 10756.9712,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1321562",
+        "question": "Will OpenAI have the highest IPO Market Cap 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.028,
+          "No": 0.972
+        },
+        "volume_total": 367375.8126580003,
+        "volume_24h": 337.74,
+        "liquidity": 11053.58069,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1321563",
+        "question": "Will ByteDance have the highest IPO Market Cap 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 120537.65809499995,
+        "volume_24h": 0,
+        "liquidity": 15978.00721,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1321564",
+        "question": "Will Anthropic have the highest IPO Market Cap 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.137,
+          "No": 0.863
+        },
+        "volume_total": 394242.3285879997,
+        "volume_24h": 243.60675500000002,
+        "liquidity": 10616.02064,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1321565",
+        "question": "Will Stripe have the highest IPO Market Cap 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 76151.40452699995,
+        "volume_24h": 0,
+        "liquidity": 16612.10879,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1321566",
+        "question": "Will Databricks have the highest IPO Market Cap 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 140461.04023199994,
+        "volume_24h": 1000,
+        "liquidity": 24006.52956,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1321567",
+        "question": "Will SHEIN have the highest IPO Market Cap 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 99128.78369199991,
+        "volume_24h": 0,
+        "liquidity": 22072.38009,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1321569",
+        "question": "Will Waymo have the highest IPO Market Cap 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 78284.69756499998,
+        "volume_24h": 0,
+        "liquidity": 19287.34504,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1321570",
+        "question": "Will Revolut have the highest IPO Market Cap 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 86016.616629,
+        "volume_24h": 0,
+        "liquidity": 14112.38002,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1321571",
+        "question": "Will Discord have the highest IPO Market Cap 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 126796.15782999988,
+        "volume_24h": 0,
+        "liquidity": 18753.93055,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1321572",
+        "question": "Will Perplexity AI have the highest IPO Market Cap 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 85616.5256149999,
+        "volume_24h": 0,
+        "liquidity": 20255.36788,
+        "end_date": "2026-12-31"
+      },
+      {
+        "id": "1321573",
+        "question": "Will Kraken have the highest IPO Market Cap 2026?",
+        "status": "active",
+        "probabilities": {
+          "Yes": 0.0005,
+          "No": 0.9995
+        },
+        "volume_total": 425215.0474710005,
+        "volume_24h": 10080,
+        "liquidity": 25778.11088,
+        "end_date": "2026-12-31"
+      }
+    ]
+  },
+  "tradition": {
+    "tag": {
+      "id": "713",
+      "label": "tradition",
+      "slug": "tradition"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "haniyeh": {
+    "tag": {
+      "id": "733",
+      "label": "haniyeh",
+      "slug": "haniyeh"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "legal cases": {
+    "tag": {
+      "id": "757",
+      "label": "legal cases",
+      "slug": "legal-cases"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "maritime transport": {
+    "tag": {
+      "id": "777",
+      "label": "maritime transport",
+      "slug": "maritime-transport"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "controversies": {
+    "tag": {
+      "id": "790",
+      "label": "controversies",
+      "slug": "controversies"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "Christmas": {
+    "tag": {
+      "id": "794",
+      "label": "Christmas",
+      "slug": "christmas"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "ETF": {
+    "tag": {
+      "id": "833",
+      "label": "ETF",
+      "slug": "etf"
+    },
+    "count": 6,
+    "total_volume": null,
+    "markets": [
+      {
+        "id": "2418293",
+        "question": "Bitcoin ETF Flows on June 4?",
+        "status": "active",
+        "probabilities": {
+          "Positive": 0.25,
+          "Negative": 0.75
+        },
+        "volume_total": 58.33,
+        "volume_24h": 58.33,
+        "liquidity": 41.72,
+        "end_date": "2026-06-04"
+      },
+      {
+        "id": "2418326",
+        "question": "Ethereum ETF Flows on June 4?",
+        "status": "active",
+        "probabilities": {
+          "Positive": 0.48,
+          "Negative": 0.52
+        },
+        "volume_total": 50.625133,
+        "volume_24h": 50.625133,
+        "liquidity": 6.6448,
+        "end_date": "2026-06-04"
+      },
+      {
+        "id": "2427152",
+        "question": "Bitcoin ETF Flows on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Positive": 0.475,
+          "Negative": 0.525
+        },
+        "volume_total": 51.6167,
+        "volume_24h": 51.6167,
+        "liquidity": 32.4837,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2427173",
+        "question": "Ethereum ETF Flows on June 5?",
+        "status": "active",
+        "probabilities": {
+          "Positive": 0.54,
+          "Negative": 0.46
+        },
+        "volume_total": 5.102,
+        "volume_24h": 0,
+        "liquidity": 21.1722,
+        "end_date": "2026-06-05"
+      },
+      {
+        "id": "2435378",
+        "question": "Bitcoin ETF Flows on June 8?",
+        "status": "active",
+        "probabilities": {
+          "Positive": 0.515,
+          "Negative": 0.485
+        },
+        "volume_total": null,
+        "volume_24h": 0,
+        "liquidity": 32.0572,
+        "end_date": "2026-06-08"
+      },
+      {
+        "id": "2435415",
+        "question": "Ethereum ETF Flows on June 8?",
+        "status": "active",
+        "probabilities": {
+          "Positive": 0.5,
+          "Negative": 0.5
+        },
+        "volume_total": null,
+        "volume_24h": 0,
+        "liquidity": 30.3436,
+        "end_date": "2026-06-08"
+      }
+    ]
+  },
+  "federal government": {
+    "tag": {
+      "id": "933",
+      "label": "federal government",
+      "slug": "federal-government"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  },
+  "michelle obama": {
+    "tag": {
+      "id": "945",
+      "label": "michelle obama",
+      "slug": "michelle-obama"
+    },
+    "count": 0,
+    "total_volume": 0,
+    "markets": []
+  }
+}

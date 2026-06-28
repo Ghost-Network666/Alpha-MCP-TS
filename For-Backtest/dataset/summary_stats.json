@@ -1,0 +1,533 @@
+{
+  "generated_at": "2026-06-28T02:54:34.592Z",
+  "counts": {
+    "tags": 100,
+    "markets_active": 100,
+    "markets_closed": 100,
+    "markets_total": 200,
+    "events_active": 100,
+    "events_closed": 100,
+    "events_total": 200,
+    "tag_files": 50
+  },
+  "volume": {
+    "active_markets_total_usd": 2507361912,
+    "tagged_markets_total_usd": null
+  },
+  "top_markets_by_volume": [
+    {
+      "id": "558960",
+      "question": "Will Uzbekistan win the 2026 FIFA World Cup?",
+      "volume_total": 55341011.80841756,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "559679",
+      "question": "Will Bernie Sanders win the 2028 Democratic presidential nomination?",
+      "volume_total": 50147652.115593426,
+      "probabilities": {
+        "Yes": 0.0075,
+        "No": 0.9925
+      }
+    },
+    {
+      "id": "559684",
+      "question": "Will Chelsea Clinton win the 2028 Democratic presidential nomination?",
+      "volume_total": 49284558.387580596,
+      "probabilities": {
+        "Yes": 0.0095,
+        "No": 0.9905
+      }
+    },
+    {
+      "id": "558957",
+      "question": "Will New Zealand win the 2026 FIFA World Cup?",
+      "volume_total": 44901916.5226452,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "558943",
+      "question": "Will USA win the 2026 FIFA World Cup?",
+      "volume_total": 44228048.492820404,
+      "probabilities": {
+        "Yes": 0.0115,
+        "No": 0.9885
+      }
+    },
+    {
+      "id": "558972",
+      "question": "Will Saudi Arabia win the 2026 FIFA World Cup?",
+      "volume_total": 42579747.05288373,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "559677",
+      "question": "Will Hillary Clinton win the 2028 Democratic presidential nomination?",
+      "volume_total": 42466652.88814394,
+      "probabilities": {
+        "Yes": 0.0075,
+        "No": 0.9925
+      }
+    },
+    {
+      "id": "559681",
+      "question": "Will LeBron James win the 2028 Democratic presidential nomination?",
+      "volume_total": 41986339.490793884,
+      "probabilities": {
+        "Yes": 0.0075,
+        "No": 0.9925
+      }
+    },
+    {
+      "id": "559666",
+      "question": "Will Tim Walz win the 2028 Democratic presidential nomination?",
+      "volume_total": 41115883.73513534,
+      "probabilities": {
+        "Yes": 0.0065,
+        "No": 0.9935
+      }
+    },
+    {
+      "id": "558958",
+      "question": "Will Australia win the 2026 FIFA World Cup?",
+      "volume_total": 40987514.3615678,
+      "probabilities": {
+        "Yes": 0.0015,
+        "No": 0.9985
+      }
+    },
+    {
+      "id": "559683",
+      "question": "Will George Clooney win the 2028 Democratic presidential nomination?",
+      "volume_total": 40932796.107497476,
+      "probabilities": {
+        "Yes": 0.0065,
+        "No": 0.9935
+      }
+    },
+    {
+      "id": "558978",
+      "question": "Will Curaçao win the 2026 FIFA World Cup?",
+      "volume_total": 40500059.08691622,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "558971",
+      "question": "Will Qatar win the 2026 FIFA World Cup?",
+      "volume_total": 40462688.81833187,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "559680",
+      "question": "Will Phil Murphy win the 2028 Democratic presidential nomination?",
+      "volume_total": 40283534.56349992,
+      "probabilities": {
+        "Yes": 0.0065,
+        "No": 0.9935
+      }
+    },
+    {
+      "id": "558966",
+      "question": "Will Ivory Coast win the 2026 FIFA World Cup?",
+      "volume_total": 39798214.276818305,
+      "probabilities": {
+        "Yes": 0.0035,
+        "No": 0.9965
+      }
+    },
+    {
+      "id": "558970",
+      "question": "Will Cape Verde win the 2026 FIFA World Cup?",
+      "volume_total": 38538916.88716404,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "559685",
+      "question": "Will MrBeast win the 2028 Democratic presidential nomination?",
+      "volume_total": 38360897.10315183,
+      "probabilities": {
+        "Yes": 0.0075,
+        "No": 0.9925
+      }
+    },
+    {
+      "id": "559678",
+      "question": "Will Liz Cheney win the 2028 Democratic presidential nomination?",
+      "volume_total": 37020358.49599779,
+      "probabilities": {
+        "Yes": 0.0075,
+        "No": 0.9925
+      }
+    },
+    {
+      "id": "559671",
+      "question": "Will Zohran Mamdani win the 2028 Democratic presidential nomination?",
+      "volume_total": 36907529.07644933,
+      "probabilities": {
+        "Yes": 0.0075,
+        "No": 0.9925
+      }
+    },
+    {
+      "id": "559682",
+      "question": "Will Hunter Biden win the 2028 Democratic presidential nomination?",
+      "volume_total": 36433322.195803665,
+      "probabilities": {
+        "Yes": 0.0065,
+        "No": 0.9935
+      }
+    }
+  ],
+  "top_markets_by_liquidity": [
+    {
+      "id": "558982",
+      "question": "Will Iraq win the 2026 FIFA World Cup?",
+      "liquidity": 13290564.72383,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "558962",
+      "question": "Will Jordan win the 2026 FIFA World Cup?",
+      "liquidity": 12735362.26332,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "558983",
+      "question": "Will Bosnia-Herzegovina win the 2026 FIFA World Cup?",
+      "liquidity": 12676402.22364,
+      "probabilities": {
+        "Yes": 0.0025,
+        "No": 0.9975
+      }
+    },
+    {
+      "id": "558954",
+      "question": "Will Tunisia win the 2026 FIFA World Cup?",
+      "liquidity": 12585548.56913,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "558978",
+      "question": "Will Curaçao win the 2026 FIFA World Cup?",
+      "liquidity": 12528194.32914,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "558977",
+      "question": "Will Haiti win the 2026 FIFA World Cup?",
+      "liquidity": 12468373.97063,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "558979",
+      "question": "Will Panama win the 2026 FIFA World Cup?",
+      "liquidity": 12453180.18611,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "558970",
+      "question": "Will Cape Verde win the 2026 FIFA World Cup?",
+      "liquidity": 12247527.45295,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "558957",
+      "question": "Will New Zealand win the 2026 FIFA World Cup?",
+      "liquidity": 11979517.8376,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "558971",
+      "question": "Will Qatar win the 2026 FIFA World Cup?",
+      "liquidity": 11952428.42492,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "558969",
+      "question": "Will Algeria win the 2026 FIFA World Cup?",
+      "liquidity": 11631452.03454,
+      "probabilities": {
+        "Yes": 0.0015,
+        "No": 0.9985
+      }
+    },
+    {
+      "id": "558958",
+      "question": "Will Australia win the 2026 FIFA World Cup?",
+      "liquidity": 11587233.83669,
+      "probabilities": {
+        "Yes": 0.0015,
+        "No": 0.9985
+      }
+    },
+    {
+      "id": "558967",
+      "question": "Will Ghana win the 2026 FIFA World Cup?",
+      "liquidity": 11454125.78797,
+      "probabilities": {
+        "Yes": 0.0025,
+        "No": 0.9975
+      }
+    },
+    {
+      "id": "558972",
+      "question": "Will Saudi Arabia win the 2026 FIFA World Cup?",
+      "liquidity": 10664640.32129,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "558952",
+      "question": "Will Canada win the 2026 FIFA World Cup?",
+      "liquidity": 10570421.67239,
+      "probabilities": {
+        "Yes": 0.0035,
+        "No": 0.9965
+      }
+    },
+    {
+      "id": "558984",
+      "question": "Will Czechia win the 2026 FIFA World Cup?",
+      "liquidity": 10077695.98492,
+      "probabilities": {
+        "Yes": 0.0025,
+        "No": 0.9975
+      }
+    },
+    {
+      "id": "558973",
+      "question": "Will Scotland win the 2026 FIFA World Cup?",
+      "liquidity": 9801061.46138,
+      "probabilities": {
+        "Yes": 0.0025,
+        "No": 0.9975
+      }
+    },
+    {
+      "id": "558964",
+      "question": "Will South Africa win the 2026 FIFA World Cup?",
+      "liquidity": 9314739.97282,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "558960",
+      "question": "Will Uzbekistan win the 2026 FIFA World Cup?",
+      "liquidity": 9233148.06025,
+      "probabilities": {
+        "Yes": 0.0005,
+        "No": 0.9995
+      }
+    },
+    {
+      "id": "558980",
+      "question": "Will Sweden win the 2026 FIFA World Cup?",
+      "liquidity": 9184130.32248,
+      "probabilities": {
+        "Yes": 0.0055,
+        "No": 0.9945
+      }
+    }
+  ],
+  "tags_by_volume": [
+    {
+      "tag": "OpenAI",
+      "market_count": 100,
+      "total_volume": 21182932
+    },
+    {
+      "tag": "Los Angeles",
+      "market_count": 68,
+      "total_volume": 9477139
+    },
+    {
+      "tag": "Claude",
+      "market_count": 76,
+      "total_volume": 2326635
+    },
+    {
+      "tag": "Macro Single",
+      "market_count": 3,
+      "total_volume": 1544612
+    },
+    {
+      "tag": "Macro Graph",
+      "market_count": 1,
+      "total_volume": 1537319
+    },
+    {
+      "tag": "Sam Bankman-Fried",
+      "market_count": 1,
+      "total_volume": 382532
+    },
+    {
+      "tag": "virgins",
+      "market_count": 1,
+      "total_volume": 147173
+    },
+    {
+      "tag": "Shenzhen",
+      "market_count": 11,
+      "total_volume": 43261
+    },
+    {
+      "tag": "Influenza",
+      "market_count": 6,
+      "total_volume": 4812
+    },
+    {
+      "tag": "international affairs",
+      "market_count": 1,
+      "total_volume": 2661
+    },
+    {
+      "tag": "Korea",
+      "market_count": 1,
+      "total_volume": 1505
+    },
+    {
+      "tag": "Europa League",
+      "market_count": 1,
+      "total_volume": 168
+    },
+    {
+      "tag": "538",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "keith gill",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "House Races",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "redbull",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "Philly",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "Russ",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "Viktoria Plzen",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "FDIC",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "trunout",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "Kansas",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "Stoke City",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "Jerry After Dark",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "Alireza Firouzja",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "Altcoins",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "Wildfire",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "product marekt fit",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "bat",
+      "market_count": 0,
+      "total_volume": 0
+    },
+    {
+      "tag": "QB",
+      "market_count": 0,
+      "total_volume": 0
+    }
+  ]
+}
