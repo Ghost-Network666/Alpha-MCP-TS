@@ -38,7 +38,7 @@ export async function submitLimitOrder(params: any): Promise<OrderResponse> {
 export async function submitMarketOrder(params: any): Promise<OrderResponse> {
   const client = await secure();
   const attributedParams = withBuilderAttribution(params);
-  logTrade('Placing market order', attributedParams);
+  logTrade('Placing market order', { side: attributedParams.side, tokenId: attributedParams.tokenId?.slice?.(0, 8), amount: attributedParams.amount, shares: attributedParams.shares });
   const resp = await withErrorHandling(() => client.placeMarketOrder(attributedParams), 'trading.placeMarketOrder');
   if (resp.ok) {
     logTrade('Market order filled', { orderId: resp.orderId });
